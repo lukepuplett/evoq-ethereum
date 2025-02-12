@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A053E1E2-5C44-43C8-BABE-F636B5D9A71F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Evoq.Ethereum", "src\Evoq.Ethereum\Evoq.Ethereum.csproj", "{148404B7-62BB-4622-AC44-8A85008E2825}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DFFFF796-D1CE-4F21-BAAF-C1AACBC4A865}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Evoq.Ethereum.Tests", "tests\Evoq.Ethereum.Tests\Evoq.Ethereum.Tests.csproj", "{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{148404B7-62BB-4622-AC44-8A85008E2825}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{148404B7-62BB-4622-AC44-8A85008E2825}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{148404B7-62BB-4622-AC44-8A85008E2825}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{148404B7-62BB-4622-AC44-8A85008E2825}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{148404B7-62BB-4622-AC44-8A85008E2825} = {A053E1E2-5C44-43C8-BABE-F636B5D9A71F}
+		{DDD6EB64-956C-4283-AFB3-1CD0A93FDDF3} = {DFFFF796-D1CE-4F21-BAAF-C1AACBC4A865}
+	EndGlobalSection
+EndGlobal
