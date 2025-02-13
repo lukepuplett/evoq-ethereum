@@ -81,7 +81,16 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
 
             var startTime = DateTime.UtcNow;
 
-            var receipt = await f.SendTransactionAndWaitForReceiptAsync(input, null, args);
+
+
+            var transactionInput = f.CreateTransactionInput(input, args); // sets the Data of the input
+
+            var signedTransaction = await account.TransactionManager.SignTransactionAsync(transactionInput);
+
+            var receipt = await f.SendTransactionAndWaitForReceiptAsync(signedTransaction);
+
+
+
 
             var duration = DateTime.UtcNow - startTime;
 
