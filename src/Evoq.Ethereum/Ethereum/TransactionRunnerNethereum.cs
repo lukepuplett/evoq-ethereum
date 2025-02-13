@@ -19,6 +19,12 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
 
     //
 
+    /// <summary>
+    /// Create a new instance of the TransactionRunnerNethereum class.
+    /// </summary>
+    /// <param name="privateKey">The private key to use for the transaction.</param>
+    /// <param name="nonceStore">The nonce store to use for the transaction.</param>
+    /// <param name="loggerFactory">The logger factory to use for the transaction.</param>
     public TransactionRunnerNethereum(
         Hex privateKey,
         INonceStore nonceStore,
@@ -30,6 +36,19 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
 
     //
 
+    /// <summary>
+    /// Submit a transaction using Nethereum.
+    /// </summary>
+    /// <param name="contract">The contract to submit the transaction to.</param>
+    /// <param name="functionName">The name of the function to call on the contract.</param>
+    /// <param name="fees">The fees for the transaction.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
+    /// <param name="args">The arguments to pass to the function.</param>
+    /// <exception cref="InvalidOperationException">Thrown if the private key is not set.</exception>
+    /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
+    /// <exception cref="OutOfGasTransactionException">Thrown if the transaction is out of gas.</exception>
+    /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
+    /// <returns>The transaction receipt.</returns>
     protected async override Task<TransactionReceipt> SubmitTransactionAsync(
         Contract contract, string functionName, TransactionFees fees, uint nonce, object[] args)
     {
@@ -87,6 +106,34 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
 
             throw new FailedToSubmitTransactionException(message, tooManyArgs);
         }
+    }
+
+    /// <summary>
+    /// Get the expected failure of a transaction.
+    /// </summary>
+    /// <param name="ex">The exception that occurred.</param>
+    /// <returns>The expected failure of the transaction.</returns>
+    protected override ExpectedFailure GetExpectedFailure(Exception ex)
+    {
+        if (ex is Nethereum.JsonRpc.Client.RpcResponseException rpc)
+        {
+            if (rpc.Message.Contains("out of gas"))
+            {
+                return ExpectedFailure.OutOfGas;
+            }
+
+            if (rpc.Message.Contains("reverted"))
+            {
+                return ExpectedFailure.Reverted;
+            }
+
+            if (rpc.Message.Contains("nonce too low"))
+            {
+                return ExpectedFailure.NonceTooLow;
+            }
+        }
+
+        return ExpectedFailure.Other;
     }
 
     //

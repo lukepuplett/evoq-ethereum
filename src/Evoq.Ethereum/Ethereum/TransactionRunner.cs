@@ -1,10 +1,32 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Evoq.Blockchain;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum;
+
+/// <summary>
+/// The expected failure of a transaction.
+/// </summary>
+public enum ExpectedFailure
+{
+    /// <summary>
+    /// The transaction failed for an unexpected reason.
+    /// </summary>
+    Other,
+    /// <summary>
+    /// The transaction failed because it was out of gas.
+    /// </summary>
+    OutOfGas,
+    /// <summary>
+    /// The transaction failed because it was reverted.
+    /// </summary>
+    Reverted,
+    /// <summary>
+    /// The transaction failed because the nonce was too low.
+    /// </summary>
+    NonceTooLow,
+}
 
 /// <summary>
 /// A transaction runner using a semaphore of one thread and retries managed by the nonce store.
@@ -54,7 +76,9 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
     /// <param name="fees">The fees for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
     /// <returns>The transaction receipt.</returns>
-    /// <exception cref="FailedToSubmitTransactionException">Thrown when the transaction fails to submit.</exception>
+    /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
+    /// <exception cref="OutOfGasTransactionException">Thrown if the transaction is out of gas.</exception>
+    /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
     public async Task<TReceipt> RunTransactionAsync(
         TContract contract, string functionName, TransactionFees fees, TArgs args)
     {
@@ -79,8 +103,8 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
 
                 return receipt;
             }
-            catch (Nethereum.JsonRpc.Client.RpcResponseException rpc)
-            when (rpc.Message.StartsWith("Nonce too low."))
+            catch (Exception nonceTooLow)
+            when (this.GetExpectedFailure(nonceTooLow) == ExpectedFailure.NonceTooLow)
             {
                 // nonce too low, we need to increment the nonce and retry
 
@@ -88,8 +112,8 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
 
                 nonce = await this.nonceStore.AfterNonceTooLowAsync(nonce);
             }
-            catch (Nethereum.JsonRpc.Client.RpcResponseException rpc)
-            when (rpc.Message.Contains("out of gas"))
+            catch (Exception outOfGas)
+            when (this.GetExpectedFailure(outOfGas) == ExpectedFailure.OutOfGas)
             {
                 // transaction out of gas
 
@@ -126,8 +150,8 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
                             $"Transaction out of gas: {r}. The nonce may not have been removed.");
                 }
             }
-            catch (Nethereum.JsonRpc.Client.RpcResponseException rpc)
-            when (rpc.Message.Contains("reverted"))
+            catch (Exception reverted)
+            when (this.GetExpectedFailure(reverted) == ExpectedFailure.Reverted)
             {
                 // transaction reverted
 
@@ -164,13 +188,13 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
                             $"Transaction reverted: {r}. The nonce may not have been removed.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception other)
             {
                 // the transaction failed to submit, could be a network issue between us and the RPC node
                 // or it could be a bug in the .NET SDK or the RPC node - usually we need to just try again
                 // but that depends on the nonce store response
 
-                this.logger.LogError(ex, $"{functionName}: transaction failed to submit: '{ex.Message}'");
+                this.logger.LogError(other, $"{functionName}: transaction failed to submit: '{other.Message}'");
 
                 var r = await this.nonceStore.AfterSubmissionFailureAsync(nonce);
 
@@ -185,18 +209,18 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
                     case NonceRollbackResponse.RemovedOkay:
                         // nonce was removed and no gap was created
                         throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. The nonce was removed and no gap was created.", ex);
+                            $"Transaction failed: {r}. The nonce was removed and no gap was created.", other);
                     case NonceRollbackResponse.RemovedGapDetected:
                         // consider filling the gap
                         throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. The nonce was removed and a gap was created.", ex)
+                            $"Transaction failed: {r}. The nonce was removed and a gap was created.", other)
                         {
                             WasNonceGapCreated = true
                         };
                     default:
                         // other response
                         throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. This response was unexpected. The nonce store may be malfunctioning.", ex);
+                            $"Transaction failed: {r}. This response was unexpected. The nonce store may be malfunctioning.", other);
                 }
             }
             finally
@@ -219,4 +243,16 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
     /// <returns>The transaction receipt.</returns>
     protected abstract Task<TReceipt> SubmitTransactionAsync(
         TContract contract, string functionName, TransactionFees fees, uint nonce, TArgs args);
+
+    /// <summary>
+    /// Implementors should return the expected failure of a transaction.
+    /// </summary>
+    /// <remarks>
+    /// This is used to determine if the transaction failed because of a known issue and should be
+    /// retried. The implementer is expected to have knowledge of the various exceptions that may be
+    /// thrown by its transaction runner implementation.
+    /// </remarks>
+    /// <param name="ex">The exception that occurred.</param>
+    /// <returns>The expected failure of the transaction.</returns>
+    protected abstract ExpectedFailure GetExpectedFailure(Exception ex);
 }

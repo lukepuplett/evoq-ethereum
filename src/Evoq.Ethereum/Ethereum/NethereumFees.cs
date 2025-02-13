@@ -7,12 +7,19 @@ using Nethereum.Web3;
 
 namespace Evoq.Ethereum;
 
+/// <summary>
+/// A class for calculating transaction fees using Nethereum.
+/// </summary>
 public class FeesNethereum
 {
     private readonly Web3 web3;
 
     //
 
+    /// <summary>
+    /// Create a new instance of the FeesNethereum class.
+    /// </summary>
+    /// <param name="web3">The Web3 instance to use for fee calculation.</param>
     public FeesNethereum(Web3 web3)
     {
         this.web3 = web3;
