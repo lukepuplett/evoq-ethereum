@@ -13,6 +13,11 @@ namespace Evoq.Ethereum.Accounts.Blockchain;
 /// <summary>
 /// A transaction runner that depends on Nethereum to submit transactions.
 /// </summary>
+/// <remarks>
+/// See remarks on the base class. The job of this class is to prepare and submit a transaction
+/// using Nethereum. The job of the base class is to manage retries based on the response from
+/// the RPC node and the nonce store.
+/// </remarks>
 public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, object[], TransactionReceipt>
 {
     private readonly Hex privateKey;
