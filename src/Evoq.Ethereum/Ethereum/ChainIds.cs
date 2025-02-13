@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Evoq.Ethereum;
 
 /// <summary>
@@ -31,4 +34,53 @@ public static class ChainIds
 
     // Development
     public const string Hardhat = "31337";
+
+    // 
+
+    private static readonly Dictionary<string, string> _chainIds = new()
+    {
+        // Mainnets
+        { EthereumMainnet, ChainNames.EthereumMainnet },
+        { OptimismMainnet, ChainNames.OptimismMainnet },
+        { PolygonMainnet, ChainNames.PolygonMainnet },
+        { ArbitrumMainnet, ChainNames.ArbitrumMainnet },
+        { ArbitrumNova, ChainNames.ArbitrumNova },
+        { BaseMainnet, ChainNames.BaseMainnet },
+        { ScrollMainnet, ChainNames.ScrollMainnet },
+        { ZkSyncMainnet, ChainNames.ZkSyncMainnet },
+        { CeloMainnet, ChainNames.CeloMainnet },
+        { BlastMainnet, ChainNames.BlastMainnet },
+        { LineaMainnet, ChainNames.LineaMainnet },
+
+        // Testnets
+        { EthereumSepolia, ChainNames.EthereumSepolia },
+        { OptimismSepolia, ChainNames.OptimismSepolia },
+        { OptimismGoerli, ChainNames.OptimismGoerli },
+        { BaseSepolia, ChainNames.BaseSepolia },
+        { BaseGoerli, ChainNames.BaseGoerli },
+        { ArbitrumGoerli, ChainNames.ArbitrumGoerli },
+        { PolygonAmoy, ChainNames.PolygonAmoy },
+        { ScrollSepolia, ChainNames.ScrollSepolia },
+        { LineaGoerli, ChainNames.LineaGoerli },
+
+        // Development
+        { Hardhat, ChainNames.Hardhat },
+    };
+
+    //
+
+    /// <summary>
+    /// Get the name of a chain from its ID.
+    /// </summary>
+    /// <param name="chainId">The ID of the chain.</param>
+    /// <returns>The name of the chain.</returns>
+    /// <exception cref="ArgumentException">Thrown if the chain ID is not found.</exception>
+    public static string GetChainName(string chainId)
+    {
+        if (!_chainIds.TryGetValue(chainId, out var name))
+        {
+            throw new ArgumentException($"Chain ID {chainId} not found");
+        }
+        return name;
+    }
 }
