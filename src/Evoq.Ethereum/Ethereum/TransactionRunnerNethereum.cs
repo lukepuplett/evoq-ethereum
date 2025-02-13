@@ -82,13 +82,23 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
             var startTime = DateTime.UtcNow;
 
 
+            // Previous code just called this, but this only worked for Google Cloud's RPC
+            // provider and Hardhart local node. On Alchemy this caused a HTTP 400 and on
+            // Coinbase this caused a HTTP 405. Perhaps it is calling eth_sendTransaction?
+            //
+            // var receipt = await f.SendTransactionAndWaitForReceiptAsync(input, null, args);
+            //
+            // So now we're trying to pre-sign to see if this forces Nethereum to use
+            // eth_sendRawTransaction.
+            //
+            // Sadly, pre-signing causes "Client not configured" from
+            // AccountSignerTransactionManager.GetNonceAsync(...) which is odd because we
+            // have set the nonce already.
+            //
+            input = f.CreateTransactionInput(input, args); // sets the Data of the input
 
-            var transactionInput = f.CreateTransactionInput(input, args); // sets the Data of the input
-
-            var signedTransaction = await account.TransactionManager.SignTransactionAsync(transactionInput);
-
+            var signedTransaction = await account.TransactionManager.SignTransactionAsync(input);
             var receipt = await f.SendTransactionAndWaitForReceiptAsync(signedTransaction);
-
 
 
 
