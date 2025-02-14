@@ -10,7 +10,7 @@ public class EvmParamTests
     {
         var param = new EvmParam(0, "amount", "uint256");
 
-        Assert.AreEqual("uint256", param.Type, "Type should be set correctly");
+        Assert.AreEqual("uint256", param.AbiType, "Type should be set correctly");
         Assert.AreEqual("amount", param.Name, "Name should be set correctly");
         Assert.AreEqual(0, param.Position, "Position should be set correctly");
         Assert.IsNull(param.Components, "Components should be null for basic types");
@@ -27,7 +27,7 @@ public class EvmParamTests
 
         var param = new EvmParam(0, "details", components);
 
-        Assert.AreEqual("(bool,address)", param.Type, "Type should be derived from components");
+        Assert.AreEqual("(bool,address)", param.AbiType, "Type should be derived from components");
         Assert.AreEqual("details", param.Name, "Name should be set correctly");
         Assert.AreEqual(0, param.Position, "Position should be set correctly");
         Assert.IsNotNull(param.Components, "Components should not be null for tuple types");
@@ -69,7 +69,7 @@ public class EvmParamTests
         var param = new EvmParam(0, "amount", new List<EvmParam>());
         Assert.IsNotNull(param.Components, "Components should not be null when passed empty list");
         Assert.AreEqual(0, param.Components!.Count, "Components should be empty when passed empty list");
-        Assert.AreEqual("()", param.Type, "Type should be empty tuple");
+        Assert.AreEqual("()", param.AbiType, "Type should be empty tuple");
     }
 
     [TestMethod]
@@ -78,7 +78,7 @@ public class EvmParamTests
         var arrayLengths = new[] { -1 };
         var param = new EvmParam(0, "values", "uint256", arrayLengths);
 
-        Assert.AreEqual("uint256[]", param.Type, "Type should include array length");
+        Assert.AreEqual("uint256[]", param.AbiType, "Type should include array length");
         Assert.AreEqual("values", param.Name, "Name should be set correctly");
         Assert.AreEqual(0, param.Position, "Position should be set correctly");
         Assert.IsNull(param.Components, "Components should be null for basic types");
@@ -93,7 +93,7 @@ public class EvmParamTests
         var arrayLengths = new[] { 16, 2 };
         var param = new EvmParam(0, "values", "uint256", arrayLengths);
 
-        Assert.AreEqual("uint256[16][2]", param.Type, "Type should include array length");
+        Assert.AreEqual("uint256[16][2]", param.AbiType, "Type should include array length");
         Assert.AreEqual("values", param.Name, "Name should be set correctly");
         Assert.AreEqual(0, param.Position, "Position should be set correctly");
         Assert.IsNull(param.Components, "Components should be null for basic types");
@@ -153,7 +153,7 @@ public class EvmParamTests
     {
         // Act & Assert
         var param = new EvmParam(0, "param", type);
-        Assert.AreEqual(type, param.Type);
+        Assert.AreEqual(type, param.AbiType);
     }
 
     [TestMethod]
@@ -195,7 +195,7 @@ public class EvmParamTests
         var param = new EvmParam(0, "param", "uint256", arrayLengths);
 
         // Assert
-        Assert.AreEqual("uint256[5][]", param.Type);
+        Assert.AreEqual("uint256[5][]", param.AbiType);
     }
 
     [TestMethod]
@@ -255,21 +255,22 @@ public class EvmParamTests
     }
 
     [TestMethod]
-    public void ValidateValueOrThrow_WithInvalidBasicType_ThrowsAbiValidationException()
+    public void ValidateValue_WithInvalidBasicType_ThrowsAbiValidationException()
     {
         var param = new EvmParam(0, "amount", "uint256");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValueOrThrow("not a number"));
+            param.ValidateValue("not a number"));
 
         Assert.AreEqual("uint256", ex.ExpectedType);
         Assert.AreEqual("not a number", ex.ValueProvided);
         Assert.AreEqual(typeof(string), ex.TypeProvided);
-        Assert.AreEqual("amount", ex.ValidationPath);
+        Assert.AreEqual("Value of type System.String is not compatible with parameter type uint256: incompatible type", ex.Message);
+        Assert.AreEqual("param-0 (amount)", ex.ValidationPath);
     }
 
     [TestMethod]
-    public void ValidateValueOrThrow_WithInvalidNestedType_ThrowsAbiValidationException()
+    public void ValidateValue_WithInvalidNestedType_ThrowsAbiValidationException()
     {
         var components = new List<EvmParam>
         {
@@ -285,16 +286,17 @@ public class EvmParamTests
         var value = (("John", "not a number"), true);
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValueOrThrow(value));
+            param.ValidateValue(value));
 
         Assert.AreEqual("uint256", ex.ExpectedType);
         Assert.AreEqual("not a number", ex.ValueProvided);
         Assert.AreEqual(typeof(string), ex.TypeProvided);
-        Assert.AreEqual("component 0 (user) -> component 1 (balance)", ex.ValidationPath);
+        Assert.AreEqual("Value of type System.String is not compatible with parameter type uint256: incompatible type", ex.Message);
+        Assert.AreEqual("param-0 (data) -> param-0 (user) -> param-1 (balance)", ex.ValidationPath);
     }
 
     [TestMethod]
-    public void ValidateValueOrThrow_WithWrongTupleLength_ThrowsAbiValidationException()
+    public void ValidateValue_WithWrongTupleLength_ThrowsAbiValidationException()
     {
         var components = new List<EvmParam>
         {
@@ -306,12 +308,45 @@ public class EvmParamTests
         var value = ValueTuple.Create("John");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValueOrThrow(value));
+            param.ValidateValue(value));
 
         // Check all properties of the exception
         Assert.AreEqual("(string,uint256)", ex.ExpectedType);
         Assert.AreEqual(value, ex.ValueProvided);
         Assert.AreEqual(typeof(ValueTuple<string>), ex.TypeProvided);
-        Assert.AreEqual("person", ex.ValidationPath);
+        Assert.AreEqual("Value of type System.ValueTuple`1[System.String] is not compatible with parameter type (string,uint256): expected tuple of length 2", ex.Message);
+        Assert.AreEqual("param-0 (person)", ex.ValidationPath);
+    }
+
+    [TestMethod]
+    public void ValidateValue_ReturnsCorrectVisitCount()
+    {
+        // Test single param (count = 1)
+        var sig = FunctionSignature.Parse("transfer(uint256 amount)");
+        var param = sig.Parameters[0];
+        var visitCount = param.ValidateValue(BigInteger.One);
+        Assert.AreEqual(1, visitCount, "Single parameter should have visit count of 1");
+
+        // Test simple tuple (count = 2)
+        sig = FunctionSignature.Parse("process((bool valid, uint256 amount) data)");
+        param = sig.Parameters[0];
+        visitCount = param.ValidateValue((true, BigInteger.One));
+        Assert.AreEqual(2, visitCount, "Simple tuple should have visit count of 2");
+    }
+
+    [TestMethod]
+    public void DeepCount_WithComplexSignature_ReturnsCorrectCount()
+    {
+        var sig = FunctionSignature.Parse("process((bool active, uint256 balance) user, bool valid, uint256 amount)");
+        var count = sig.Parameters.DeepCount();
+        Assert.AreEqual(4, count, $"Should return 4 parameters; {sig.Parameters.GetCanonicalType()}");
+    }
+
+    [TestMethod]
+    public void DeepCount_WithMoreComplexSig_ReturnsCorrectCount()
+    {
+        var sig = FunctionSignature.Parse("process(((bool active, uint256 balance) account, (string name, uint8 age) profile) user, bool valid, uint256 amount)");
+        var count = sig.Parameters.DeepCount();
+        Assert.AreEqual(6, count, $"Should return 6 parameters; {sig.Parameters.GetCanonicalType()}");
     }
 }

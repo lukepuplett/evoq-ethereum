@@ -38,10 +38,10 @@ public class AbiValidationException : Exception
         string? message = null)
         : base(FormatMessage(expectedType, valueProvided, message))
     {
-        ExpectedType = expectedType;
-        ValueProvided = valueProvided;
-        TypeProvided = valueProvided?.GetType();
-        ValidationPath = validationPath;
+        this.ExpectedType = expectedType;
+        this.ValueProvided = valueProvided;
+        this.TypeProvided = valueProvided?.GetType();
+        this.ValidationPath = validationPath;
     }
 
     private static string FormatMessage(

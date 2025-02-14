@@ -10,7 +10,7 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string", result[0].Type, "Parameter should be of type 'string'");
+        Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
         Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
         Assert.AreEqual("", result[0].Name, "Parameter should have empty name");
         Assert.IsNull(result[0].Components, "Parameter should not have components");
@@ -23,7 +23,7 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string[2]", result[0].Type, "Parameter should be of type 'string[2]'");
+        Assert.AreEqual("string[2]", result[0].AbiType, "Parameter should be of type 'string[2]'");
         Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
         Assert.AreEqual("", result[0].Name, "Parameter should have empty name");
         Assert.IsNull(result[0].Components, "Parameter should not have components");
@@ -38,12 +38,12 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("string", result[0].Type, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, result[0].Position, "First parameter should be at position 0");
         Assert.AreEqual("", result[0].Name, "First parameter should have empty name");
         Assert.IsNull(result[0].Components, "First parameter should not have components");
 
-        Assert.AreEqual("uint256", result[1].Type, "Second parameter should be of type 'uint256'");
+        Assert.AreEqual("uint256", result[1].AbiType, "Second parameter should be of type 'uint256'");
         Assert.AreEqual(1, result[1].Position, "Second parameter should be at position 1");
         Assert.AreEqual("", result[1].Name, "Second parameter should have empty name");
         Assert.IsNull(result[1].Components, "Second parameter should not have components");
@@ -56,13 +56,13 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("(string,uint256)", result[0].Type, "Parameter should be of type '(string,uint256)'");
+        Assert.AreEqual("(string,uint256)", result[0].AbiType, "Parameter should be of type '(string,uint256)'");
         Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
         Assert.AreEqual("item", result[0].Name, "Parameter should have name 'item'");
         Assert.IsTrue(result[0].Components != null, "Parameter should have components");
         Assert.AreEqual(2, result[0].Components!.Count, "Tuple should have exactly two components");
 
-        Assert.AreEqual("string", result[0].Components![0].Type, "First component should be of type 'string'");
+        Assert.AreEqual("string", result[0].Components![0].AbiType, "First component should be of type 'string'");
         Assert.AreEqual(0, result[0].Components![0].Position, "First component should be at position 0");
         Assert.AreEqual("name", result[0].Components![0].Name, "First component should have name 'name'");
 
@@ -75,7 +75,7 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string", result[0].Type, "Parameter should be of type 'string'");
+        Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
         Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
         Assert.AreEqual("name", result[0].Name, "Parameter should have name 'name'");
         Assert.IsNull(result[0].Components, "Parameter should not have components");
@@ -88,7 +88,7 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("(string,uint256)", result[0].Type, "First parameter should be of type '(string,uint256)'");
+        Assert.AreEqual("(string,uint256)", result[0].AbiType, "First parameter should be of type '(string,uint256)'");
         Assert.AreEqual("data", result[0].Name, "First parameter should have name 'data'");
 
     }
@@ -100,12 +100,12 @@ public class EvmParametersTests
         var result = EvmParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("string", result[0].Type, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, result[0].Position, "First parameter should be at position 0");
         Assert.AreEqual("name", result[0].Name, "First parameter should have name 'name'");
         Assert.IsNull(result[0].Components, "First parameter should not have components");
 
-        Assert.AreEqual("uint256", result[1].Type, "Second parameter should be of type 'uint256'");
+        Assert.AreEqual("uint256", result[1].AbiType, "Second parameter should be of type 'uint256'");
         Assert.AreEqual(1, result[1].Position, "Second parameter should be at position 1");
         Assert.AreEqual("value", result[1].Name, "Second parameter should have name 'value'");
         Assert.IsNull(result[1].Components, "Second parameter should not have components");
@@ -120,26 +120,26 @@ public class EvmParametersTests
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
         var nameParam = result[0];
-        Assert.AreEqual("string", nameParam.Type, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", nameParam.AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, nameParam.Position, "First parameter should be at position 0");
         Assert.AreEqual("name", nameParam.Name, "First parameter should have name 'name'");
         Assert.IsNull(nameParam.Components, "First parameter should not have components");
 
         var ticketParam = result[1];
-        Assert.AreEqual("(uint256,bool)", ticketParam.Type, "Second parameter should be of type '(uint256,bool)'");
+        Assert.AreEqual("(uint256,bool)", ticketParam.AbiType, "Second parameter should be of type '(uint256,bool)'");
         Assert.AreEqual(1, ticketParam.Position, "Second parameter should be at position 1");
         Assert.AreEqual("ticket", ticketParam.Name, "Second parameter should have name 'ticket'");
         Assert.IsTrue(ticketParam.Components != null, "Second parameter should have components");
         Assert.AreEqual(2, ticketParam.Components!.Count, "Tuple should have exactly two components");
 
         var valueParam = ticketParam.Components![0];
-        Assert.AreEqual("uint256", valueParam.Type, "First tuple component should be of type 'uint256'");
+        Assert.AreEqual("uint256", valueParam.AbiType, "First tuple component should be of type 'uint256'");
         Assert.AreEqual(0, valueParam.Position, "First tuple component should be at position 0");
         Assert.AreEqual("value", valueParam.Name, "First tuple component should have name 'value'");
         Assert.IsNull(valueParam.Components, "First tuple component should not have components");
 
         var validParam = ticketParam.Components![1];
-        Assert.AreEqual("bool", validParam.Type, "Second tuple component should be of type 'bool'");
+        Assert.AreEqual("bool", validParam.AbiType, "Second tuple component should be of type 'bool'");
         Assert.AreEqual(1, validParam.Position, "Second tuple component should be at position 1");
         Assert.AreEqual("valid", validParam.Name, "Second tuple component should have name 'valid'");
         Assert.IsNull(validParam.Components, "Second tuple component should not have components");
@@ -154,26 +154,26 @@ public class EvmParametersTests
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
         var stringParam = result[0];
-        Assert.AreEqual("string", stringParam.Type, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", stringParam.AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, stringParam.Position, "First parameter should be at position 0");
         Assert.AreEqual("", stringParam.Name, "First parameter should have empty name");
         Assert.IsNull(stringParam.Components, "First parameter should not have components");
 
         var tupleParam = result[1];
-        Assert.AreEqual("(uint256,bool)", tupleParam.Type, "Second parameter should be of type '(uint256,bool)'");
+        Assert.AreEqual("(uint256,bool)", tupleParam.AbiType, "Second parameter should be of type '(uint256,bool)'");
         Assert.AreEqual(1, tupleParam.Position, "Second parameter should be at position 1");
         Assert.AreEqual("", tupleParam.Name, "Second parameter should have empty name");
         Assert.IsTrue(tupleParam.Components != null, "Second parameter should have components");
         Assert.AreEqual(2, tupleParam.Components!.Count, "Tuple should have exactly two components");
 
         var uintParam = tupleParam.Components![0];
-        Assert.AreEqual("uint256", uintParam.Type, "First tuple component should be of type 'uint256'");
+        Assert.AreEqual("uint256", uintParam.AbiType, "First tuple component should be of type 'uint256'");
         Assert.AreEqual(0, uintParam.Position, "First tuple component should be at position 0");
         Assert.AreEqual("", uintParam.Name, "First tuple component should have empty name");
         Assert.IsNull(uintParam.Components, "First tuple component should not have components");
 
         var boolParam = tupleParam.Components![1];
-        Assert.AreEqual("bool", boolParam.Type, "Second tuple component should be of type 'bool'");
+        Assert.AreEqual("bool", boolParam.AbiType, "Second tuple component should be of type 'bool'");
         Assert.AreEqual(1, boolParam.Position, "Second tuple component should be at position 1");
         Assert.AreEqual("", boolParam.Name, "Second tuple component should have empty name");
         Assert.IsNull(boolParam.Components, "Second tuple component should not have components");
@@ -189,14 +189,14 @@ public class EvmParametersTests
 
         // First parameter (uint256 value)
         var valueParam = result[0];
-        Assert.AreEqual("uint256", valueParam.Type, "First parameter should be of type 'uint256'");
+        Assert.AreEqual("uint256", valueParam.AbiType, "First parameter should be of type 'uint256'");
         Assert.AreEqual(0, valueParam.Position, "First parameter should be at position 0");
         Assert.AreEqual("value", valueParam.Name, "First parameter should have name 'value'");
         Assert.IsNull(valueParam.Components, "First parameter should not have components");
 
         // Second parameter (the nested tuple named 'details')
         var detailsParam = result[1];
-        Assert.AreEqual("(bool,address)", detailsParam.Type, "Second parameter should be of type '(bool,address)'");
+        Assert.AreEqual("(bool,address)", detailsParam.AbiType, "Second parameter should be of type '(bool,address)'");
         Assert.AreEqual(1, detailsParam.Position, "Second parameter should be at position 1");
         Assert.AreEqual("details", detailsParam.Name, "Second parameter should have name 'details'");
         Assert.IsTrue(detailsParam.Components != null, "Second parameter should have components");
@@ -204,14 +204,14 @@ public class EvmParametersTests
 
         // First component of details (bool valid)
         var validParam = detailsParam.Components![0];
-        Assert.AreEqual("bool", validParam.Type, "First details component should be of type 'bool'");
+        Assert.AreEqual("bool", validParam.AbiType, "First details component should be of type 'bool'");
         Assert.AreEqual(0, validParam.Position, "First details component should be at position 0");
         Assert.AreEqual("valid", validParam.Name, "First details component should have name 'valid'");
         Assert.IsNull(validParam.Components, "First details component should not have components");
 
         // Second component of details (address owner)
         var ownerParam = detailsParam.Components![1];
-        Assert.AreEqual("address", ownerParam.Type, "Second details component should be of type 'address'");
+        Assert.AreEqual("address", ownerParam.AbiType, "Second details component should be of type 'address'");
         Assert.AreEqual(1, ownerParam.Position, "Second details component should be at position 1");
         Assert.AreEqual("owner", ownerParam.Name, "Second details component should have name 'owner'");
         Assert.IsNull(ownerParam.Components, "Second details component should not have components");
@@ -227,14 +227,14 @@ public class EvmParametersTests
 
         // First parameter (string name)
         var nameParam = result[0];
-        Assert.AreEqual("string", nameParam.Type, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", nameParam.AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, nameParam.Position, "First parameter should be at position 0");
         Assert.AreEqual("name", nameParam.Name, "First parameter should have name 'name'");
         Assert.IsNull(nameParam.Components, "First parameter should not have components");
 
         // Second parameter (the outer tuple named 'ticket')
         var ticketParam = result[1];
-        Assert.AreEqual("(uint256,(bool,address))", ticketParam.Type, "Second parameter should be of type '(uint256,(bool,address))'");
+        Assert.AreEqual("(uint256,(bool,address))", ticketParam.AbiType, "Second parameter should be of type '(uint256,(bool,address))'");
         Assert.AreEqual(1, ticketParam.Position, "Second parameter should be at position 1");
         Assert.AreEqual("ticket", ticketParam.Name, "Second parameter should have name 'ticket'");
         Assert.IsTrue(ticketParam.Components != null, "Second parameter should have components");
@@ -242,14 +242,14 @@ public class EvmParametersTests
 
         // First component of ticket (uint256 value)
         var valueParam = ticketParam.Components![0];
-        Assert.AreEqual("uint256", valueParam.Type, "First ticket component should be of type 'uint256'");
+        Assert.AreEqual("uint256", valueParam.AbiType, "First ticket component should be of type 'uint256'");
         Assert.AreEqual(0, valueParam.Position, "First ticket component should be at position 0");
         Assert.AreEqual("value", valueParam.Name, "First ticket component should have name 'value'");
         Assert.IsNull(valueParam.Components, "First ticket component should not have components");
 
         // Second component of ticket (the inner tuple named 'details')
         var detailsParam = ticketParam.Components![1];
-        Assert.AreEqual("(bool,address)", detailsParam.Type, "Second ticket component should be of type '(bool,address)'");
+        Assert.AreEqual("(bool,address)", detailsParam.AbiType, "Second ticket component should be of type '(bool,address)'");
         Assert.AreEqual(1, detailsParam.Position, "Second ticket component should be at position 1");
         Assert.AreEqual("details", detailsParam.Name, "Second ticket component should have name 'details'");
         Assert.IsTrue(detailsParam.Components != null, "Details tuple should have components");
@@ -257,14 +257,14 @@ public class EvmParametersTests
 
         // First component of details (bool valid)
         var validParam = detailsParam.Components![0];
-        Assert.AreEqual("bool", validParam.Type, "First details component should be of type 'bool'");
+        Assert.AreEqual("bool", validParam.AbiType, "First details component should be of type 'bool'");
         Assert.AreEqual(0, validParam.Position, "First details component should be at position 0");
         Assert.AreEqual("valid", validParam.Name, "First details component should have name 'valid'");
         Assert.IsNull(validParam.Components, "First details component should not have components");
 
         // Second component of details (address owner)
         var ownerParam = detailsParam.Components![1];
-        Assert.AreEqual("address", ownerParam.Type, "Second details component should be of type 'address'");
+        Assert.AreEqual("address", ownerParam.AbiType, "Second details component should be of type 'address'");
         Assert.AreEqual(1, ownerParam.Position, "Second details component should be at position 1");
         Assert.AreEqual("owner", ownerParam.Name, "Second details component should have name 'owner'");
         Assert.IsNull(ownerParam.Components, "Second details component should not have components");
@@ -281,20 +281,20 @@ public class EvmParametersTests
         var arrayParam = result[0];
         Assert.AreEqual(1, arrayParam.ArrayLengths!.Count, "Parameter should have one array dimension");
         Assert.AreEqual(-1, arrayParam.ArrayLengths![0], "Array dimension should be dynamic length");
-        Assert.AreEqual("(uint256,bool)[]", arrayParam.Type, "Parameter should be single array of tuple type");
+        Assert.AreEqual("(uint256,bool)[]", arrayParam.AbiType, "Parameter should be single array of tuple type");
         Assert.AreEqual(0, arrayParam.Position, "Parameter should be at position 0");
         Assert.AreEqual("items", arrayParam.Name, "Parameter should have name 'items'");
         Assert.IsTrue(arrayParam.Components != null, "Parameter should have components");
         Assert.AreEqual(2, arrayParam.Components!.Count, "Tuple should have exactly two components");
 
         var valueParam = arrayParam.Components![0];
-        Assert.AreEqual("uint256", valueParam.Type, "First component should be of type 'uint256'");
+        Assert.AreEqual("uint256", valueParam.AbiType, "First component should be of type 'uint256'");
         Assert.AreEqual(0, valueParam.Position, "First component should be at position 0");
         Assert.AreEqual("value", valueParam.Name, "First component should have name 'value'");
         Assert.IsNull(valueParam.Components, "First component should not have components");
 
         var validParam = arrayParam.Components![1];
-        Assert.AreEqual("bool", validParam.Type, "Second component should be of type 'bool'");
+        Assert.AreEqual("bool", validParam.AbiType, "Second component should be of type 'bool'");
         Assert.AreEqual(1, validParam.Position, "Second component should be at position 1");
         Assert.AreEqual("valid", validParam.Name, "Second component should have name 'valid'");
         Assert.IsNull(validParam.Components, "Second component should not have components");

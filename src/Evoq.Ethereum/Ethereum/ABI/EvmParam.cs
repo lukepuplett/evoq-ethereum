@@ -16,41 +16,41 @@ public record struct EvmParam()
     /// </summary>
     /// <param name="position">The ordinal of the param.</param>
     /// <param name="name">The name of the param.</param>
-    /// <param name="type">The type of the param.</param>
+    /// <param name="abiType">The type of the param.</param>
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
     /// <param name="components">The components of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the components contain nested params.</exception>
     public EvmParam(
-        int position, string name, string type,
+        int position, string name, string abiType,
         IReadOnlyList<int>? arrayLengths = null,
         IReadOnlyList<EvmParam>? components = null)
         : this()
     {
-        if (type != null && (type.Contains("[") || type.Contains("]")))
+        if (abiType != null && (abiType.Contains("[") || abiType.Contains("]")))
         {
-            throw new ArgumentException("Type must be a single type. Its array lengths must be specified as a separate parameter.", nameof(type));
+            throw new ArgumentException("Type must be a single type. Its array lengths must be specified as a separate parameter.", nameof(abiType));
         }
 
         if (components != null)
         {
             var canonicalType = GetCanonicalType(components, arrayLengths);
 
-            if (!string.IsNullOrEmpty(type) && canonicalType != type)
+            if (!string.IsNullOrEmpty(abiType) && canonicalType != abiType)
             {
                 throw new ArgumentException(
                     "The components do not match the type. Leave the type empty or null to use the type of the components.",
                     nameof(components));
             }
 
-            this.Type = canonicalType;
+            this.AbiType = canonicalType;
         }
         else
         {
-            this.Type = GetCanonicalType(type, arrayLengths);
+            this.AbiType = GetCanonicalType(abiType, arrayLengths);
 
-            if (!SolidityTypes.IsValidType(this.Type))
+            if (!SolidityTypes.IsValidType(this.AbiType))
             {
-                throw new ArgumentException($"Invalid Solidity type '{this.Type}'", nameof(type));
+                throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
             }
         }
 
@@ -65,14 +65,14 @@ public record struct EvmParam()
     /// </summary>
     /// <param name="position">The ordinal of the param.</param>
     /// <param name="name">The name of the param.</param>
-    /// <param name="type">The type of the param.</param>
+    /// <param name="abiType">The type of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the type is a tuple.</exception>
-    public EvmParam(int position, string name, string type)
-        : this(position, name, type, null)
+    public EvmParam(int position, string name, string abiType)
+        : this(position, name, abiType, null)
     {
-        if (type.Contains("("))
+        if (abiType.Contains("("))
         {
-            throw new ArgumentException("Type must be a single type, not a tuple.", nameof(type));
+            throw new ArgumentException("Type must be a single type, not a tuple.", nameof(abiType));
         }
     }
 
@@ -107,7 +107,7 @@ public record struct EvmParam()
     /// <summary>
     /// The type of the param.
     /// </summary>
-    public string Type { get; init; } = "";
+    public string AbiType { get; init; } = "";
 
     /// <summary>   
     /// The lengths of the array.
@@ -134,11 +134,11 @@ public record struct EvmParam()
         {
             if (includeNames && !string.IsNullOrEmpty(this.Name))
             {
-                return $"{this.Type} {this.Name}";
+                return $"{this.AbiType} {this.Name}";
             }
             else
             {
-                return this.Type;
+                return this.AbiType;
             }
         }
         else
@@ -237,18 +237,20 @@ public record struct EvmParam()
     /// </summary>
     /// <param name="value">The value to validate.</param>
     /// <exception cref="AbiValidationException">Thrown when the value is not compatible with the parameter's type.</exception>
-    public void ValidateValueOrThrow(object? value)
+    public int ValidateValue(object? value)
     {
-        var context = new ValidationContext();
-        if (!ValidateValue(value, context))
-        {
-            var path = context.GetPathString();
+        var vc = new ValidationContext();
 
+        if (!ValidateValue(value, vc))
+        {
             throw new AbiValidationException(
-                expectedType: context.ExpectedType ?? this.Type,
-                valueProvided: context.ValueProvided,
-                validationPath: path);
+                expectedType: vc.ExpectedType ?? this.AbiType,
+                valueProvided: vc.ValueProvided,
+                validationPath: vc.Path,
+                message: vc.Message);
         }
+
+        return vc.VisitCount;
     }
 
     /// <summary>
@@ -261,17 +263,17 @@ public record struct EvmParam()
         if (value == null)
             throw new ArgumentNullException(nameof(value));
 
-        this.ValidateValueOrThrow(value);
+        this.ValidateValue(value);
 
         // Handle basic types
         if (this.IsSingle)
         {
-            return Type switch
+            return this.AbiType switch
             {
                 "address" => AbiEncoder.EncodeAddress((EthereumAddress)value),
                 "uint256" => AbiEncoder.EncodeUint256((BigInteger)value),
                 "bool" => AbiEncoder.EncodeBool((bool)value),
-                _ => throw new NotImplementedException($"Encoding for type {Type} not implemented")
+                _ => throw new NotImplementedException($"Encoding for type {AbiType} not implemented")
             };
         }
 
@@ -285,60 +287,83 @@ public record struct EvmParam()
                 throw new ArgumentException("Tuple length does not match component count", nameof(value));
 
             // For tuples, encode each component and concatenate
-            var encodedComponents = new List<byte[]>();
+
+            var byteArrays = new List<byte[]>();
+
             for (int i = 0; i < this.Components.Count; i++)
             {
-                encodedComponents.Add(this.Components[i].Encode(tuple[i]));
+                byteArrays.Add(this.Components[i].Encode(tuple[i]));
             }
-            return encodedComponents.SelectMany(x => x).ToArray();
+
+            // Concatenate the byte arrays
+
+            return byteArrays.SelectMany(x => x).ToArray();
         }
 
-        throw new NotImplementedException($"Encoding for type {Type} not implemented");
+        throw new NotImplementedException($"Encoding for type {AbiType} not implemented");
     }
+
+    /// <summary>
+    /// Visits the parameter and its components, recursively.
+    /// </summary>
+    /// <param name="visitor">The visitor.</param>
+    /// <param name="depth">The depth of the parameter to visit where 0 is the current level.</param>
+    internal void DeepVisit(Action<EvmParam> visitor, int depth = int.MaxValue)
+    {
+        visitor(this);
+
+        if (this.Components != null && depth > 0)
+        {
+            foreach (var component in this.Components.OrderBy(c => c.Position))
+            {
+                component.DeepVisit(visitor, depth - 1);
+            }
+        }
+    }
+
+    //
 
     private class ValidationContext
     {
-        public List<string> Path { get; } = new();
+        public const string Sep = " -> ";
 
-        public string? ExpectedType { get; private set; }
-
+        public string ExpectedType { get; private set; } = "";
         public object? ValueProvided { get; private set; }
+        public string Path { get; private set; } = "";
+        public string Message { get; private set; } = "";
 
-        public string GetPathString() =>
-            string.Join(" -> ", Path);
+        public int VisitCount { get; private set; } = 0;
 
-        public IDisposable PushComponent(string name)
+        public void IncrementVisitorCounter()
         {
-            this.Path.Add(name);
-            return new PopOnDispose(this);
+            this.VisitCount++;
         }
 
-        public void Set(string expectedType, object? valueProvided)
+        public void SetFailed(string expectedType, object? valueProvided, string path, string message)
         {
             this.ExpectedType = expectedType;
             this.ValueProvided = valueProvided;
-        }
-
-        private class PopOnDispose : IDisposable
-        {
-            private readonly ValidationContext parent;
-            public PopOnDispose(ValidationContext parent) => this.parent = parent;
-            public void Dispose() => this.parent.Path.RemoveAt(this.parent.Path.Count - 1);
+            this.Path = path[Sep.Length..];
+            this.Message = message;
         }
     }
 
-    private bool ValidateValue(object? value, ValidationContext context)
+    private bool ValidateValue(object? value, ValidationContext vc, string? path = null)
     {
+        var currentPath = $"{path}{ValidationContext.Sep}param-{this.Position} ({this.Name})";
+
         if (value == null)
             return false;
 
         // For basic types, use the existing validator
         if (this.IsSingle)
         {
-            var isValid = SolidityTypeValidator.IsCompatible(this.Type, value);
+            vc.IncrementVisitorCounter();
+
+            var isValid = SolidityTypeValidator.IsCompatible(this.AbiType, value);
             if (!isValid)
             {
-                context.Set(this.Type, value);
+                vc.SetFailed(this.AbiType, value, currentPath, "incompatible type");
             }
             return isValid;
         }
@@ -348,24 +373,21 @@ public record struct EvmParam()
         {
             if (value is not ITuple tuple)
             {
-                context.Set(this.Type, value);
+                vc.SetFailed(this.AbiType, value, currentPath, "expected tuple");
                 return false;
             }
 
             if (tuple.Length != this.Components.Count)
             {
-                context.Set(this.Type, value);
+                vc.SetFailed(this.AbiType, value, currentPath, $"expected tuple of length {this.Components.Count}");
                 return false;
             }
 
             // Check each component recursively
             for (int i = 0; i < this.Components.Count; i++)
             {
-                using (context.PushComponent($"component {i} ({this.Components[i].Name ?? "unnamed"})"))
-                {
-                    if (!this.Components[i].ValidateValue(tuple[i], context))
-                        return false;
-                }
+                if (!this.Components[i].ValidateValue(tuple[i], vc, currentPath))
+                    return false;
             }
             return true;
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Evoq.Ethereum.ABI;
@@ -11,7 +12,8 @@ namespace Evoq.Ethereum.ABI;
 public class FunctionSignature
 {
     private readonly string _name;
-    private readonly EvmParameters _parameters;
+
+    //
 
     /// <summary>
     /// Creates a new function signature from a name and parameter descriptor.
@@ -31,20 +33,79 @@ public class FunctionSignature
         if (descriptor.StartsWith("(") && descriptor.EndsWith(")"))
         {
             _name = name;
-            _parameters = EvmParameters.Parse(descriptor);
+            Parameters = EvmParameters.Parse(descriptor);
         }
         else
         {
             _name = name;
-            _parameters = EvmParameters.Parse($"({descriptor})");
+            Parameters = EvmParameters.Parse($"({descriptor})");
         }
     }
 
     private FunctionSignature(string name, IEnumerable<EvmParam> parameters)
     {
         _name = name;
-        _parameters = new EvmParameters(parameters.ToList());
+        Parameters = new EvmParameters(parameters.ToList());
     }
+
+    //
+
+    /// <summary>
+    /// Gets the parameters of the function signature.
+    /// </summary>
+    public EvmParameters Parameters { get; }
+
+    //
+
+    /// <summary>
+    /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
+    /// </summary>
+    /// <returns>The canonical signature.</returns>
+    public string GetCanonicalSignature()
+    {
+        return $"{_name}{Parameters.GetCanonicalType(includeNames: false, includeSpaces: false)}";
+    }
+
+    /// <summary>
+    /// Gets the 4-byte function selector.
+    /// </summary>
+    /// <returns>The function selector.</returns>
+    public byte[] GetSelector()
+    {
+        var signature = GetCanonicalSignature();
+        return Crypto.KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
+    }
+
+    /// <summary>
+    /// Gets the parameter types from the function signature.
+    /// </summary>
+    /// <returns>An array of parameter type strings.</returns>
+    public string[] GetParameterTypes()
+    {
+        return Parameters.Select(p => p.AbiType).ToArray();
+    }
+
+    /// <summary>
+    /// Validates if the provided parameter values are compatible with this function signature.
+    /// </summary>
+    /// <param name="parameterValues">The values to validate.</param>
+    /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
+    public bool ValidateParameters(params object?[] parameterValues)
+    {
+        return SolidityTypeValidator.ValidateParameters(this, parameterValues);
+    }
+
+    /// <summary>
+    /// Validates if the provided parameter values are compatible with this function signature.
+    /// </summary>
+    /// <param name="parameterValues">The values to validate.</param>
+    /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
+    public bool ValidateParameters(ITuple parameterValues)
+    {
+        return SolidityTypeValidator.ValidateParameters(this, parameterValues);
+    }
+
+    //
 
     /// <summary>
     /// Creates a function signature from a full signature string.
@@ -79,44 +140,6 @@ public class FunctionSignature
         var parameters = EvmParameters.Parse(input[startIndex..]);
 
         return new FunctionSignature(name, parameters);
-    }
-
-    /// <summary>
-    /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
-    /// </summary>
-    /// <returns>The canonical signature.</returns>
-    public string GetCanonicalSignature()
-    {
-        return $"{_name}{_parameters.GetCanonicalType(includeNames: false, includeSpaces: false)}";
-    }
-
-    /// <summary>
-    /// Gets the 4-byte function selector.
-    /// </summary>
-    /// <returns>The function selector.</returns>
-    public byte[] GetSelector()
-    {
-        var signature = GetCanonicalSignature();
-        return Crypto.KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
-    }
-
-    /// <summary>
-    /// Gets the parameter types from the function signature.
-    /// </summary>
-    /// <returns>An array of parameter type strings.</returns>
-    public string[] GetParameterTypes()
-    {
-        return _parameters.Select(p => p.Type).ToArray();
-    }
-
-    /// <summary>
-    /// Validates if the provided parameter values are compatible with this function signature.
-    /// </summary>
-    /// <param name="parameterValues">The values to validate.</param>
-    /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
-    public bool ValidateParameters(params object?[] parameterValues)
-    {
-        return SolidityTypeValidator.ValidateParameters(this, parameterValues);
     }
 
     private static string NormalizeParameterType(string paramType)

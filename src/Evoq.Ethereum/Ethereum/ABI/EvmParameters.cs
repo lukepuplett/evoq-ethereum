@@ -20,15 +20,6 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     //
 
     /// <summary>
-    /// Returns the string representation of the parameters.
-    /// </summary>
-    /// <returns>The string representation of the parameters.</returns>
-    public override string ToString()
-    {
-        return this.GetCanonicalType(includeNames: true, includeSpaces: true);
-    }
-
-    /// <summary>
     /// Returns the canonical type of the parameters.
     /// </summary>
     /// <param name="includeNames">Whether to include the names of the parameters.</param>
@@ -37,6 +28,68 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     public string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
     {
         return EvmParam.GetCanonicalType(this, null, includeNames, includeSpaces);
+    }
+
+    /// <summary>
+    /// Returns a list of single parameters from the current level and all nested levels, in order.
+    /// </summary>
+    /// <returns>A list of single parameters.</returns>
+    public IReadOnlyList<EvmParam> DeepSingleParams()
+    {
+        var singles = new List<EvmParam>();
+
+        this.DeepVisit(child =>
+        {
+            if (child.IsSingle)
+            {
+                singles.Add(child);
+            }
+        });
+
+        return singles;
+    }
+
+    /// <summary>
+    /// Counts the real number of parameters needing to be encoded.
+    /// </summary>
+    /// <returns>The number of parameters that need to be encoded.</returns>
+    public int DeepCount()
+    {
+        int singles = 0;
+
+        this.DeepVisit(child =>
+        {
+            if (child.IsSingle)
+            {
+                singles++;
+            }
+        });
+
+        return singles;
+    }
+
+    /// <summary>
+    /// Visits the parameters and their components, recursively.
+    /// </summary>
+    /// <param name="visit">The visitor.</param>
+    /// <param name="depth">The depth of the parameters to visit where 0 is the current level.</param>
+    internal void DeepVisit(Action<EvmParam> visit, int depth = int.MaxValue)
+    {
+        foreach (var param in this)
+        {
+            param.DeepVisit(visit, depth);
+        }
+    }
+
+    //
+
+    /// <summary>
+    /// Returns the string representation of the parameters.
+    /// </summary>
+    /// <returns>The string representation of the parameters.</returns>
+    public override string ToString()
+    {
+        return this.GetCanonicalType(includeNames: true, includeSpaces: true);
     }
 
     //
