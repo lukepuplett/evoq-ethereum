@@ -23,6 +23,6 @@ namespace Evoq.Ethereum.ABI
         /// <param name="value">The value to encode.</param>
         /// <param name="encoder">The encoder for the given type.</param>
         /// <returns>True if the encoder was resolved, false otherwise.</returns>
-        bool TryResolveEncoder(string abiType, object value, out Func<object, Slot>? encoder);
+        bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder);
     }
 }

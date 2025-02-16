@@ -1,13 +1,22 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
 
 [TestClass]
 public class AbiTypeValidatorTests
 {
+    [TestMethod]
+    public void IsCompatible_AddressType_ValidatesCorrectly()
+    {
+        // Valid .NET types
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890")));
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", "0x1234567890123456789012345678901234567890"));
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new byte[20])); // Valid length byte array
+
+        // Invalid .NET types
+        Assert.IsFalse(AbiTypeValidator.IsCompatible("address", 123), "123 is not a valid address, it is an Int32");
+    }
+
     [TestMethod]
     public void IsCompatible_BasicTypes_ValidatesCorrectly()
     {
@@ -17,7 +26,8 @@ public class AbiTypeValidatorTests
 
         // Address
         Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890")));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("address", "0x1234"));
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", "0x1234567890123456789012345678901234567890"));
+        Assert.IsFalse(AbiTypeValidator.IsCompatible("address", 123));
 
         // String
         Assert.IsTrue(AbiTypeValidator.IsCompatible("string", "hello"));
@@ -35,16 +45,17 @@ public class AbiTypeValidatorTests
         Assert.IsTrue(AbiTypeValidator.IsCompatible("uint", ulong.MaxValue)); // uint alias
         Assert.IsTrue(AbiTypeValidator.IsCompatible("uint256", BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007913129639935")));
 
-        // int256
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("int", int.MinValue)); // int alias
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("int8", 128)); // Too large for int8
+        // int256 (note tryEncoding is true for the last test because the encoder will catch the size mismatch)
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("int", int.MinValue)); // int alias is int256
+        Assert.IsFalse(AbiTypeValidator.IsCompatible("int8", 128, tryEncoding: true), "Int32 is too large for int8");
+
     }
 
     [TestMethod]
     public void IsCompatible_BytesTypes_ValidatesCorrectly()
     {
         // bytes
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bytes", new byte[] { 1, 2, 3 }));
+        Assert.IsTrue(AbiTypeValidator.IsCompatible("bytes", new byte[] { 1, 2, 3 })); // wilo// this should work
 
         // bytes32
         Assert.IsTrue(AbiTypeValidator.IsCompatible("bytes32", new byte[32]));

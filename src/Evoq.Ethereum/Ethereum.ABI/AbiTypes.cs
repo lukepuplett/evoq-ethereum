@@ -158,6 +158,47 @@ public static class AbiTypes
     }
 
     /// <summary>
+    /// Gets the number of bits for a type.
+    /// </summary>
+    /// <param name="type">The type to get the bits for.</param>
+    /// <param name="bits">The number of bits if successful.</param>
+    /// <returns>True if the bits were successfully parsed, false otherwise.</returns>
+    public static bool TryGetBits(string type, out int bits)
+    {
+        bits = 0;
+        if (!IsValidType(type))
+        {
+            return false;
+        }
+
+        if (type.StartsWith(AbiTypeNames.IntegerTypes.Uint, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.IntegerTypes.Uint.Length..], out var size))
+            {
+                bits = size;
+                return true;
+            }
+
+            bits = 256;
+            return true;
+        }
+
+        if (type.StartsWith(AbiTypeNames.IntegerTypes.Int, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.IntegerTypes.Int.Length..], out var size))
+            {
+                bits = size;
+                return true;
+            }
+
+            bits = 256;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Gets the array dimensions from a type (e.g., [-1] or [2,3] from "uint256[][3]").
     /// </summary>
     /// <param name="type">The type to get dimensions from.</param>

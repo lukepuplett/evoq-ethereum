@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -75,7 +76,7 @@ public class SlotSpace
 
         var lengthAndpointer = new Slots(capacity: 4)
         {
-            new Slot(AbiEncoder.EncodeUint(256, length)) // add the array length
+            new Slot(UintTypeEncoder.EncodeUint(256, length)) // add the array length
         };
 
         this.Append(lengthAndpointer);
@@ -88,7 +89,7 @@ public class SlotSpace
             elementsSpace.Append(elementSlots); // potentially remove
             elementsSlots.Add(elementSlots);
 
-            var pointerlot = new Slot(AbiEncoder.EncodeUint(256, i), pointsToFirst: elementSlots);
+            var pointerlot = new Slot(UintTypeEncoder.EncodeUint(256, i), pointsToFirst: elementSlots);
             lengthAndpointer.Add(pointerlot);
         }
 
@@ -104,7 +105,7 @@ public class SlotSpace
     {
         var stringSlots = new Slots(capacity: (Slot.Size * length) + 1)
         {
-            new Slot(AbiEncoder.EncodeUint(256, length))
+            new Slot(UintTypeEncoder.EncodeUint(256, length))
         };
 
         this.Append(stringSlots);

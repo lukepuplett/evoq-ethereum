@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -42,14 +42,18 @@ public class AbiEncodingResult
     /// <summary>
     /// The slot index of the last dynamic slot.
     /// </summary>
-    public int LastDynamicSlotIndex => staticSlotCount + dynamicData.Count();
+    public int CurrentDynamicSlotIndex => staticSlotCount + dynamicData.Count();
 
     /// <summary>
     /// The dynamic offset which is the byte index of the next dynamic slot.
     /// </summary>
-    public int NextDynamicOffsetIndex => this.LastDynamicSlotIndex * Slot.Size;
+    public int CurrentDynamicOffset => this.CurrentDynamicSlotIndex * Slot.Size;
 
-    //
+    // ^ the end of the first slot is index 31, so the next dynamic slot is index 32
+    // ^ 1 static slots with 0 dynamic slots should have a current dynamic offset of 31 + 1 (32 bytes ~ 1 slot)
+    // ^ 2 static slots with 0 dynamic slots should have a current dynamic offset of 63 + 1 (64 bytes ~ 2 slots)
+    // ^ 1 static slot with 1 dynamic slot should have a current dynamic offset of 31 + 32 + 1 (64 bytes ~ 2 slots)
+    // ^ 1 static slot with 2 dynamic slots should have a current dynamic offset of 31 + 64 + 1 (96 bytes ~ 3 slots)
 
     /// <summary>
     /// Gets the combined static and dynamic data as a byte array.
@@ -85,11 +89,8 @@ public class AbiEncodingResult
     /// <returns>The slot index of the added data.</returns>
     public void AppendDynamic(Slots slots)
     {
-        if (slots.Count == 0)
-            throw new ArgumentException("Cannot add empty dynamic data");
-
-        var offsetSlot = new Slot(AbiEncoder.EncodeUint(256, this.NextDynamicOffsetIndex), pointsToFirst: slots);
-        this.AppendStatic(offsetSlot);
+        var pointerSlot = new Slot(UintTypeEncoder.EncodeUint(256, this.CurrentDynamicOffset), pointsToFirst: slots);
+        this.AppendStatic(pointerSlot);
 
         this.dynamicData.Append(slots);
     }

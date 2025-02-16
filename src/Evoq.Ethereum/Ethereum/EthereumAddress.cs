@@ -51,6 +51,11 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
             throw new ArgumentException("An empty address is not permitted.", nameof(address));
         }
 
+        if (address.Length != 20)
+        {
+            throw new ArgumentException("Ethereum addresses must be 20 bytes.", nameof(address));
+        }
+
         this.Address = address;
     }
 

@@ -1,9 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using Evoq.Blockchain;
+using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -12,6 +12,30 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiEncoder : IAbiEncoder
 {
+    private readonly IReadOnlyList<IAbiTypeEncoder> staticTypeEncoders;
+    private readonly IReadOnlyList<IAbiTypeEncoder> dynamicTypeEncoders;
+    //
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiEncoder"/> class.
+    /// </summary>
+    public AbiEncoder()
+    {
+        this.staticTypeEncoders = new AbiStaticTypeEncoders();
+        this.dynamicTypeEncoders = new AbiDynamicTypeEncoders();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiEncoder"/> class.
+    /// </summary>
+    /// <param name="staticTypeEncoders">The static type encoders.</param>
+    /// <param name="dynamicTypeEncoders">The dynamic type encoders.</param>
+    public AbiEncoder(IReadOnlyList<IAbiTypeEncoder> staticTypeEncoders, IReadOnlyList<IAbiTypeEncoder> dynamicTypeEncoders)
+    {
+        this.staticTypeEncoders = staticTypeEncoders;
+        this.dynamicTypeEncoders = dynamicTypeEncoders;
+    }
+
     //
 
     /// <summary>
@@ -89,7 +113,7 @@ public class AbiEncoder : IAbiEncoder
     /// <param name="value">The value to encode.</param>
     /// <param name="encoder">The encoder for the given type.</param>
     /// <returns>True if the encoder was resolved, false otherwise.</returns>
-    public bool TryResolveEncoder(string abiType, object value, out Func<object, Slot>? encoder)
+    public bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder)
     {
         if (value == null)
         {
@@ -105,174 +129,72 @@ public class AbiEncoder : IAbiEncoder
             return false;
         }
 
-        Exception makeEx()
-            => new NotImplementedException($"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
-
-        if (canonicalType == AbiTypeNames.Address)
+        foreach (var staticEncoder in this.staticTypeEncoders)
         {
-            if (value is EthereumAddress address)
+            if (staticEncoder.TryEncode(canonicalType, value, out var bytes))
             {
-                encoder = _ => new Slot(EncodeAddress(address));
+                encoder = _ => new Slot(bytes);
                 return true;
             }
-
-            if (value is string addr)
-            {
-                encoder = _ => new Slot(EncodeAddress(new EthereumAddress(Hex.Parse(addr))));
-                return true;
-            }
-
-            if (value is Hex hex)
-            {
-                encoder = _ => new Slot(EncodeAddress(new EthereumAddress(hex)));
-                return true;
-            }
-
-            if (value is byte[] bytes)
-            {
-                encoder = _ => new Slot(EncodeAddress(new EthereumAddress(bytes)));
-                return true;
-            }
-
-            throw makeEx();
         }
 
-        if (canonicalType == AbiTypeNames.IntegerTypes.Uint256)
+        throw new NotImplementedException(
+            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
+    }
+
+    /// <summary>
+    /// Resolves the encoder for a given type.
+    /// </summary>
+    /// <param name="abiType">The type to resolve the encoder for.</param>
+    /// <param name="value">The value to encode.</param>
+    /// <param name="encoder">The encoder for the given type.</param>
+    /// <returns>True if the encoder was resolved, false otherwise.</returns>
+    public bool TryFindDynamicSlotEncoder(string abiType, object value, out Func<object, Slots>? encoder)
+    {
+        if (value == null)
         {
-            if (value is BigInteger bigInt)
-            {
-                encoder = _ => new Slot(EncodeUint(256, bigInt));
-                return true;
-            }
-
-            if (value is ulong uLong)
-            {
-                encoder = _ => new Slot(EncodeUint(256, uLong));
-                return true;
-            }
-
-            if (value is uint uInt)
-            {
-                encoder = _ => new Slot(EncodeUint(256, uInt));
-                return true;
-            }
-
-            if (value is long longInt)
-            {
-                encoder = _ => new Slot(EncodeUint(256, longInt));
-                return true;
-            }
-
-            if (value is int intValue)
-            {
-                encoder = _ => new Slot(EncodeUint(256, intValue));
-                return true;
-            }
-
-            throw makeEx();
+            encoder = _ => new Slots(new Slot(new byte[32])); // null value is encoded as a 32-byte zero value
+            return true;
         }
 
-        // TODO / consider how to handle other integer types
+        // get the canonical type
 
-        if (canonicalType == AbiTypeNames.Bool)
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
         {
-            if (value is bool boolValue)
-            {
-                encoder = _ => new Slot(EncodeBool(boolValue));
-                return true;
-            }
-
-            throw makeEx();
+            encoder = null;
+            return false;
         }
 
-        if (canonicalType == AbiTypeNames.Byte)
+        foreach (var dynamicEncoder in this.dynamicTypeEncoders)
         {
-            if (value is byte byteValue)
+            if (dynamicEncoder.TryEncode(canonicalType, value, out var bytes))
             {
-                encoder = _ => new Slot(EncodeUint(8, byteValue));
+                encoder = _ => this.BytesToSlots(bytes);
                 return true;
             }
-
-            throw makeEx();
         }
 
-        throw makeEx();
+        throw new NotImplementedException(
+            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
     }
 
     //
 
-    /// <summary>
-    /// Encodes an address as a 32-byte value.
-    /// </summary>
-    /// <param name="address">The address to encode.</param>
-    /// <returns>The encoded address, padded to 32 bytes.</returns>
-    public static byte[] EncodeAddress(EthereumAddress address)
+    private Slots BytesToSlots(byte[] bytes)
     {
-        if (address == null)
+        var slots = new Slots(capacity: bytes.Length / 32 + 1);
+
+        for (int i = 0; i < bytes.Length; i += 32)
         {
-            throw new ArgumentNullException(nameof(address));
+            var chunk = new byte[32];
+            var count = Math.Min(32, bytes.Length - i);
+            Buffer.BlockCopy(bytes, i, chunk, 0, count);
+
+            slots.Append(new Slot(chunk));
         }
 
-        var result = new byte[32];
-        var addressBytes = address.ToByteArray();
-        if (addressBytes.Length != 20)
-            throw new ArgumentException("Address must be 20 bytes", nameof(address));
-        Buffer.BlockCopy(addressBytes, 0, result, 12, 20);
-
-        Debug.Assert(result.Length == 32);
-
-        return result;
+        return slots;
     }
-
-    /// <summary>
-    /// Encodes a uint as a 32-byte value.
-    /// </summary>
-    /// <param name="bits">The number of bits to encode.</param>
-    /// <param name="value">The value to encode.</param>
-    /// <returns>The encoded value as 32 bytes.</returns>
-    public static byte[] EncodeUint(int bits, BigInteger value)
-    {
-        if (value < 0)
-        {
-            throw new ArgumentException("Value cannot be negative", nameof(value));
-        }
-
-        if (bits < 8 || bits > 256 || bits % 8 != 0)
-        {
-            throw new ArgumentException("Bits must be between 8 and 256 and a multiple of 8", nameof(bits));
-        }
-
-        if (value > BigInteger.Pow(2, bits) - 1)
-        {
-            throw new ArgumentException($"Value too large for {bits} bits", nameof(value));
-        }
-
-        var result = new byte[32];
-        var bytes = value.ToByteArray(isUnsigned: true, isBigEndian: true);
-        Buffer.BlockCopy(bytes, 0, result, 32 - bytes.Length, bytes.Length); // Right-align
-
-        Debug.Assert(result.Length == 32);
-
-        return result;
-    }
-
-    /// <summary>
-    /// Encodes a boolean as a 32-byte value.
-    /// </summary>
-    /// <param name="value">The value to encode.</param>
-    /// <returns>The encoded value as 32 bytes.</returns>
-    public static byte[] EncodeBool(bool value)
-    {
-        var result = new byte[32];
-        if (value)
-            result[31] = 1;
-
-        Debug.Assert(result.Length == 32);
-
-        return result;
-    }
-
-    //
 
     private void EncodeValue(string abiType, object value, SlotSpace? staticSpace, SlotSpace dynamicSpace)
     {
@@ -304,7 +226,7 @@ public class AbiEncoder : IAbiEncoder
 
         // handle static types
 
-        if (!this.TryResolveEncoder(canonicalType, value, out var encoder))
+        if (!this.TryFindStaticSlotEncoder(canonicalType, value, out var encoder))
         {
             throw new NotImplementedException($"Encoding for type {canonicalType} not implemented");
         }
@@ -426,14 +348,7 @@ public class AbiEncoder : IAbiEncoder
 
             // add the string data
 
-            for (int i = 0; i < utf8Bytes.Length; i += 32)
-            {
-                var chunk = new byte[32];
-                var count = Math.Min(32, utf8Bytes.Length - i);
-                Buffer.BlockCopy(utf8Bytes, i, chunk, 0, count);
-
-                stringSlots.Append(new Slot(chunk));
-            }
+            dynamicSpace.Append(this.BytesToSlots(utf8Bytes));
         }
         else
         {

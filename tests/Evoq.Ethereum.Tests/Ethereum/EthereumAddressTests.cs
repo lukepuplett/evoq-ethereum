@@ -1,4 +1,5 @@
 using System;
+using Evoq.Blockchain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Evoq.Ethereum.Tests;
@@ -23,6 +24,177 @@ public class EthereumAddressTests
 
         // Assert
         Assert.AreEqual(ValidAddress, address.ToString());
+    }
+
+    [TestMethod]
+    public void Constructor_WithEmptyBytes_ThrowsArgumentException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(Array.Empty<byte>()));
+    }
+
+    [TestMethod]
+    public void Constructor_WithSingleZeroByte_CreatesZeroAddress()
+    {
+        // Arrange
+        byte[] bytes = new byte[] { 0 };
+
+        // Act
+        var address = new EthereumAddress(bytes);
+
+        // Assert
+        Assert.IsTrue(address.IsZero);
+        Assert.AreEqual("0x0000000000000000000000000000000000000000", address.ToString());
+    }
+
+    [TestMethod]
+    public void Constructor_With20ZeroBytes_CreatesZeroAddress()
+    {
+        // Arrange
+        byte[] bytes = new byte[20]; // All zeros
+
+        // Act
+        var address = new EthereumAddress(bytes);
+
+        // Assert
+        Assert.IsTrue(address.IsZero);
+    }
+
+    [TestMethod]
+    public void Constructor_With32BytesPadded_ParsesCorrectly()
+    {
+        // Arrange
+        // Create 32 bytes where first 12 are zero (24 hex chars)
+        byte[] bytes = new byte[32];
+        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, bytes, 12, 20);
+
+        // Act
+        var address = new EthereumAddress(bytes);
+
+        // Assert
+        Assert.AreEqual(ValidAddress, address.ToString());
+        Assert.AreEqual(20, address.Address.Length); // Should store only 20 bytes
+    }
+
+    [TestMethod]
+    public void Constructor_WithInvalidLengthViaHex_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] bytes = new byte[10]; // Wrong length, should be 20
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(bytes.ToHexStruct()));
+    }
+
+    [TestMethod]
+    public void Parse_WithRealEthAddress_ReturnsCorrectAddress()
+    {
+        // Arrange
+        const string realAddress = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
+
+        // Act
+        var address = EthereumAddress.Parse(realAddress, EthereumAddressChecksum.DoNotCheck);
+
+        // Assert
+        Assert.AreEqual(realAddress, address.ToString());
+    }
+
+    [TestMethod]
+    [DataRow("")]
+    [DataRow(" ")]
+    [DataRow("\t")]
+    [DataRow("\n")]
+    public void Parse_WithEmptyOrWhitespace_ThrowsFormatException(string input)
+    {
+        // Act & Assert
+        Assert.ThrowsException<FormatException>(() =>
+            EthereumAddress.Parse(input, EthereumAddressChecksum.DoNotCheck));
+    }
+
+    [TestMethod]
+    [DataRow("  0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3  ")]
+    [DataRow("\t0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\t")]
+    [DataRow(" 0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\n")]
+    public void Parse_WithValidAddressAndWhitespace_ParsesSuccessfully(string input)
+    {
+        // Arrange
+        const string expected = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
+
+        // Act
+        var address = EthereumAddress.Parse(input, EthereumAddressChecksum.DoNotCheck);
+
+        // Assert
+        Assert.AreEqual(expected, address.ToString());
+    }
+
+    [TestMethod]
+    [DataRow("")]
+    [DataRow(" ")]
+    [DataRow("\t")]
+    [DataRow("\n")]
+    public void TryParse_WithEmptyOrWhitespace_ReturnsFalse(string input)
+    {
+        // Act
+        bool success = EthereumAddress.TryParse(
+            input, EthereumAddressChecksum.DoNotCheck, out var address);
+
+        // Assert
+        Assert.IsFalse(success);
+        Assert.AreEqual(EthereumAddress.Zero, address);
+    }
+
+    [TestMethod]
+    [DataRow("  0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3  ")]
+    [DataRow("\t0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\t")]
+    [DataRow(" 0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\n")]
+    public void TryParse_WithValidAddressAndWhitespace_ParsesSuccessfully(string input)
+    {
+        // Arrange
+        const string expected = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
+
+        // Act
+        bool success = EthereumAddress.TryParse(
+            input, EthereumAddressChecksum.DoNotCheck, out var address);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.AreEqual(expected, address.ToString());
+    }
+
+    [TestMethod]
+    public void Parse_VitalikAddress_ParsesSuccessfully()
+    {
+        // Act
+        var address = EthereumAddress.Parse(VitalikAddress, EthereumAddressChecksum.AlwaysCheck);
+
+        // Assert
+        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
+    }
+
+    [TestMethod]
+    public void Parse_VitalikAddressLowerCase_ReturnsChecksummed()
+    {
+        // Arrange
+        string lowercaseAddress = VitalikAddress.ToLowerInvariant();
+
+        // Act
+        var address = EthereumAddress.Parse(lowercaseAddress, EthereumAddressChecksum.DoNotCheck);
+
+        // Assert
+        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
+    }
+
+    [TestMethod]
+    public void Parse_VitalikAddressWithoutPrefix_ParsesSuccessfully()
+    {
+        // Arrange
+        string addressWithoutPrefix = VitalikAddress[2..];
+
+        // Act
+        var address = EthereumAddress.Parse(addressWithoutPrefix, EthereumAddressChecksum.AlwaysCheck);
+
+        // Assert
+        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
     }
 
     [TestMethod]
@@ -192,117 +364,6 @@ public class EthereumAddressTests
     }
 
     [TestMethod]
-    public void Parse_WithRealEthAddress_ReturnsCorrectAddress()
-    {
-        // Arrange
-        const string realAddress = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
-
-        // Act
-        var address = EthereumAddress.Parse(realAddress, EthereumAddressChecksum.DoNotCheck);
-
-        // Assert
-        Assert.AreEqual(realAddress, address.ToString());
-    }
-
-    [TestMethod]
-    [DataRow("")]
-    [DataRow(" ")]
-    [DataRow("\t")]
-    [DataRow("\n")]
-    public void Parse_WithEmptyOrWhitespace_ThrowsFormatException(string input)
-    {
-        // Act & Assert
-        Assert.ThrowsException<FormatException>(() =>
-            EthereumAddress.Parse(input, EthereumAddressChecksum.DoNotCheck));
-    }
-
-    [TestMethod]
-    [DataRow("  0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3  ")]
-    [DataRow("\t0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\t")]
-    [DataRow(" 0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\n")]
-    public void Parse_WithValidAddressAndWhitespace_ParsesSuccessfully(string input)
-    {
-        // Arrange
-        const string expected = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
-
-        // Act
-        var address = EthereumAddress.Parse(input, EthereumAddressChecksum.DoNotCheck);
-
-        // Assert
-        Assert.AreEqual(expected, address.ToString());
-    }
-
-    [TestMethod]
-    [DataRow("")]
-    [DataRow(" ")]
-    [DataRow("\t")]
-    [DataRow("\n")]
-    public void TryParse_WithEmptyOrWhitespace_ReturnsFalse(string input)
-    {
-        // Act
-        bool success = EthereumAddress.TryParse(
-            input, EthereumAddressChecksum.DoNotCheck, out var address);
-
-        // Assert
-        Assert.IsFalse(success);
-        Assert.AreEqual(EthereumAddress.Zero, address);
-    }
-
-    [TestMethod]
-    [DataRow("  0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3  ")]
-    [DataRow("\t0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\t")]
-    [DataRow(" 0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3\n")]
-    public void TryParse_WithValidAddressAndWhitespace_ParsesSuccessfully(string input)
-    {
-        // Arrange
-        const string expected = "0x7F5b46a72872b3Dc8Fbb2403f4d55e6b34EdCcD3";
-
-        // Act
-        bool success = EthereumAddress.TryParse(
-            input, EthereumAddressChecksum.DoNotCheck, out var address);
-
-        // Assert
-        Assert.IsTrue(success);
-        Assert.AreEqual(expected, address.ToString());
-    }
-
-    [TestMethod]
-    public void Parse_VitalikAddress_ParsesSuccessfully()
-    {
-        // Act
-        var address = EthereumAddress.Parse(VitalikAddress, EthereumAddressChecksum.AlwaysCheck);
-
-        // Assert
-        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
-    }
-
-    [TestMethod]
-    public void Parse_VitalikAddressLowerCase_ReturnsChecksummed()
-    {
-        // Arrange
-        string lowercaseAddress = VitalikAddress.ToLowerInvariant();
-
-        // Act
-        var address = EthereumAddress.Parse(lowercaseAddress, EthereumAddressChecksum.DoNotCheck);
-
-        // Assert
-        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
-    }
-
-    [TestMethod]
-    public void Parse_VitalikAddressWithoutPrefix_ParsesSuccessfully()
-    {
-        // Arrange
-        string addressWithoutPrefix = VitalikAddress[2..];
-
-        // Act
-        var address = EthereumAddress.Parse(addressWithoutPrefix, EthereumAddressChecksum.AlwaysCheck);
-
-        // Assert
-        Assert.AreEqual(VitalikAddress, address.ToPadded(64));
-    }
-
-    [TestMethod]
     public void ToPadded_WithInvalidLength_ThrowsArgumentException()
     {
         // Arrange
@@ -375,56 +436,6 @@ public class EthereumAddressTests
 
         // Assert
         Assert.AreEqual("0x0000000000000000000000000000000000000000", hex.ToString());
-    }
-
-    [TestMethod]
-    public void Constructor_WithEmptyBytes_ThrowsArgumentException()
-    {
-        // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(Array.Empty<byte>()));
-    }
-
-    [TestMethod]
-    public void Constructor_WithSingleZeroByte_CreatesZeroAddress()
-    {
-        // Arrange
-        byte[] bytes = new byte[] { 0 };
-
-        // Act
-        var address = new EthereumAddress(bytes);
-
-        // Assert
-        Assert.IsTrue(address.IsZero);
-        Assert.AreEqual("0x0000000000000000000000000000000000000000", address.ToString());
-    }
-
-    [TestMethod]
-    public void Constructor_With20ZeroBytes_CreatesZeroAddress()
-    {
-        // Arrange
-        byte[] bytes = new byte[20]; // All zeros
-
-        // Act
-        var address = new EthereumAddress(bytes);
-
-        // Assert
-        Assert.IsTrue(address.IsZero);
-    }
-
-    [TestMethod]
-    public void Constructor_With32BytesPadded_ParsesCorrectly()
-    {
-        // Arrange
-        // Create 32 bytes where first 12 are zero (24 hex chars)
-        byte[] bytes = new byte[32];
-        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, bytes, 12, 20);
-
-        // Act
-        var address = new EthereumAddress(bytes);
-
-        // Assert
-        Assert.AreEqual(ValidAddress, address.ToString());
-        Assert.AreEqual(20, address.Address.Length); // Should store only 20 bytes
     }
 
     [TestMethod]
