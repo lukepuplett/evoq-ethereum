@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
@@ -48,7 +47,7 @@ public record struct EvmParam()
         {
             this.AbiType = GetCanonicalType(abiType, arrayLengths);
 
-            if (!SolidityTypes.IsValidType(this.AbiType))
+            if (!AbiTypes.IsValidType(this.AbiType))
             {
                 throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
             }
@@ -174,7 +173,7 @@ public record struct EvmParam()
             throw new ArgumentException("Type must be a single type, not an array.", nameof(type));
         }
 
-        if (!SolidityTypes.IsValidBaseType(type))
+        if (!AbiTypes.IsValidBaseType(type))
         {
             throw new ArgumentException($"Invalid Solidity base type: {type}", nameof(type));
         }
@@ -254,56 +253,6 @@ public record struct EvmParam()
     }
 
     /// <summary>
-    /// Encodes a value according to this parameter's type.
-    /// </summary>
-    /// <param name="value">The value to encode.</param>
-    /// <returns>The ABI encoded value.</returns>
-    public byte[] Encode(object? value)
-    {
-        if (value == null)
-            throw new ArgumentNullException(nameof(value));
-
-        this.ValidateValue(value);
-
-        // Handle basic types
-        if (this.IsSingle)
-        {
-            return this.AbiType switch
-            {
-                "address" => AbiEncoder.EncodeAddress((EthereumAddress)value),
-                "uint256" => AbiEncoder.EncodeUint256((BigInteger)value),
-                "bool" => AbiEncoder.EncodeBool((bool)value),
-                _ => throw new NotImplementedException($"Encoding for type {AbiType} not implemented")
-            };
-        }
-
-        // Handle arrays and tuples
-        if (this.Components != null)
-        {
-            if (value is not ITuple tuple)
-                throw new ArgumentException("Value must be a tuple", nameof(value));
-
-            if (tuple.Length != this.Components.Count)
-                throw new ArgumentException("Tuple length does not match component count", nameof(value));
-
-            // For tuples, encode each component and concatenate
-
-            var byteArrays = new List<byte[]>();
-
-            for (int i = 0; i < this.Components.Count; i++)
-            {
-                byteArrays.Add(this.Components[i].Encode(tuple[i]));
-            }
-
-            // Concatenate the byte arrays
-
-            return byteArrays.SelectMany(x => x).ToArray();
-        }
-
-        throw new NotImplementedException($"Encoding for type {AbiType} not implemented");
-    }
-
-    /// <summary>
     /// Visits the parameter and its components, recursively.
     /// </summary>
     /// <param name="visitor">The visitor.</param>
@@ -360,7 +309,7 @@ public record struct EvmParam()
         {
             vc.IncrementVisitorCounter();
 
-            var isValid = SolidityTypeValidator.IsCompatible(this.AbiType, value);
+            var isValid = AbiTypeValidator.IsCompatible(this.AbiType, value);
             if (!isValid)
             {
                 vc.SetFailed(this.AbiType, value, currentPath, "incompatible type");

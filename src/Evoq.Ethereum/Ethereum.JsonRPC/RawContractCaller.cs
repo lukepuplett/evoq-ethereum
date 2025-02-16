@@ -33,6 +33,9 @@ public class RawContractCaller
 
     //
 
+    /// <summary>
+    /// The endpoint to use to call the contract.
+    /// </summary>
     public Endpoint Endpoint { get; }
 
     //

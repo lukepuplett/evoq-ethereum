@@ -88,21 +88,21 @@ public class FunctionSignature
     /// <summary>
     /// Validates if the provided parameter values are compatible with this function signature.
     /// </summary>
-    /// <param name="parameterValues">The values to validate.</param>
-    /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
-    public bool ValidateParameters(params object?[] parameterValues)
+    /// <param name="value">The value to validate.</param>
+    /// <returns>True if the value is compatible with the function signature.</returns>
+    public bool ValidateParameters(object value)
     {
-        return SolidityTypeValidator.ValidateParameters(this, parameterValues);
+        return AbiTypeValidator.ValidateParameters(this, ValueTuple.Create(value));
     }
 
     /// <summary>
     /// Validates if the provided parameter values are compatible with this function signature.
     /// </summary>
-    /// <param name="parameterValues">The values to validate.</param>
+    /// <param name="values">The values to validate.</param>
     /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
-    public bool ValidateParameters(ITuple parameterValues)
+    public bool ValidateParameters(ITuple values)
     {
-        return SolidityTypeValidator.ValidateParameters(this, parameterValues);
+        return AbiTypeValidator.ValidateParameters(this, values);
     }
 
     //
@@ -153,7 +153,7 @@ public class FunctionSignature
         {
             // For tuples, we need to normalize each component
             var inner = type[1..^1];
-            var components = SolidityTypeValidator.ParseTupleComponents(inner)
+            var components = AbiTypeValidator.ParseTupleComponents(inner)
                 .Select(NormalizeParameterType);
             return $"({string.Join(",", components)})";
         }

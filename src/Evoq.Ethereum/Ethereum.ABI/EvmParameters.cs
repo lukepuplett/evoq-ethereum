@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -18,6 +19,17 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     }
 
     //
+
+    /// <summary>
+    /// Encodes the parameters.
+    /// </summary>
+    /// <param name="values">The values to encode.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <returns>The encoded parameters.</returns>
+    public AbiEncodingResult Encode(ITuple values, IAbiEncoder encoder)
+    {
+        return encoder.EncodeParameters(this, values);
+    }
 
     /// <summary>
     /// Returns the canonical type of the parameters.
@@ -230,4 +242,8 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
             throw new ArgumentException($"Invalid descriptor '{descriptor}'. Missing closing parenthesis.", nameof(descriptor));
         }
     }
+
+    //
+
+
 }

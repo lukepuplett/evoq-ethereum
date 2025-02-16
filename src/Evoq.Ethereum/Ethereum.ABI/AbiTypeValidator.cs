@@ -9,7 +9,7 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Validates compatibility between Solidity types and .NET types/values.
 /// </summary>
-public static class SolidityTypeValidator
+public static class AbiTypeValidator
 {
     /// <summary>
     /// Checks if a .NET value is compatible with a Solidity type.
@@ -66,14 +66,15 @@ public static class SolidityTypeValidator
         }
 
         // Normalize the non-array type
-        var canonicalType = SolidityTypes.GetCanonicalType(solidityType);
+        if (!AbiTypes.TryGetCanonicalType(solidityType, out var canonicalType) || canonicalType == null)
+            return false;
 
         return canonicalType switch
         {
             // Basic types
-            SolidityTypeNames.Bool => dotnetValue is bool,
-            SolidityTypeNames.Address => dotnetValue is EthereumAddress,
-            SolidityTypeNames.String => dotnetValue is string,
+            AbiTypeNames.Bool => dotnetValue is bool,
+            AbiTypeNames.Address => dotnetValue is EthereumAddress,
+            AbiTypeNames.String => dotnetValue is string,
 
             // Explicitly reject certain .NET types that might seem convertible
             _ when dotnetValue is DateTime or DateTimeOffset => false,
@@ -83,11 +84,102 @@ public static class SolidityTypeValidator
             _ when canonicalType.StartsWith("int") => IsCompatibleSignedInteger(canonicalType, dotnetValue),
 
             // Bytes
-            SolidityTypeNames.Bytes => dotnetValue is byte[],
+            AbiTypeNames.Bytes => dotnetValue is byte[],
             _ when canonicalType.StartsWith("bytes") => IsCompatibleFixedBytes(canonicalType, dotnetValue),
 
             _ => false // Unknown type combinations
         };
+    }
+
+    /// <summary>
+    /// Validates if the provided values are compatible with a function's parameters.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="values">The parameter values to validate.</param>
+    /// <returns>True if all values are compatible, false otherwise.</returns>
+    public static bool ValidateParameters(FunctionSignature signature, ITuple values)
+    {
+        var parameterTypes = signature.GetParameterTypes();
+
+        if (parameterTypes.Length != values.Length)
+            return false;
+
+        return parameterTypes.Zip(values.GetElements(), IsCompatible).All(x => x);
+    }
+
+    /// <summary>
+    /// Validates if the provided values are compatible with an ABI function's parameters.
+    /// </summary>
+    /// <param name="function">The ABI function item.</param>
+    /// <param name="values">The parameter values to validate.</param>
+    /// <returns>True if all values are compatible, false otherwise.</returns>
+    /// <exception cref="ArgumentException">If the ABI item is not a function.</exception>
+    public static bool ValidateParameters(AbiItem function, ITuple values)
+    {
+        if (function.Type != "function")
+            throw new ArgumentException("ABI item must be a function", nameof(function));
+
+        if (function.Inputs.Count != values.Length)
+            return false;
+
+        return function.Inputs.Zip(values.GetElements(), (param, value) => IsCompatible(param.Type, value)).All(x => x);
+    }
+
+    /// <summary>
+    /// Validates if a single value is compatible with a function's single parameter.
+    /// </summary>
+    /// <param name="function">The ABI function item.</param>
+    /// <param name="value">The parameter value to validate.</param>
+    /// <returns>True if the value is compatible, false otherwise.</returns>
+    /// <exception cref="ArgumentException">If the ABI item is not a function or has more than one parameter.</exception>
+    public static bool ValidateParameters(AbiItem function, object? value)
+    {
+        if (function.Type != "function")
+            throw new ArgumentException("ABI item must be a function", nameof(function));
+
+        if (function.Inputs.Count != 1)
+            throw new ArgumentException("Function must have exactly one parameter", nameof(function));
+
+        return IsCompatible(function.Inputs[0].Type, value);
+    }
+
+    /// <summary>
+    /// Parses the components of a tuple type string into an array of component type strings.
+    /// </summary>
+    /// <param name="tupleType">The tuple type string (with or without outer parentheses), e.g. "(uint256,uint256)" or "uint256,uint256".</param>
+    /// <returns>An array of component type strings.</returns>
+    public static string[] ParseTupleComponents(string tupleType)
+    {
+        // If the string includes parentheses, remove them
+        var inner = tupleType;
+        if (tupleType.StartsWith("(") && tupleType.EndsWith(")"))
+            inner = tupleType[1..^1];
+
+        var components = new List<string>();
+        var depth = 0;
+        var start = 0;
+
+        for (int i = 0; i < inner.Length; i++)
+        {
+            switch (inner[i])
+            {
+                case '(':
+                    depth++;
+                    break;
+                case ')':
+                    depth--;
+                    break;
+                case ',' when depth == 0:
+                    components.Add(inner[start..i].Trim());
+                    start = i + 1;
+                    break;
+            }
+        }
+
+        if (start < inner.Length)
+            components.Add(inner[start..].Trim());
+
+        return components.ToArray();
     }
 
     private static bool IsCompatibleUnsignedInteger(string canonicalType, object dotnetValue)
@@ -139,78 +231,5 @@ public static class SolidityTypeValidator
     private static BigInteger GetMinValueForBits(int bits)
     {
         return -(BigInteger.One << (bits - 1));
-    }
-
-    /// <summary>
-    /// Validates if the provided values are compatible with a function's parameters.
-    /// </summary>
-    /// <param name="signature">The function signature.</param>
-    /// <param name="dotnetValues">The parameter values to validate.</param>
-    /// <returns>True if all values are compatible, false otherwise.</returns>
-    public static bool ValidateParameters(FunctionSignature signature, params object?[] dotnetValues)
-    {
-        var parameterTypes = signature.GetParameterTypes();
-
-        if (parameterTypes.Length != dotnetValues.Length)
-            return false;
-
-        return parameterTypes.Zip(dotnetValues, IsCompatible).All(x => x);
-    }
-
-    /// <summary>
-    /// Validates if the provided values are compatible with an ABI function's parameters.
-    /// </summary>
-    /// <param name="function">The ABI function item.</param>
-    /// <param name="dotnetValues">The parameter values to validate.</param>
-    /// <returns>True if all values are compatible, false otherwise.</returns>
-    /// <exception cref="ArgumentException">If the ABI item is not a function.</exception>
-    public static bool ValidateParameters(AbiItem function, params object?[] dotnetValues)
-    {
-        if (function.Type != "function")
-            throw new ArgumentException("ABI item must be a function", nameof(function));
-
-        if (function.Inputs.Count != dotnetValues.Length)
-            return false;
-
-        return function.Inputs.Zip(dotnetValues, (param, value) => IsCompatible(param.Type, value)).All(x => x);
-    }
-
-    /// <summary>
-    /// Parses the components of a tuple type string into an array of component type strings.
-    /// </summary>
-    /// <param name="tupleType">The tuple type string (with or without outer parentheses), e.g. "(uint256,uint256)" or "uint256,uint256".</param>
-    /// <returns>An array of component type strings.</returns>
-    public static string[] ParseTupleComponents(string tupleType)
-    {
-        // If the string includes parentheses, remove them
-        var inner = tupleType;
-        if (tupleType.StartsWith("(") && tupleType.EndsWith(")"))
-            inner = tupleType[1..^1];
-
-        var components = new List<string>();
-        var depth = 0;
-        var start = 0;
-
-        for (int i = 0; i < inner.Length; i++)
-        {
-            switch (inner[i])
-            {
-                case '(':
-                    depth++;
-                    break;
-                case ')':
-                    depth--;
-                    break;
-                case ',' when depth == 0:
-                    components.Add(inner[start..i].Trim());
-                    start = i + 1;
-                    break;
-            }
-        }
-
-        if (start < inner.Length)
-            components.Add(inner[start..].Trim());
-
-        return components.ToArray();
     }
 }

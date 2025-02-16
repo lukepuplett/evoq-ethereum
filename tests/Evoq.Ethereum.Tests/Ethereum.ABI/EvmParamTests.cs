@@ -212,49 +212,6 @@ public class EvmParamTests
     }
 
     [TestMethod]
-    public void Encode_BasicTypes_EncodesCorrectly()
-    {
-        // Address
-        var addressParam = new EvmParam(0, "recipient", "address");
-        var address = new EthereumAddress("0x1234567890123456789012345678901234567890");
-        var encodedAddress = addressParam.Encode(address);
-        CollectionAssert.AreEqual(AbiEncoder.EncodeAddress(address), encodedAddress);
-
-        // Uint256
-        var uintParam = new EvmParam(0, "amount", "uint256");
-        var amount = BigInteger.Parse("1000000000000000000");
-        var encodedAmount = uintParam.Encode(amount);
-        CollectionAssert.AreEqual(AbiEncoder.EncodeUint256(amount), encodedAmount);
-
-        // Bool
-        var boolParam = new EvmParam(0, "flag", "bool");
-        var flag = true;
-        var encodedFlag = boolParam.Encode(flag);
-        CollectionAssert.AreEqual(AbiEncoder.EncodeBool(flag), encodedFlag);
-    }
-
-    [TestMethod]
-    public void Encode_Tuple_EncodesCorrectly()
-    {
-        var components = new List<EvmParam>
-        {
-            new(0, "valid", "bool"),
-            new(1, "amount", "uint256")
-        };
-
-        var param = new EvmParam(0, "data", components);
-        var value = (true, BigInteger.Parse("1000000000000000000"));
-
-        var encoded = param.Encode(value);
-
-        var expected = AbiEncoder.EncodeBool(true)
-            .Concat(AbiEncoder.EncodeUint256(BigInteger.Parse("1000000000000000000")))
-            .ToArray();
-
-        CollectionAssert.AreEqual(expected, encoded);
-    }
-
-    [TestMethod]
     public void ValidateValue_WithInvalidBasicType_ThrowsAbiValidationException()
     {
         var param = new EvmParam(0, "amount", "uint256");

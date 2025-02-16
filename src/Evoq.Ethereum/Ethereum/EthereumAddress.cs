@@ -92,8 +92,14 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
     //
 
+    /// <summary>
+    /// The underlying address.
+    /// </summary>
     public Hex Address { get; } = Hex.Empty;
 
+    /// <summary>
+    /// Whether the address is the zero address.
+    /// </summary>
     public bool IsZero => this.Address.IsZeroValue();
 
     //

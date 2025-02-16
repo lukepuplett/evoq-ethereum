@@ -25,7 +25,7 @@ public class SolidityTypesTests
     [DataRow("bool[1][]")]       // Mixed fixed and dynamic with bool
     public void IsValidType_ValidTypes_ReturnsTrue(string type)
     {
-        Assert.IsTrue(SolidityTypes.IsValidType(type), $"Type '{type}' should be valid");
+        Assert.IsTrue(AbiTypes.IsValidType(type), $"Type '{type}' should be valid");
     }
 
     [TestMethod]
@@ -44,7 +44,7 @@ public class SolidityTypesTests
     [DataRow("uint256[5][")]     // Incomplete bracket
     public void IsValidType_InvalidTypes_ReturnsFalse(string type)
     {
-        Assert.IsFalse(SolidityTypes.IsValidType(type), $"Type '{type}' should be invalid");
+        Assert.IsFalse(AbiTypes.IsValidType(type), $"Type '{type}' should be invalid");
     }
 
     [TestMethod]
@@ -58,6 +58,43 @@ public class SolidityTypesTests
     [DataRow("uint[5][]", "uint256[5][]")]
     public void GetCanonicalType_ReturnsNormalizedType(string input, string expected)
     {
-        Assert.AreEqual(expected, SolidityTypes.GetCanonicalType(input));
+        Assert.AreEqual(expected, AbiTypes.TryGetCanonicalType(input, out var canonicalType) ? canonicalType : null);
+    }
+
+    [TestMethod]
+    [DataRow("string[]", "string")]
+    [DataRow("string[][]", "string[]")]
+    [DataRow("bool[2][4][12]", "bool[2][4]")]
+    [DataRow("uint256[2][]", "uint256[2]")]
+    [DataRow("address[][]", "address[]")]
+    [DataRow("bytes32[1][2][3]", "bytes32[1][2]")]
+    public void TryRemoveOuterArrayDimension_ValidArrayTypes_ReturnsInnerType(string type, string expectedInnerType)
+    {
+        // Act
+        var success = AbiTypes.TryRemoveOuterArrayDimension(type, out var actualInnerType);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.AreEqual(expectedInnerType, actualInnerType);
+    }
+
+    [TestMethod]
+    [DataRow("string")]
+    [DataRow("uint256")]
+    [DataRow("bool")]
+    [DataRow("address")]
+    [DataRow("bytes32")]
+    [DataRow("")]
+    [DataRow("[1]")] // Invalid type
+    [DataRow("uint256[")] // Incomplete array
+    [DataRow("uint256]]")] // Invalid brackets
+    public void TryRemoveOuterArrayDimension_NonArrayTypes_ReturnsFalse(string type)
+    {
+        // Act
+        var success = AbiTypes.TryRemoveOuterArrayDimension(type, out var innerType);
+
+        // Assert
+        Assert.IsFalse(success);
+        Assert.IsNull(innerType);
     }
 }

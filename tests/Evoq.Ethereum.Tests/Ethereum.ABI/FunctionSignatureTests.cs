@@ -154,11 +154,13 @@ public class FunctionSignatureTests
     {
         // Arrange
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
-        var address = new EthereumAddress("0x1234567890123456789012345678901234567890");
-        var amount = BigInteger.Parse("1000000000000000000");
+        var values = (
+            Address: new EthereumAddress("0x1234567890123456789012345678901234567890"),
+            Amount: BigInteger.Parse("1000000000000000000")
+        );
 
         // Act & Assert
-        Assert.IsTrue(signature.ValidateParameters(address, amount));
+        Assert.IsTrue(signature.ValidateParameters(values));
     }
 
     [TestMethod]
@@ -168,9 +170,9 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
 
         // Act & Assert
-        Assert.IsFalse(signature.ValidateParameters("not an address", 123)); // Wrong types
-        Assert.IsFalse(signature.ValidateParameters(new EthereumAddress("0x1234567890123456789012345678901234567890"))); // Missing parameter
-        Assert.IsFalse(signature.ValidateParameters(null, BigInteger.One)); // Null not allowed
+        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create("not an address", 123))); // Wrong types
+        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")))); // Missing parameter
+        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create<object?, BigInteger>(null, BigInteger.One))); // Null not allowed
     }
 
     [TestMethod]
@@ -178,13 +180,15 @@ public class FunctionSignatureTests
     {
         // Arrange
         var signature = FunctionSignature.Parse("complexFunction(bytes32,uint8[],bool)");
-        var bytes32 = new byte[32];
-        var uintArray = new byte[] { 1, 2, 3 };
-        var flag = true;
+        var values = (
+            Hash: new byte[32],
+            Numbers: new byte[] { 1, 2, 3 },
+            Flag: true
+        );
 
         // Act & Assert
-        Assert.IsTrue(signature.ValidateParameters(bytes32, uintArray, flag));
-        Assert.IsFalse(signature.ValidateParameters(new byte[31], uintArray, flag)); // Wrong bytes length
+        Assert.IsTrue(signature.ValidateParameters(values));
+        Assert.IsFalse(signature.ValidateParameters((new byte[31], values.Numbers, values.Flag))); // Wrong bytes length
     }
 
     [TestMethod]
