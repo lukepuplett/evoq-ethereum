@@ -7,7 +7,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a boolean type to its ABI binary representation.
 /// </summary>
-public class BoolTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
+public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="BoolTypeEncoder"/> class.
@@ -27,7 +27,7 @@ public class BoolTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     {
         encoded = Array.Empty<byte>();
 
-        if (!this.IsCompatible(abiType, value.GetType()))
+        if (!this.IsCompatible(abiType, value.GetType(), out var _))
         {
             return false;
         }

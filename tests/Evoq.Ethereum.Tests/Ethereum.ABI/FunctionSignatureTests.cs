@@ -5,6 +5,13 @@ namespace Evoq.Ethereum.ABI;
 [TestClass]
 public class FunctionSignatureTests
 {
+    private readonly AbiTypeValidator validator;
+
+    public FunctionSignatureTests()
+    {
+        this.validator = new AbiEncoder().Validator;
+    }
+
     [TestMethod]
     public void Constructor_WithNameAndTypes_CreatesCorrectSignature()
     {
@@ -152,6 +159,8 @@ public class FunctionSignatureTests
     [TestMethod]
     public void ValidateParameters_WithValidValues_ReturnsTrue()
     {
+        string m;
+
         // Arrange
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
         var values = (
@@ -160,24 +169,28 @@ public class FunctionSignatureTests
         );
 
         // Act & Assert
-        Assert.IsTrue(signature.ValidateParameters(values));
+        Assert.IsTrue(signature.ValidateParameters(this.validator, values, out m), m);
     }
 
     [TestMethod]
     public void ValidateParameters_WithInvalidTypes_ReturnsFalse()
     {
+        string m;
+
         // Arrange
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
 
         // Act & Assert
-        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create("not an address", 123))); // Wrong types
-        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")))); // Missing parameter
-        Assert.IsFalse(signature.ValidateParameters(ValueTuple.Create<object?, BigInteger>(null, BigInteger.One))); // Null not allowed
+        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create("not an address", 123), out m), m); // Wrong types
+        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")), out m), m); // Missing parameter
+        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create<object?, BigInteger>(null, BigInteger.One), out m), m); // Null not allowed
     }
 
     [TestMethod]
     public void ValidateParameters_WithComplexTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Arrange
         var signature = FunctionSignature.Parse("complexFunction(bytes32,uint8[],bool)");
         var values = (
@@ -186,9 +199,14 @@ public class FunctionSignatureTests
             Flag: true
         );
 
+        var with31 = (new byte[31], values.Numbers, values.Flag);
+
         // Act & Assert
-        Assert.IsTrue(signature.ValidateParameters(values));
-        Assert.IsFalse(signature.ValidateParameters((new byte[31], values.Numbers, values.Flag))); // Wrong bytes length
+        Assert.IsTrue(signature.ValidateParameters(this.validator, values, out m), m);
+
+        // OK if simple type check but not if tryEncoding
+        Assert.IsTrue(signature.ValidateParameters(this.validator, with31, out m), m);
+        Assert.IsFalse(signature.ValidateParameters(this.validator, with31, out m, tryEncoding: true), m);
     }
 
     [TestMethod]

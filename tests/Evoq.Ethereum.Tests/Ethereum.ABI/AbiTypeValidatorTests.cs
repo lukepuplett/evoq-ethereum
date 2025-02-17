@@ -5,80 +5,112 @@ namespace Evoq.Ethereum.ABI;
 [TestClass]
 public class AbiTypeValidatorTests
 {
+    private readonly AbiTypeValidator validator;
+
+    public AbiTypeValidatorTests()
+    {
+        validator = new AbiEncoder().Validator;
+    }
+
     [TestMethod]
     public void IsCompatible_AddressType_ValidatesCorrectly()
     {
+        string m;
+
         // Valid .NET types
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890")));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", "0x1234567890123456789012345678901234567890"));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new byte[20])); // Valid length byte array
+        Assert.IsTrue(this.validator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890"), out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("address", "0x1234567890123456789012345678901234567890", out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("address", new byte[20], out m), m);
 
         // Invalid .NET types
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("address", 123), "123 is not a valid address, it is an Int32");
+        Assert.IsFalse(this.validator.IsCompatible("address", 123, out m), m); // Int32 is not a valid address
     }
 
     [TestMethod]
     public void IsCompatible_BasicTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Bool
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bool", true));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("bool", 1));
+        Assert.IsTrue(this.validator.IsCompatible("bool", true, out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("bool", 1, out m), m);
 
         // Address
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890")));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address", "0x1234567890123456789012345678901234567890"));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("address", 123));
+        Assert.IsTrue(this.validator.IsCompatible("address", new EthereumAddress("0x1234567890123456789012345678901234567890"), out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("address", "0x1234567890123456789012345678901234567890", out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("address", 123, out m), m);
 
         // String
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("string", "hello"));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("string", 123));
+        Assert.IsTrue(this.validator.IsCompatible("string", "hello", out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("string", 123, out m), m);
     }
 
     [TestMethod]
     public void IsCompatible_IntegerTypes_ValidatesCorrectly()
     {
+        string m;
+
         // uint8
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint8", (byte)255));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8", 256));
+        Assert.IsTrue(this.validator.IsCompatible("uint8", (byte)255, out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("uint8", 256, out m), m);
 
         // uint256
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint", ulong.MaxValue)); // uint alias
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint256", BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007913129639935")));
+        Assert.IsTrue(this.validator.IsCompatible("uint", ulong.MaxValue, out m), m); // uint alias
+        Assert.IsTrue(this.validator.IsCompatible("uint256", BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007913129639935"), out m), m);
 
         // int256 (note tryEncoding is true for the last test because the encoder will catch the size mismatch)
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("int", int.MinValue)); // int alias is int256
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("int8", 128, tryEncoding: true), "Int32 is too large for int8");
+        Assert.IsTrue(this.validator.IsCompatible("int", int.MinValue, out m), m); // int alias
+        Assert.IsTrue(this.validator.IsCompatible("int8", 128, out m), m);
 
+    }
+
+    [TestMethod]
+    public void IsCompatible_NegativeInt8_PassesSimpleTypeCheckButFailsEncoderCheck()
+    {
+        string m;
+
+        // difference between tryEncoding and not tryEncoding
+        Assert.IsTrue(this.validator.IsCompatible("int8", -129, out m), m); // passes because only type is checked
+        Assert.IsFalse(this.validator.IsCompatible("int8", -129, out m, tryEncoding: true), m); // fails because encoder will check value
     }
 
     [TestMethod]
     public void IsCompatible_BytesTypes_ValidatesCorrectly()
     {
+        string m;
+
         // bytes
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bytes", new byte[] { 1, 2, 3 })); // wilo// this should work
+        Assert.IsTrue(this.validator.IsCompatible("bytes", new byte[] { 1, 2, 3 }, out m), m);
 
         // bytes32
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bytes32", new byte[32]));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("bytes32", new byte[31])); // Wrong size
+        Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[32], out m), m);
+
+        // bytes32 wrong size only fails if tryEncoding
+        Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[31], out m), m); // Wrong size
+        Assert.IsFalse(this.validator.IsCompatible("bytes32", new byte[31], out m, tryEncoding: true), m); // Wrong size
     }
 
     [TestMethod]
     public void IsCompatible_RejectsInappropriateTypes()
     {
+        string m;
+
         // Reject null
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint256", null));
+        Assert.IsFalse(this.validator.IsCompatible("uint256", null, out m), m);
 
         // Reject DateTime
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint256", DateTime.Now));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint256", DateTimeOffset.Now));
+        Assert.IsFalse(this.validator.IsCompatible("uint256", DateTime.Now, out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("uint256", DateTimeOffset.Now, out m), m);
 
         // Reject decimal (not a good fit for Solidity numbers)
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint256", 1.23m));
+        Assert.IsFalse(this.validator.IsCompatible("uint256", 1.23m, out m), m);
     }
 
     [TestMethod]
     public void ValidateParameters_FunctionSignature_ValidatesCorrectly()
     {
+        string m;
+
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
         var values = (
             To: new EthereumAddress("0x1234567890123456789012345678901234567890"),
@@ -86,17 +118,19 @@ public class AbiTypeValidatorTests
         );
 
         // Valid parameters
-        Assert.IsTrue(AbiTypeValidator.ValidateParameters(signature, values));
+        Assert.IsTrue(this.validator.ValidateParameters(signature, values, out m), m);
 
         // Invalid parameters
-        Assert.IsFalse(AbiTypeValidator.ValidateParameters(
+        Assert.IsFalse(this.validator.ValidateParameters(
             signature,
-            ValueTuple.Create("not an address", 123)));
+            ValueTuple.Create("not an address", 123),
+            out m), m);
 
         // Wrong number of parameters
-        Assert.IsFalse(AbiTypeValidator.ValidateParameters(
+        Assert.IsFalse(this.validator.ValidateParameters(
             signature,
-            ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890"))));
+            ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")),
+            out m), m);
     }
 
     [TestMethod]
@@ -118,116 +152,134 @@ public class AbiTypeValidatorTests
             Amount: BigInteger.Parse("1000000000000000000")
         );
 
+        string m;
+
         // Valid parameters
-        Assert.IsTrue(AbiTypeValidator.ValidateParameters(function, values));
+        Assert.IsTrue(this.validator.ValidateParameters(function, values, out m), m);
 
         // Invalid parameters
-        Assert.IsFalse(AbiTypeValidator.ValidateParameters(
+        Assert.IsFalse(this.validator.ValidateParameters(
             function,
-            ValueTuple.Create("not an address", DateTime.Now))); // Explicitly rejected type
+            ValueTuple.Create("not an address", DateTime.Now),
+            out m), m); // Explicitly rejected type
 
         // Wrong number of parameters
-        Assert.IsFalse(AbiTypeValidator.ValidateParameters(
+        Assert.IsFalse(this.validator.ValidateParameters(
             function,
-            ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890"))));
+            ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")),
+            out m), m);
     }
 
     [TestMethod]
     [ExpectedException(typeof(ArgumentException))]
     public void ValidateParameters_NonFunction_ThrowsException()
     {
+        string m;
+
         var eventItem = new AbiItem
         {
             Type = "event",
             Name = "Transfer"
         };
 
-        AbiTypeValidator.ValidateParameters(eventItem, ("some value"));
+        this.validator.ValidateParameters(eventItem, ("some value"), out m);
     }
 
     [TestMethod]
     public void IsCompatible_DynamicArrayTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Valid dynamic arrays
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint8[]", new byte[] { 1, 2, 3 }));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bool[]", new[] { true, false, true }));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address[]", new[]
+        Assert.IsTrue(this.validator.IsCompatible("uint8[]", new byte[] { 1, 2, 3 }, out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("bool[]", new[] { true, false, true }, out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("address[]", new[]
         {
             new EthereumAddress("0x1234567890123456789012345678901234567890"),
             new EthereumAddress("0x0987654321098765432109876543210987654321")
-        }));
+        }, out m), m);
 
         // Invalid dynamic arrays
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[]", new[] { "not", "numbers" }));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[]", 123)); // Not an array
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("address[]", new[] { "0x123", "0x456" })); // Wrong element type
+        Assert.IsFalse(this.validator.IsCompatible("uint8[]", new[] { "not", "numbers" }, out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("uint8[]", 123, out m), m); // Not an array
+
+        Assert.IsTrue(this.validator.IsCompatible("address[]", new[] { "0x123", "0x456" }, out m), m); // Wrong element type
+        Assert.IsFalse(this.validator.IsCompatible("address[]", new[] { "0x123", "0x456" }, out m, tryEncoding: true), m); // Wrong element type
     }
 
     [TestMethod]
     public void IsCompatible_FixedSizeArrayTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Valid fixed-size arrays
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint8[3]", new byte[] { 1, 2, 3 }));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bool[2]", new[] { true, false }));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("address[1]", new[]
+        Assert.IsTrue(this.validator.IsCompatible("uint8[3]", new byte[] { 1, 2, 3 }, out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("bool[2]", new[] { true, false }, out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("address[1]", new[]
         {
             new EthereumAddress("0x1234567890123456789012345678901234567890")
-        }));
+        }, out m), m);
 
         // Invalid fixed-size arrays
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[3]", new byte[] { 1, 2 })); // Wrong length
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[2]", new byte[] { 1, 2, 3 })); // Wrong length
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("bool[2]", new[] { "true", "false" })); // Wrong element type
+        Assert.IsFalse(this.validator.IsCompatible("uint8[3]", new byte[] { 1, 2 }, out m), m); // Wrong length
+        Assert.IsFalse(this.validator.IsCompatible("uint8[2]", new byte[] { 1, 2, 3 }, out m), m); // Wrong length
+        Assert.IsFalse(this.validator.IsCompatible("bool[2]", new[] { "true", "false" }, out m), m); // Wrong element type
     }
 
     [TestMethod]
     public void IsCompatible_NestedArrayTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Valid nested arrays
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint8[][]", new[]
+        Assert.IsTrue(this.validator.IsCompatible("uint8[][]", new[]
         {
             new byte[] { 1, 2 },
             new byte[] { 3, 4 }
-        }));
+        }, out m), m);
 
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bool[2][]", new[]
+        Assert.IsTrue(this.validator.IsCompatible("bool[2][]", new[]
         {
             new[] { true, false },
             new[] { false, true }
-        }));
+        }, out m), m);
 
         // Invalid nested arrays
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[][]", new object[]
+        Assert.IsFalse(this.validator.IsCompatible("uint8[][]", new object[]
         {
             new byte[] { 1, 2 },
             new object[] { "not", "bytes" }
-        }));
+        }, out m), m);
 
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("bool[2][]", new[]
+        Assert.IsFalse(this.validator.IsCompatible("bool[2][]", new[]
         {
             new[] { true, false },
             new[] { true } // Wrong inner array length
-        }));
+        }, out m), m);
     }
 
     [TestMethod]
     public void IsCompatible_EmptyArrays_ValidatesCorrectly()
     {
+        string m;
+
         // Empty dynamic arrays should be valid
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("uint8[]", Array.Empty<byte>()));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("bool[]", Array.Empty<bool>()));
+        Assert.IsTrue(this.validator.IsCompatible("uint8[]", Array.Empty<byte>(), out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("bool[]", Array.Empty<bool>(), out m), m);
 
         // Empty fixed-size arrays should be invalid
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("uint8[1]", Array.Empty<byte>()));
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("bool[2]", Array.Empty<bool>()));
+        Assert.IsFalse(this.validator.IsCompatible("uint8[1]", Array.Empty<byte>(), out m), m);
+        Assert.IsFalse(this.validator.IsCompatible("bool[2]", Array.Empty<bool>(), out m), m);
     }
 
     [TestMethod]
     public void IsCompatible_TupleTypes_ValidatesCorrectly()
     {
+        string m;
+
         // Simple tuple
         var person = (Name: "Alice", Age: BigInteger.Parse("25"), Wallet: new EthereumAddress("0x1234567890123456789012345678901234567890"));
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("(string,uint256,address)", person));
+        Assert.IsTrue(this.validator.IsCompatible("(string,uint256,address)", person, out m), m);
 
         // Nested tuple
         var complexData = (
@@ -235,17 +287,19 @@ public class AbiTypeValidatorTests
             Active: true,
             Addresses: new[] { new EthereumAddress("0x1234567890123456789012345678901234567890") }
         );
-        Assert.IsTrue(AbiTypeValidator.IsCompatible("((string,uint256),bool,address[])", complexData));
+        Assert.IsTrue(this.validator.IsCompatible("((string,uint256),bool,address[])", complexData, out m), m);
 
         // Invalid tuples
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("(uint256,bool)", (123, "not a bool"))); // Wrong inner type
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("(uint256,bool)", (BigInteger.One))); // Wrong number of components
-        Assert.IsFalse(AbiTypeValidator.IsCompatible("(uint256,bool)", "not a tuple")); // Not a tuple
+        Assert.IsFalse(this.validator.IsCompatible("(uint256,bool)", (123, "not a bool"), out m), m); // Wrong inner type
+        Assert.IsFalse(this.validator.IsCompatible("(uint256,bool)", (BigInteger.One), out m), m); // Wrong number of components
+        Assert.IsFalse(this.validator.IsCompatible("(uint256,bool)", "not a tuple", out m), m); // Not a tuple
     }
 
     [TestMethod]
     public void IsCompatible_ValidatesComplexGroupedParameters()
     {
+        string m;
+
         // This represents a function like:
         // struct Permit {
         //     address owner;
@@ -269,7 +323,7 @@ public class AbiTypeValidatorTests
             S: new byte[32]
         );
 
-        Assert.IsTrue(AbiTypeValidator.IsCompatible(permitType, permitData));
+        Assert.IsTrue(this.validator.IsCompatible(permitType, permitData, out m), m);
 
         // Test with invalid data
         var invalidPermitData = (
@@ -282,12 +336,14 @@ public class AbiTypeValidatorTests
             S: new byte[31]  // Wrong length
         );
 
-        Assert.IsFalse(AbiTypeValidator.IsCompatible(permitType, invalidPermitData));
+        Assert.IsFalse(this.validator.IsCompatible(permitType, invalidPermitData, out m), m);
     }
 
     [TestMethod]
     public void IsCompatible_PersonTuple_ValidatesCorrectly()
     {
+        string m;
+
         // This represents a struct like:
         // struct Person {
         //     string name;
@@ -302,7 +358,7 @@ public class AbiTypeValidatorTests
             Wallet: new EthereumAddress("0x1234567890123456789012345678901234567890")
         );
 
-        Assert.IsTrue(AbiTypeValidator.IsCompatible(personType, personData));
+        Assert.IsTrue(this.validator.IsCompatible(personType, personData, out m), m);
 
         // Test with invalid data
         var invalidPersonData = (
@@ -311,12 +367,14 @@ public class AbiTypeValidatorTests
             Wallet: new EthereumAddress("0x1234567890123456789012345678901234567890")
         );
 
-        Assert.IsFalse(AbiTypeValidator.IsCompatible(personType, invalidPersonData));
+        Assert.IsFalse(this.validator.IsCompatible(personType, invalidPersonData, out m), m);
     }
 
     [TestMethod]
     public void ValidateParameters_WithTuples_ValidatesCorrectly()
     {
+        string m;
+
         var signature = FunctionSignature.Parse("setPersonData((string,uint256,address),bool)");
 
         var validParams = ValueTuple.Create(
@@ -328,7 +386,7 @@ public class AbiTypeValidatorTests
             true
         );
 
-        Assert.IsTrue(signature.ValidateParameters(validParams));
+        Assert.IsTrue(this.validator.ValidateParameters(signature, validParams, out m), m);
 
         var invalidParams = ValueTuple.Create(
             (
@@ -339,7 +397,7 @@ public class AbiTypeValidatorTests
             true
         );
 
-        Assert.IsFalse(signature.ValidateParameters(invalidParams));
+        Assert.IsFalse(this.validator.ValidateParameters(signature, invalidParams, out m), m);
     }
 
     [TestMethod]

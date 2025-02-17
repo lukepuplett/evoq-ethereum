@@ -5,13 +5,13 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// A collection of the built-in ABI type encoders for types that are dynamic.
 /// </summary>
-public class AbiDynamicTypeEncoders : System.Collections.ObjectModel.ReadOnlyCollection<IAbiTypeEncoder>
+public class AbiDynamicTypeEncoders : System.Collections.ObjectModel.ReadOnlyCollection<IAbiEncode>
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiDynamicTypeEncoders"/> class.
     /// </summary>
     public AbiDynamicTypeEncoders()
-        : base(new List<IAbiTypeEncoder>
+        : base(new List<IAbiEncode>
         {
             new StringTypeEncoder(),
             new BytesTypeEncoder()

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -234,13 +236,17 @@ public record struct EvmParam()
     /// <summary>
     /// Validates that a value is compatible with this parameter's type.
     /// </summary>
+    /// <param name="validator">The validator to use.</param>
     /// <param name="value">The value to validate.</param>
     /// <exception cref="AbiValidationException">Thrown when the value is not compatible with the parameter's type.</exception>
-    public int ValidateValue(object? value)
+    public int ValidateValue(IAbiValueCompatible validator, object? value)
     {
+        Debug.Assert(value != null, "Value cannot be null");
+        Debug.Assert(!AbiTypeValidator.IsOfTypeType(value.GetType()), "Value cannot be a Type, this indicates a bug, not a validation error");
+
         var vc = new ValidationContext();
 
-        if (!ValidateValue(value, vc))
+        if (!this.ValidateValue(validator, value, vc, null))
         {
             throw new AbiValidationException(
                 expectedType: vc.ExpectedType ?? this.AbiType,
@@ -249,7 +255,7 @@ public record struct EvmParam()
                 message: vc.Message);
         }
 
-        return vc.VisitCount;
+        return vc.ValuesVisitedCount;
     }
 
     /// <summary>
@@ -280,12 +286,11 @@ public record struct EvmParam()
         public object? ValueProvided { get; private set; }
         public string Path { get; private set; } = "";
         public string Message { get; private set; } = "";
-
-        public int VisitCount { get; private set; } = 0;
+        public int ValuesVisitedCount { get; private set; } = 0;
 
         public void IncrementVisitorCounter()
         {
-            this.VisitCount++;
+            this.ValuesVisitedCount++;
         }
 
         public void SetFailed(string expectedType, object? valueProvided, string path, string message)
@@ -297,22 +302,28 @@ public record struct EvmParam()
         }
     }
 
-    private bool ValidateValue(object? value, ValidationContext vc, string? path = null)
+    private bool ValidateValue(IAbiValueCompatible validator, object? value, ValidationContext vc, string? path)
     {
+        Debug.Assert(value != null, "Value cannot be null");
+        Debug.Assert(!AbiTypeValidator.IsOfTypeType(value.GetType()), "Value cannot be a Type, this indicates a bug, not a validation error");
+
         var currentPath = $"{path}{ValidationContext.Sep}param-{this.Position} ({this.Name})";
 
         if (value == null)
+        {
+            vc.SetFailed(this.AbiType, value, currentPath, "value is null");
             return false;
+        }
 
         // For basic types, use the existing validator
         if (this.IsSingle)
         {
             vc.IncrementVisitorCounter();
 
-            var isValid = AbiTypeValidator.IsCompatible(this.AbiType, value);
+            var isValid = validator.IsCompatible(this.AbiType, value, out var message);
             if (!isValid)
             {
-                vc.SetFailed(this.AbiType, value, currentPath, "incompatible type");
+                vc.SetFailed(this.AbiType, value, currentPath, $"incompatible type: {message}");
             }
             return isValid;
         }
@@ -335,12 +346,16 @@ public record struct EvmParam()
             // Check each component recursively
             for (int i = 0; i < this.Components.Count; i++)
             {
-                if (!this.Components[i].ValidateValue(tuple[i], vc, currentPath))
+                if (!this.Components[i].ValidateValue(validator, tuple[i], vc, currentPath))
+                {
                     return false;
+                }
             }
+
             return true;
         }
 
+        vc.SetFailed(this.AbiType, value, currentPath, "unexpected param state");
         return false;
     }
 };

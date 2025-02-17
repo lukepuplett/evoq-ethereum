@@ -97,20 +97,23 @@ public class SlotSpace
     }
 
     /// <summary>
-    /// Appends a set of reserved slots for a string to the slot space.
+    /// Appends a set of reserved slots for arbitrary bytes to the slot space.
     /// </summary>
-    /// <param name="length">The length of the string.</param>
-    /// <returns>The slots for the string with the length slot at the beginning.</returns>
-    public Slots AppendReservedString(int length)
+    /// <param name="length">The length of the bytes.</param>
+    /// <returns>The slots for the bytes with the length slot at the beginning.</returns>
+    public Slots AppendReservedBytes(int length)
     {
-        var stringSlots = new Slots(capacity: (Slot.Size * length) + 1)
+        var hasRemainingBytes = length % Slot.Size != 0;
+        var slotsNeededForBytes = (length / Slot.Size) + (hasRemainingBytes ? 1 : 0);
+
+        var lengthAndSlots = new Slots(capacity: slotsNeededForBytes + 1) // +1 for the length slot
         {
             new Slot(UintTypeEncoder.EncodeUint(256, length))
         };
 
-        this.Append(stringSlots);
+        this.Append(lengthAndSlots);
 
-        return stringSlots;
+        return lengthAndSlots;
     }
 
     /// <summary>

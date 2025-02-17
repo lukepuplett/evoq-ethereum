@@ -12,8 +12,9 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiEncoder : IAbiEncoder
 {
-    private readonly IReadOnlyList<IAbiTypeEncoder> staticTypeEncoders;
-    private readonly IReadOnlyList<IAbiTypeEncoder> dynamicTypeEncoders;
+    private readonly IReadOnlyList<IAbiEncode> staticTypeEncoders;
+    private readonly IReadOnlyList<IAbiEncode> dynamicTypeEncoders;
+
     //
 
     /// <summary>
@@ -23,6 +24,8 @@ public class AbiEncoder : IAbiEncoder
     {
         this.staticTypeEncoders = new AbiStaticTypeEncoders();
         this.dynamicTypeEncoders = new AbiDynamicTypeEncoders();
+
+        this.Validator = new AbiTypeValidator(staticTypeEncoders, dynamicTypeEncoders);
     }
 
     /// <summary>
@@ -30,11 +33,20 @@ public class AbiEncoder : IAbiEncoder
     /// </summary>
     /// <param name="staticTypeEncoders">The static type encoders.</param>
     /// <param name="dynamicTypeEncoders">The dynamic type encoders.</param>
-    public AbiEncoder(IReadOnlyList<IAbiTypeEncoder> staticTypeEncoders, IReadOnlyList<IAbiTypeEncoder> dynamicTypeEncoders)
+    public AbiEncoder(IReadOnlyList<IAbiEncode> staticTypeEncoders, IReadOnlyList<IAbiEncode> dynamicTypeEncoders)
     {
         this.staticTypeEncoders = staticTypeEncoders;
         this.dynamicTypeEncoders = dynamicTypeEncoders;
+
+        this.Validator = new AbiTypeValidator(staticTypeEncoders, dynamicTypeEncoders);
     }
+
+    //
+
+    /// <summary>
+    /// Gets the validator for the encoder.
+    /// </summary>
+    public AbiTypeValidator Validator { get; }
 
     //
 
@@ -50,7 +62,7 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"Invalid type: {abiType}");
         }
 
-        // dynamic types always take exactly one slot (for the offset)
+        // dynamic types always take exactly one slot (for the pointer)
 
         if (AbiTypes.IsDynamicType(canonicalType))
         {
@@ -149,11 +161,11 @@ public class AbiEncoder : IAbiEncoder
     /// <param name="value">The value to encode.</param>
     /// <param name="encoder">The encoder for the given type.</param>
     /// <returns>True if the encoder was resolved, false otherwise.</returns>
-    public bool TryFindDynamicSlotEncoder(string abiType, object value, out Func<object, Slots>? encoder)
+    public bool TryFindDynamicBytesEncoder(string abiType, object value, out Func<object, byte[]>? encoder)
     {
         if (value == null)
         {
-            encoder = _ => new Slots(new Slot(new byte[32])); // null value is encoded as a 32-byte zero value
+            encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
             return true;
         }
 
@@ -169,7 +181,7 @@ public class AbiEncoder : IAbiEncoder
         {
             if (dynamicEncoder.TryEncode(canonicalType, value, out var bytes))
             {
-                encoder = _ => this.BytesToSlots(bytes);
+                encoder = _ => bytes;
                 return true;
             }
         }
@@ -182,7 +194,11 @@ public class AbiEncoder : IAbiEncoder
 
     private Slots BytesToSlots(byte[] bytes)
     {
-        var slots = new Slots(capacity: bytes.Length / 32 + 1);
+        bool hasRemainingBytes = bytes.Length % 32 != 0;
+
+        Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");
+
+        var slots = new Slots(capacity: bytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
 
         for (int i = 0; i < bytes.Length; i += 32)
         {
@@ -304,13 +320,13 @@ public class AbiEncoder : IAbiEncoder
             var (lengthAndOffsets, elementsSlots) = dynamicSpace.AppendReservedArray(array.Length);
             var pointerSlot = new Slot(pointsToFirst: lengthAndOffsets);
 
-            if (staticSpace != null) // see note above
+            if (staticSpace != null) // depends on whether we're already encoding a dynamic value
             {
-                staticSpace.Append(pointerSlot);
+                staticSpace.Append(pointerSlot); // we're still in the static space
             }
             else
             {
-                dynamicSpace.Append(pointerSlot);
+                dynamicSpace.Append(pointerSlot); // we're in a nested encoding of a dynamic value
             }
 
             // now encode the inner elements
@@ -324,18 +340,24 @@ public class AbiEncoder : IAbiEncoder
                 this.EncodeValue(innerType, element, null, elementSpace);
             }
         }
-        else if (canonicalType == AbiTypeNames.String)
+        else if (canonicalType == AbiTypeNames.String || canonicalType == AbiTypeNames.Bytes)
         {
-            var utf8Bytes = System.Text.Encoding.UTF8.GetBytes((string)value);
-            var length = utf8Bytes.Length;
+            // encoding a string or arbitrary binary is the same shizzle
+
+            if (!this.TryFindDynamicBytesEncoder(canonicalType, value, out var encoder))
+            {
+                throw new NotImplementedException($"No encoder found for type {canonicalType}");
+            }
+
+            var paddedBytes = encoder!(value);
 
             // make slots for the length and the actual string data
 
-            var stringSlots = dynamicSpace.AppendReservedString(length);
+            var lengthAndSlots = dynamicSpace.AppendReservedBytes(paddedBytes.Length);
 
             // add pointer slot that will point to the offset of the string slots above
 
-            var pointerSlot = new Slot(pointsToFirst: stringSlots);
+            var pointerSlot = new Slot(pointsToFirst: lengthAndSlots);
 
             if (staticSpace != null)
             {
@@ -348,19 +370,12 @@ public class AbiEncoder : IAbiEncoder
 
             // add the string data
 
-            dynamicSpace.Append(this.BytesToSlots(utf8Bytes));
+            dynamicSpace.Append(this.BytesToSlots(paddedBytes));
         }
         else
         {
             throw new NotImplementedException($"Encoding for type {canonicalType} not implemented");
         }
-
-        // Q: what other dynamic types are there in ABI?
-        // A: dynamic types are:
-        // - string
-        // - bytes
-        // - array
-
     }
 
     private int ComputeArrayStaticSlotCount(string abiType)

@@ -44,11 +44,13 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// Initializes a new instance of the <see cref="EthereumAddress"/> struct.
     /// </summary>
     /// <param name="address">The address to initialize with.</param>
+    /// <exception cref="ArgumentNullException">Thrown if the address is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if the address is empty or not 20 bytes.</exception>
     public EthereumAddress(Hex address)
     {
         if (address.Length == 0)
         {
-            throw new ArgumentException("An empty address is not permitted.", nameof(address));
+            throw new ArgumentException("An empty address is not permitted. Use Zero instead.", nameof(address));
         }
 
         if (address.Length != 20)
@@ -63,6 +65,8 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// Initializes a new instance of the <see cref="EthereumAddress"/> struct.
     /// </summary>
     /// <param name="address">The address to initialize with.</param>
+    /// <exception cref="ArgumentNullException">Thrown if the address is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if the address is empty or not 20 bytes.</exception>
     public EthereumAddress(byte[] address)
     {
         if (address == null)
@@ -72,7 +76,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
         if (address.Length == 0)
         {
-            throw new ArgumentException("An empty address is not permitted.", nameof(address));
+            throw new ArgumentException("An empty address is not permitted. Use Zero instead.", nameof(address));
         }
 
         bool isZero = address.Length == 1 && address[0] == 0;

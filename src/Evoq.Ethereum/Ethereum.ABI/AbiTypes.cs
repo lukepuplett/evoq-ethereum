@@ -152,7 +152,9 @@ public static class AbiTypes
     public static bool IsDynamicType(string type)
     {
         if (type == AbiTypeNames.String || type == AbiTypeNames.Bytes)
+        {
             return true;
+        }
 
         return IsDynamicArray(type);
     }

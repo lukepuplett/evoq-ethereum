@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -10,10 +10,23 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Validates compatibility between Solidity types and .NET types/values.
 /// </summary>
-public static class AbiTypeValidator
+public class AbiTypeValidator : IAbiValueCompatible
 {
-    private static readonly IReadOnlyList<IAbiTypeEncoder> staticTypeEncoders = new AbiStaticTypeEncoders();
-    private static readonly IReadOnlyList<IAbiTypeEncoder> dynamicTypeEncoders = new AbiDynamicTypeEncoders();
+    private readonly IReadOnlyList<IAbiEncode> staticTypeEncoders = new AbiStaticTypeEncoders();
+    private readonly IReadOnlyList<IAbiEncode> dynamicTypeEncoders = new AbiDynamicTypeEncoders();
+
+    //
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiTypeValidator"/> class.
+    /// </summary>
+    /// <param name="staticTypeEncoders">The static type encoders.</param>
+    /// <param name="dynamicTypeEncoders">The dynamic type encoders.</param>
+    public AbiTypeValidator(IReadOnlyList<IAbiEncode> staticTypeEncoders, IReadOnlyList<IAbiEncode> dynamicTypeEncoders)
+    {
+        this.staticTypeEncoders = staticTypeEncoders;
+        this.dynamicTypeEncoders = dynamicTypeEncoders;
+    }
 
     //
 
@@ -23,13 +36,17 @@ public static class AbiTypeValidator
     /// <param name="abiType">The Solidity type such as "uint256" or "address", or even a tuple like "(uint256,uint256)".</param>
     /// <param name="dotnetValue">The .NET value to check which can be a primitive type or an ITuple.</param>
     /// <param name="tryEncoding">If true, the method will try to encode the value which is more expensive but more robust.</param>
+    /// <param name="message">The message if the type is not compatible</param>
     /// <returns>True if compatible, false otherwise.</returns>
-    public static bool IsCompatible(string abiType, object? dotnetValue, bool tryEncoding = false)
+    public bool IsCompatible(string abiType, object? dotnetValue, out string message, bool tryEncoding = false)
     {
         if (dotnetValue is null)
         {
+            message = "Value is null";
             return false;
         }
+
+        Debug.Assert(!IsOfTypeType(dotnetValue.GetType()), "Value type is Type, this indicates a bug, not a validation error");
 
         // handle tuple types
 
@@ -37,23 +54,26 @@ public static class AbiTypeValidator
         {
             if (dotnetValue is not ITuple tuple)
             {
+                message = "Value is not an ITuple";
                 return false;
             }
 
             var componentTypes = ParseTupleComponents(abiType);
             if (componentTypes.Length != tuple.Length)
             {
+                message = "Tuple length mismatch";
                 return false;
             }
 
             for (int i = 0; i < componentTypes.Length; i++)
             {
-                if (!IsCompatible(componentTypes[i], tuple[i], tryEncoding))
+                if (!IsCompatible(componentTypes[i], tuple[i], out message, tryEncoding))
                 {
                     return false;
                 }
             }
 
+            message = "OK";
             return true;
         }
 
@@ -63,14 +83,22 @@ public static class AbiTypeValidator
         {
             if (dotnetValue is not Array array)
             {
+                message = "Value is not an array";
                 return false;
             }
 
             var elementType = abiType[..^2]; // Remove the [] suffix
 
-            return array
-                .Cast<object?>()
-                .All(item => IsCompatible(elementType, item, tryEncoding));
+            foreach (var item in array)
+            {
+                if (!IsCompatible(elementType, item, out message, tryEncoding))
+                {
+                    return false;
+                }
+            }
+
+            message = "OK";
+            return true;
         }
 
         // handle fixed-size arrays
@@ -81,25 +109,35 @@ public static class AbiTypeValidator
             var closeBracket = abiType.IndexOf(']');
             if (!int.TryParse(abiType[(openBracket + 1)..closeBracket], out var size))
             {
+                message = "Invalid array size";
                 return false;
             }
 
             if (dotnetValue is not Array array || array.Length != size)
             {
+                message = "Array size mismatch";
                 return false;
             }
 
             var elementType = abiType[..openBracket];
 
-            return array
-                .Cast<object?>()
-                .All(item => IsCompatible(elementType, item, tryEncoding));
+            foreach (var item in array)
+            {
+                if (!IsCompatible(elementType, item, out message, tryEncoding))
+                {
+                    return false;
+                }
+            }
+
+            message = "OK";
+            return true;
         }
 
         // normalize the non-array type
 
         if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
         {
+            message = $"Invalid type '{abiType}'";
             return false;
         }
 
@@ -108,26 +146,66 @@ public static class AbiTypeValidator
         // this is the main logic, all the above is just to extract the underlying type which
         // ends up calling back into this method and hitting the code below
 
-        // handle dynamic types
+        // handle dynamic types string or bytes
 
         if (AbiTypes.IsDynamicType(canonicalType))
         {
             if (tryEncoding)
             {
-                return dynamicTypeEncoders.Any(e => e.TryEncode(canonicalType, dotnetValue, out _));
+                foreach (var encoder in this.dynamicTypeEncoders)
+                {
+                    if (encoder.TryEncode(canonicalType, dotnetValue, out _))
+                    {
+                        message = "OK";
+                        return true;
+                    }
+                }
+
+                message = $"No dynamic encoders can encode .NET type '{dotnetValue.GetType()}' to ABI type '{canonicalType}'";
+                return false;
             }
 
-            return dynamicTypeEncoders.Any(e => e.IsCompatible(canonicalType, dotnetValue.GetType()));
+            // Debug.Assert(!IsOfTypeType(dotnetValue.GetType()), $"The type is: '{dotnetValue.GetType().FullName}'");
+
+            foreach (var encoder in this.dynamicTypeEncoders)
+            {
+                if (encoder.IsCompatible(canonicalType, dotnetValue.GetType(), out message))
+                {
+                    return true;
+                }
+            }
+
+            message = $"No dynamic encoders support .NET type '{dotnetValue.GetType()}' to ABI type '{canonicalType}'";
+            return false;
         }
 
         // handle static types
 
         if (tryEncoding)
         {
-            return staticTypeEncoders.Any(e => e.TryEncode(canonicalType, dotnetValue, out _));
+            foreach (var encoder in this.staticTypeEncoders)
+            {
+                if (encoder.TryEncode(canonicalType, dotnetValue, out _))
+                {
+                    message = "OK";
+                    return true;
+                }
+            }
+
+            message = $"No static encoders can encode .NET type '{dotnetValue.GetType()}' to ABI type '{canonicalType}'";
+            return false;
         }
 
-        return staticTypeEncoders.Any(e => e.IsCompatible(canonicalType, dotnetValue.GetType()));
+        foreach (var encoder in this.staticTypeEncoders)
+        {
+            if (encoder.IsCompatible(canonicalType, dotnetValue.GetType(), out message))
+            {
+                return true;
+            }
+        }
+
+        message = $"No static encoders support .NET type '{dotnetValue.GetType()}' to ABI type '{canonicalType}'";
+        return false;
     }
 
     /// <summary>
@@ -136,15 +214,28 @@ public static class AbiTypeValidator
     /// <param name="signature">The function signature.</param>
     /// <param name="values">The parameter values to validate.</param>
     /// <param name="tryEncoding">If true, the method will try to encode the values which is more expensive but more robust.</param>
+    /// <param name="message">The message if the values are not compatible</param>
     /// <returns>True if all values are compatible, false otherwise.</returns>
-    public static bool ValidateParameters(FunctionSignature signature, ITuple values, bool tryEncoding = false)
+    public bool ValidateParameters(FunctionSignature signature, ITuple values, out string message, bool tryEncoding = false)
     {
         var parameterTypes = signature.GetParameterTypes();
 
         if (parameterTypes.Length != values.Length)
+        {
+            message = "Parameter length mismatch";
             return false;
+        }
 
-        return parameterTypes.Zip(values.GetElements(), (type, value) => IsCompatible(type, value, tryEncoding)).All(x => x);
+        for (int i = 0; i < parameterTypes.Length; i++)
+        {
+            if (!IsCompatible(parameterTypes[i], values[i], out message, tryEncoding))
+            {
+                return false;
+            }
+        }
+
+        message = "OK";
+        return true;
     }
 
     /// <summary>
@@ -153,17 +244,33 @@ public static class AbiTypeValidator
     /// <param name="function">The ABI function item.</param>
     /// <param name="values">The parameter values to validate.</param>
     /// <param name="tryEncoding">If true, the method will try to encode the values which is more expensive but more robust.</param>
+    /// <param name="message">The message if the values are not compatible</param>
     /// <returns>True if all values are compatible, false otherwise.</returns>
     /// <exception cref="ArgumentException">If the ABI item is not a function.</exception>
-    public static bool ValidateParameters(AbiItem function, ITuple values, bool tryEncoding = false)
+    public bool ValidateParameters(AbiItem function, ITuple values, out string message, bool tryEncoding = false)
     {
         if (function.Type != "function")
-            throw new ArgumentException("ABI item must be a function", nameof(function));
+        {
+            message = "ABI item must be a function";
+            return false;
+        }
 
         if (function.Inputs.Count != values.Length)
+        {
+            message = "Parameter length mismatch";
             return false;
+        }
 
-        return function.Inputs.Zip(values.GetElements(), (param, value) => IsCompatible(param.Type, value, tryEncoding)).All(x => x);
+        for (int i = 0; i < function.Inputs.Count; i++)
+        {
+            if (!IsCompatible(function.Inputs[i].Type, values[i], out message, tryEncoding))
+            {
+                return false;
+            }
+        }
+
+        message = "OK";
+        return true;
     }
 
     /// <summary>
@@ -172,17 +279,24 @@ public static class AbiTypeValidator
     /// <param name="function">The ABI function item.</param>
     /// <param name="value">The parameter value to validate.</param>
     /// <param name="tryEncoding">If true, the method will try to encode the value which is more expensive but more robust.</param>
+    /// <param name="message">The message if the value is not compatible</param>
     /// <returns>True if the value is compatible, false otherwise.</returns>
     /// <exception cref="ArgumentException">If the ABI item is not a function or has more than one parameter.</exception>
-    public static bool ValidateParameters(AbiItem function, object? value, bool tryEncoding = false)
+    public bool ValidateParameters(AbiItem function, object? value, out string message, bool tryEncoding = false)
     {
         if (function.Type != "function")
-            throw new ArgumentException("ABI item must be a function", nameof(function));
+        {
+            message = "ABI item must be a function";
+            return false;
+        }
 
         if (function.Inputs.Count != 1)
-            throw new ArgumentException("Function must have exactly one parameter", nameof(function));
+        {
+            message = "Function must have exactly one parameter";
+            return false;
+        }
 
-        return IsCompatible(function.Inputs[0].Type, value, tryEncoding);
+        return IsCompatible(function.Inputs[0].Type, value, out message, tryEncoding);
     }
 
     /// <summary>
@@ -224,5 +338,25 @@ public static class AbiTypeValidator
             components.Add(inner[start..].Trim());
 
         return components.ToArray();
+    }
+
+    /// <summary>
+    /// Checks if the value is .NET type information.
+    /// </summary>
+    /// <param name="value">The value to check.</param>
+    /// <returns>True if the value is a Type, false otherwise.</returns>
+    public static bool IsOfTypeType(object value)
+    {
+        return value is Type; // this should catch both Type and RuntimeType
+    }
+
+    /// <summary>
+    /// Checks if the type is .NET type information.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is a Type, false otherwise.</returns>
+    public static bool IsOfTypeType(Type type)
+    {
+        return type.FullName == "System.Type" || type.FullName == "System.RuntimeType";
     }
 }

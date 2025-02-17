@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -86,23 +87,16 @@ public class FunctionSignature
     }
 
     /// <summary>
-    /// Validates if the provided parameter values are compatible with this function signature.
+    /// Validates the parameters of the function signature.
     /// </summary>
-    /// <param name="value">The value to validate.</param>
-    /// <returns>True if the value is compatible with the function signature.</returns>
-    public bool ValidateParameters(object value)
-    {
-        return AbiTypeValidator.ValidateParameters(this, ValueTuple.Create(value));
-    }
-
-    /// <summary>
-    /// Validates if the provided parameter values are compatible with this function signature.
-    /// </summary>
+    /// <param name="validator">The validator to use.</param>
     /// <param name="values">The values to validate.</param>
-    /// <returns>True if all values are compatible with their corresponding parameter types.</returns>
-    public bool ValidateParameters(ITuple values)
+    /// <param name="m">The message if the parameters are invalid.</param>
+    /// <param name="tryEncoding">If true, the validator will try to encode the values to validate them.</param>
+    /// <returns>True if the parameters are valid, false otherwise.</returns>
+    public bool ValidateParameters(AbiTypeValidator validator, ITuple values, out string m, bool tryEncoding = false)
     {
-        return AbiTypeValidator.ValidateParameters(this, values);
+        return validator.ValidateParameters(this, values, out m, tryEncoding);
     }
 
     //
@@ -182,5 +176,4 @@ public class FunctionSignature
             _ => type.ToLowerInvariant()
         };
     }
-
 }

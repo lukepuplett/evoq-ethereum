@@ -9,6 +9,24 @@ namespace Evoq.Ethereum.ABI;
 public class AbiValidationException : Exception
 {
     /// <summary>
+    /// Creates a new ABI validation exception.
+    /// </summary>
+    public AbiValidationException(
+        string expectedType,
+        object? valueProvided,
+        string validationPath,
+        string? message = null)
+        : base(FormatMessage(expectedType, valueProvided, message))
+    {
+        this.ExpectedType = expectedType;
+        this.ValueProvided = valueProvided;
+        this.TypeProvided = valueProvided?.GetType();
+        this.ValidationPath = validationPath;
+    }
+
+    //
+
+    /// <summary>
     /// The type that was expected.
     /// </summary>
     public string ExpectedType { get; }
@@ -28,21 +46,7 @@ public class AbiValidationException : Exception
     /// </summary>
     public string ValidationPath { get; }
 
-    /// <summary>
-    /// Creates a new ABI validation exception.
-    /// </summary>
-    public AbiValidationException(
-        string expectedType,
-        object? valueProvided,
-        string validationPath,
-        string? message = null)
-        : base(FormatMessage(expectedType, valueProvided, message))
-    {
-        this.ExpectedType = expectedType;
-        this.ValueProvided = valueProvided;
-        this.TypeProvided = valueProvided?.GetType();
-        this.ValidationPath = validationPath;
-    }
+    //
 
     private static string FormatMessage(
         string expectedType,

@@ -5,6 +5,13 @@ namespace Evoq.Ethereum.ABI;
 [TestClass]
 public class EvmParamTests
 {
+    private readonly AbiTypeValidator validator;
+
+    public EvmParamTests()
+    {
+        this.validator = new AbiEncoder().Validator;
+    }
+
     [TestMethod]
     public void Constructor_WithBasicTypes_SetsPropertiesCorrectly()
     {
@@ -217,18 +224,19 @@ public class EvmParamTests
         var param = new EvmParam(0, "amount", "uint256");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValue("not a number"));
+            param.ValidateValue(this.validator, "not a number"));
 
         Assert.AreEqual("uint256", ex.ExpectedType);
         Assert.AreEqual("not a number", ex.ValueProvided);
         Assert.AreEqual(typeof(string), ex.TypeProvided);
-        Assert.AreEqual("Value of type System.String is not compatible with parameter type uint256: incompatible type", ex.Message);
+        Assert.IsTrue(ex.Message.StartsWith("Value of type System.String is not compatible with parameter type uint256: incompatible type"));
         Assert.AreEqual("param-0 (amount)", ex.ValidationPath);
     }
 
     [TestMethod]
     public void ValidateValue_WithInvalidNestedType_ThrowsAbiValidationException()
     {
+        // "((string name, uint256 balance) user, bool active) data"
         var components = new List<EvmParam>
         {
             new(0, "user", new List<EvmParam>
@@ -240,16 +248,21 @@ public class EvmParamTests
         };
 
         var param = new EvmParam(0, "data", components);
-        var value = (("John", "not a number"), true);
+        var value = (("John", "not a number"), true); // wrong type for balance
+
+        Assert.AreEqual("uint256", components[0].Components![1].AbiType);
+        Assert.AreEqual(typeof(string), value.Item1.Item1.GetType(), "name should be a string");
+        Assert.AreEqual(typeof(string), value.Item1.Item2.GetType(), "balance should be a string"); // wrong type
+        Assert.AreEqual(typeof(bool), value.Item2.GetType(), "active should be a bool");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValue(value));
+            param.ValidateValue(this.validator, value));
 
+        Assert.IsTrue(ex.Message.StartsWith("Value of type System.String is not compatible with parameter type uint256: incompatible type"));
+        Assert.AreEqual("param-0 (data) -> param-0 (user) -> param-1 (balance)", ex.ValidationPath);
         Assert.AreEqual("uint256", ex.ExpectedType);
         Assert.AreEqual("not a number", ex.ValueProvided);
         Assert.AreEqual(typeof(string), ex.TypeProvided);
-        Assert.AreEqual("Value of type System.String is not compatible with parameter type uint256: incompatible type", ex.Message);
-        Assert.AreEqual("param-0 (data) -> param-0 (user) -> param-1 (balance)", ex.ValidationPath);
     }
 
     [TestMethod]
@@ -265,13 +278,13 @@ public class EvmParamTests
         var value = ValueTuple.Create("John");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
-            param.ValidateValue(value));
+            param.ValidateValue(this.validator, value));
 
         // Check all properties of the exception
         Assert.AreEqual("(string,uint256)", ex.ExpectedType);
         Assert.AreEqual(value, ex.ValueProvided);
         Assert.AreEqual(typeof(ValueTuple<string>), ex.TypeProvided);
-        Assert.AreEqual("Value of type System.ValueTuple`1[System.String] is not compatible with parameter type (string,uint256): expected tuple of length 2", ex.Message);
+        Assert.IsTrue(ex.Message.StartsWith("Value of type System.ValueTuple`1[System.String] is not compatible with parameter type (string,uint256): expected tuple of length 2"));
         Assert.AreEqual("param-0 (person)", ex.ValidationPath);
     }
 
@@ -281,13 +294,13 @@ public class EvmParamTests
         // Test single param (count = 1)
         var sig = FunctionSignature.Parse("transfer(uint256 amount)");
         var param = sig.Parameters[0];
-        var visitCount = param.ValidateValue(BigInteger.One);
+        var visitCount = param.ValidateValue(this.validator, BigInteger.One);
         Assert.AreEqual(1, visitCount, "Single parameter should have visit count of 1");
 
         // Test simple tuple (count = 2)
         sig = FunctionSignature.Parse("process((bool valid, uint256 amount) data)");
         param = sig.Parameters[0];
-        visitCount = param.ValidateValue((true, BigInteger.One));
+        visitCount = param.ValidateValue(this.validator, (true, BigInteger.One));
         Assert.AreEqual(2, visitCount, "Simple tuple should have visit count of 2");
     }
 

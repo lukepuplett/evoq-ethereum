@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a uint type to its ABI binary representation.
 /// </summary>
-public class UintTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
+public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="UintTypeEncoder"/> class.
@@ -40,7 +40,7 @@ public class UintTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     {
         encoded = Array.Empty<byte>();
 
-        if (!this.IsCompatible(abiType, value.GetType()))
+        if (!this.IsCompatible(abiType, value.GetType(), out var _))
         {
             return false;
         }

@@ -1,5 +1,4 @@
 using System.Numerics;
-using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.Tests.ABI.TypeEncoders;

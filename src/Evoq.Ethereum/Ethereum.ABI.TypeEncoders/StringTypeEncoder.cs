@@ -7,7 +7,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a string type to its ABI binary representation.
 /// </summary>
-public class StringTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
+public class StringTypeEncoder : AbiCompatChecker, IAbiEncode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="StringTypeEncoder"/> class.
@@ -27,7 +27,7 @@ public class StringTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     {
         encoded = Array.Empty<byte>();
 
-        if (!this.IsCompatible(abiType, value.GetType()))
+        if (!this.IsCompatible(abiType, value.GetType(), out var _))
         {
             return false;
         }

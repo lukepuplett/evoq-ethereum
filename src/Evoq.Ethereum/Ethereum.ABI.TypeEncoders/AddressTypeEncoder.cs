@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes an address type to its ABI binary representation.
 /// </summary>
-public class AddressTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
+public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AddressTypeEncoder"/> class.
@@ -35,7 +35,7 @@ public class AddressTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     {
         encoded = Array.Empty<byte>();
 
-        if (!this.IsCompatible(abiType, value.GetType()))
+        if (!this.IsCompatible(abiType, value.GetType(), out var _))
         {
             return false;
         }
@@ -50,8 +50,16 @@ public class AddressTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
 
         if (value is string addr)
         {
-            encoded = EncodeAddress(new EthereumAddress(Hex.Parse(addr)));
-            return true;
+            try
+            {
+                Hex h = Hex.Parse(addr);
+                encoded = EncodeAddress(new EthereumAddress(h));
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         if (value is Hex hex)
@@ -62,8 +70,16 @@ public class AddressTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
 
         if (value is byte[] bytes)
         {
-            encoded = EncodeAddress(new EthereumAddress(bytes));
-            return true;
+            try
+            {
+                encoded = EncodeAddress(new EthereumAddress(bytes));
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+
         }
 
         return false;

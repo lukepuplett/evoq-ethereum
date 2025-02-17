@@ -7,51 +7,13 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a bytes type to its ABI binary representation.
 /// </summary>
-public class BytesTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
+public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode
 {
-    private const string BytesPrefix = "bytes";
-
     /// <summary>
     /// Initializes a new instance of the <see cref="BytesTypeEncoder"/> class.
     /// </summary>
     public BytesTypeEncoder()
-        : base(new HashSet<string>
-        {
-            AbiTypeNames.FixedByteArrays.Bytes1,
-            AbiTypeNames.FixedByteArrays.Bytes2,
-            AbiTypeNames.FixedByteArrays.Bytes3,
-            AbiTypeNames.FixedByteArrays.Bytes4,
-            AbiTypeNames.FixedByteArrays.Bytes5,
-            AbiTypeNames.FixedByteArrays.Bytes6,
-            AbiTypeNames.FixedByteArrays.Bytes7,
-            AbiTypeNames.FixedByteArrays.Bytes8,
-            AbiTypeNames.FixedByteArrays.Bytes9,
-            AbiTypeNames.FixedByteArrays.Bytes10,
-            AbiTypeNames.FixedByteArrays.Bytes11,
-            AbiTypeNames.FixedByteArrays.Bytes12,
-            AbiTypeNames.FixedByteArrays.Bytes13,
-            AbiTypeNames.FixedByteArrays.Bytes14,
-            AbiTypeNames.FixedByteArrays.Bytes15,
-            AbiTypeNames.FixedByteArrays.Bytes16,
-            AbiTypeNames.FixedByteArrays.Bytes17,
-            AbiTypeNames.FixedByteArrays.Bytes18,
-            AbiTypeNames.FixedByteArrays.Bytes19,
-            AbiTypeNames.FixedByteArrays.Bytes20,
-            AbiTypeNames.FixedByteArrays.Bytes21,
-            AbiTypeNames.FixedByteArrays.Bytes22,
-            AbiTypeNames.FixedByteArrays.Bytes23,
-            AbiTypeNames.FixedByteArrays.Bytes24,
-            AbiTypeNames.FixedByteArrays.Bytes25,
-            AbiTypeNames.FixedByteArrays.Bytes26,
-            AbiTypeNames.FixedByteArrays.Bytes27,
-            AbiTypeNames.FixedByteArrays.Bytes28,
-            AbiTypeNames.FixedByteArrays.Bytes29,
-            AbiTypeNames.FixedByteArrays.Bytes30,
-            AbiTypeNames.FixedByteArrays.Bytes31,
-            AbiTypeNames.FixedByteArrays.Bytes32
-        }, new HashSet<Type> { typeof(byte[]) })
-    {
-    }
+        : base(new HashSet<string> { "bytes" }, new HashSet<Type> { typeof(byte[]) }) { }
 
     /// <summary>
     /// Attempts to encode a bytes type to its ABI binary representation.
@@ -59,16 +21,15 @@ public class BytesTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
+    /// <returns>True if the encoding was successful, false otherwise.</returns>
     public bool TryEncode(string abiType, object value, out byte[] encoded)
     {
         encoded = Array.Empty<byte>();
 
-        if (!this.IsCompatible(abiType, value.GetType()))
+        if (!this.IsCompatible(abiType, value.GetType(), out var _))
         {
             return false;
         }
-
-        //
 
         if (value is byte[] bytes)
         {
@@ -80,19 +41,28 @@ public class BytesTypeEncoder : AbiTypeChecker, IAbiTypeEncoder
     }
 
     /// <summary>
-    /// Encodes a bytes array as a 32-byte value.
+    /// Encodes a byte array to a byte array padded to 32 bytes or returns empty for null.
     /// </summary>
     /// <param name="bytes">The bytes to encode.</param>
-    /// <returns>The encoded bytes, padded to 32 bytes.</returns>
+    /// <returns>The encoded bytes, padded to a multiple of 32 bytes.</returns>
     public static byte[] EncodeBytes(byte[] bytes)
     {
         if (bytes == null)
-            throw new ArgumentNullException(nameof(bytes));
+        {
+            return Array.Empty<byte>();
+        }
 
-        var result = new byte[32];
-        Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
+        // we're returning the full length bytes but
+        // we just need to pad the input until the
+        // length is a multiple of 32
 
-        Debug.Assert(result.Length == 32);
+        var inputLength = bytes.Length;
+        var padding = (32 - (inputLength % 32)) % 32;
+
+        var result = new byte[inputLength + padding];
+        Buffer.BlockCopy(bytes, 0, result, 0, inputLength);
+
+        Debug.Assert(result.Length == inputLength + padding);
 
         return result;
     }
