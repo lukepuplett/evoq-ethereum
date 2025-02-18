@@ -36,8 +36,15 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
+    /// <returns>True if the value was encoded successfully, false otherwise.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if the value is null.</exception>
     public bool TryEncode(string abiType, object value, out byte[] encoded)
     {
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         encoded = Array.Empty<byte>();
 
         if (!this.IsCompatible(abiType, value.GetType(), out var _))

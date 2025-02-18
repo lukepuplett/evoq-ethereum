@@ -249,10 +249,9 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <exception cref="ArgumentException">If the ABI item is not a function.</exception>
     public bool ValidateParameters(AbiItem function, ITuple values, out string message, bool tryEncoding = false)
     {
-        if (function.Type != "function")
+        if (function.Inputs == null || function.Inputs.Count == 0)
         {
-            message = "ABI item must be a function";
-            return false;
+            throw new ArgumentException("ABI item must have inputs");
         }
 
         if (function.Inputs.Count != values.Length)
@@ -284,15 +283,14 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <exception cref="ArgumentException">If the ABI item is not a function or has more than one parameter.</exception>
     public bool ValidateParameters(AbiItem function, object? value, out string message, bool tryEncoding = false)
     {
-        if (function.Type != "function")
+        if (function.Inputs == null || function.Inputs.Count == 0)
         {
-            message = "ABI item must be a function";
-            return false;
+            throw new ArgumentException("ABI item must have inputs");
         }
 
         if (function.Inputs.Count != 1)
         {
-            message = "Function must have exactly one parameter";
+            message = "ABI item must have exactly one parameter";
             return false;
         }
 

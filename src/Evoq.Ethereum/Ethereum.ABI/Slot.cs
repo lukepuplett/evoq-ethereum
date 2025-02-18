@@ -17,6 +17,14 @@ public class Slot : IEquatable<Slot>
     //
 
     /// <summary>
+    /// Creates a new slot with no data.
+    /// </summary>
+    public Slot()
+    {
+        this.data = new byte[Size];
+    }
+
+    /// <summary>
     /// Creates a new slot with the given data.
     /// </summary>
     /// <param name="data">The 32-byte data.</param>

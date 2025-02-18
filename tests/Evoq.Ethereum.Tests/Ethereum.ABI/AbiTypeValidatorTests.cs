@@ -171,7 +171,6 @@ public class AbiTypeValidatorTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void ValidateParameters_NonFunction_ThrowsException()
     {
         string m;
@@ -182,7 +181,8 @@ public class AbiTypeValidatorTests
             Name = "Transfer"
         };
 
-        this.validator.ValidateParameters(eventItem, ("some value"), out m);
+        Assert.ThrowsException<ArgumentException>(
+            () => this.validator.ValidateParameters(eventItem, ("some value"), out m));
     }
 
     [TestMethod]

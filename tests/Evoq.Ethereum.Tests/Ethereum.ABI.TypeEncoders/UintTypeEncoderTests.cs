@@ -113,8 +113,9 @@ public class UintTypeEncoderTests
     public void TryEncode_UnsupportedType_ReturnsFalse()
     {
         Assert.IsFalse(_encoder.TryEncode("uint256", "not a number", out _));
-        Assert.IsFalse(_encoder.TryEncode("uint256", null, out _));
         Assert.IsFalse(_encoder.TryEncode("uint256", 1.5, out _));
+
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("uint256", null, out _));
     }
 
     [TestMethod]

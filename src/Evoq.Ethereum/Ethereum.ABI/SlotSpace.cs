@@ -61,39 +61,156 @@ public class SlotSpace
     /// Appends a set of reserved slots for an array to the slot space.
     /// </summary>
     /// <param name="length">The length of the array.</param>
+    /// <returns>
+    /// Returns a set of empty slots into which either static values can be written or,
+    /// if dynamic, pointers to each dynamic value. Each dynamic value should be encoded
+    /// into the returned <see cref="SlotSpace"/>.
+    /// </returns>
+    public (SlotSpace ElementsSpace, SlotSpace DynamicValuesSpace) AppendReservedArray(int length)
+    {
+        // Array ABI encoding recap:
+        //
+        // A dynamic array is encoded as a 32-byte slot containing a pointer to
+        // 'the value'; the value is a set of slots and the pointer points to
+        // the first one in the set, which is the length.
+        //
+        // The encoded array is itself encoded as a length slot followed by the
+        // slots of the elements, each of which will either be the static value
+        // or, if dynamic, a pointer to 'the value' (as above), but will always
+        // be one slot per element.
+
+        //
+
+        // create the slot for the array length
+
+        var lengthSlot = new Slot(UintTypeEncoder.EncodeUint(256, length));
+
+        // create empty slots for each of the elements
+
+        var elementsSlots = new Slots(capacity: length);
+        for (int i = 0; i < length; i++)
+        {
+            elementsSlots.Add(new Slot());
+        }
+
+        // create an empty space beyond the last element slot into which
+        // any dynamic data for the array can be encoded
+
+        var dynamicSlots = new Slots(capacity: 8);
+
+        // append it all to this space
+
+        this.Append(lengthSlot);
+        this.Append(elementsSlots);
+        this.Append(dynamicSlots);
+
+        // wrap the slots for the elements in a space, and wrap the slots for 
+        // the values in a space and return them
+
+        var elementsSpace = new SlotSpace(elementsSlots); // wrapped in a space
+        var valuesSpace = new SlotSpace(dynamicSlots); // wrapped in a space
+
+        return (elementsSpace, valuesSpace);
+    }
+
+    /// <summary>
+    /// Appends a set of reserved slots for arbitrary bytes to the slot space.
+    /// </summary>
+    /// <param name="length">The length of the bytes.</param>
+    public (Slot LengthSlot, SlotSpace DynamicValueSpace) AppendReservedBytes(int length)
+    {
+        // compute the capacity needed
+
+        var hasRemainingBytes = length % Slot.Size != 0;
+        var slotsNeededForBytes = (length / Slot.Size) + (hasRemainingBytes ? 1 : 0);
+
+        // create the length slot
+
+        var lengthSlot = new Slot(UintTypeEncoder.EncodeUint(256, length));
+
+        // create the slots for the bytes
+
+        var bytesSlots = new Slots(capacity: slotsNeededForBytes);
+
+        // append the length slot and the bytes slots to the slot space
+
+        this.Append(lengthSlot);
+        this.Append(bytesSlots);
+
+        // wrap the bytes slots in a space and return it
+
+        var valueSpace = new SlotSpace(bytesSlots);
+
+        return (lengthSlot, valueSpace);
+    }
+
+    //
+
+    /// <summary>
+    /// Appends a set of reserved slots for an array to the slot space.
+    /// </summary>
+    /// <param name="length">The length of the array.</param>
     /// <returns>The length and pointer slots, where each offset points to the slots for the element data, and the elements slots themselves.</returns>
     // <returns>The length and pointer slots and a new slot space for the elements. The pointer point to the elements in the elements space.</returns>
-    public (Slots lengthAndPointers, IReadOnlyList<Slots> elements) AppendReservedArray(int length)
+    public (Slots LengthAndPointers, IReadOnlyList<Slots> Elements) AppendReservedArrayV1(int length)
     {
-        // for an array we need slots to hold the array length and slots for the pointer
-        // to the elements in the array, and then a slot space for the element data
+        // IMPORTANT / this assumes that the array is dynamic since it creates
+        // pointer slots
 
-        // ^ change of design; we return the length and offsets and the elements slots
-        // so that the caller can decide what to do with the elements slots
+        // Array ABI encoding recap:
+        //
+        // A dynamic array is encoded as a 32-byte slot containing a pointer to
+        // 'the value'; the value is a set of slots and the pointer points to
+        // the first one in the set, which is the length.
+        //
+        // The encoded array is itself encoded as a length slot followed by the
+        // slots of the elements, each of which will either be the static value
+        // or, if dynamic, a pointer to 'the value' (as above), but will always
+        // be one slot per element.
 
-        var elementsSpace = new SlotSpace(); // potentially remove
+        //
+
+        // create a list of empty slots for each of the elements;
+        // each element will have its own set of empty, elastic slots
+
         var elementsSlots = new List<Slots>();
 
-        var lengthAndpointer = new Slots(capacity: 4)
+        // create a set of slots for the length and pointer slots
+
+        var lengthSlot = new Slot(UintTypeEncoder.EncodeUint(256, length));
+        var lengthAndElements = new Slots(capacity: 4)
         {
-            new Slot(UintTypeEncoder.EncodeUint(256, length)) // add the array length
+            // add the array length
+            lengthSlot,
         };
 
-        this.Append(lengthAndpointer);
+        // append the length and pointer slots to the slot space
+
+        this.Append(lengthAndElements);
+
+        // for each element in the array, 
 
         for (int i = 0; i < length; i++)
         {
-            var elementSlots = new Slots(capacity: 8);
+            // create empty set of elastic slots for the element
+            // and append them to this slot space
 
+            var elementSlots = new Slots(capacity: 8);
             this.Append(elementSlots);
-            elementsSpace.Append(elementSlots); // potentially remove
+
+            // then add these empty slots to the list of slots we're
+            // constructing for all the elements
+
             elementsSlots.Add(elementSlots);
 
-            var pointerlot = new Slot(UintTypeEncoder.EncodeUint(256, i), pointsToFirst: elementSlots);
-            lengthAndpointer.Add(pointerlot);
+            // add a pointer slot to the length and pointer slots;
+            // this pointer slot points to the first slot of the element slots
+
+            var pointerSlot = new Slot(UintTypeEncoder.EncodeUint(256, i), pointsToFirst: elementSlots);
+            lengthAndElements.Add(pointerSlot);
         }
 
-        return (lengthAndpointer, elementsSlots);
+        return (lengthAndElements, elementsSlots);
     }
 
     /// <summary>
@@ -101,7 +218,7 @@ public class SlotSpace
     /// </summary>
     /// <param name="length">The length of the bytes.</param>
     /// <returns>The slots for the bytes with the length slot at the beginning.</returns>
-    public Slots AppendReservedBytes(int length)
+    public Slots AppendReservedBytesV1(int length)
     {
         var hasRemainingBytes = length % Slot.Size != 0;
         var slotsNeededForBytes = (length / Slot.Size) + (hasRemainingBytes ? 1 : 0);

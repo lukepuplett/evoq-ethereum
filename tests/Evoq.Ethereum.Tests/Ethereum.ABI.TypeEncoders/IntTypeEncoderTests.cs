@@ -101,8 +101,9 @@ public class IntTypeEncoderTests
     public void TryEncode_UnsupportedType_ReturnsFalse()
     {
         Assert.IsFalse(_encoder.TryEncode("int256", "not a number", out _));
-        Assert.IsFalse(_encoder.TryEncode("int256", null, out _));
         Assert.IsFalse(_encoder.TryEncode("int256", 1.5, out _));
+
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("int256", null, out _));
     }
 
     [TestMethod]

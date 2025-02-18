@@ -272,7 +272,9 @@ public class AbiEncoder : IAbiEncoder
 
         var array = (Array)value;
         if (array.Length != dimensions[0])
+        {
             throw new ArgumentException($"Array length {array.Length} does not match expected length {dimensions[0]}");
+        }
 
         // for static arrays, we encode each element in sequence, simply adding each element to the appropriate space
 
@@ -284,14 +286,20 @@ public class AbiEncoder : IAbiEncoder
 
     private void EncodeDynamicValue(string abiType, object value, SlotSpace? staticSpace, SlotSpace dynamicSpace)
     {
-        // staticSpace is null if we're already encoding a dynamic value and this is being called
-        // recursively, otherwise we're encoding a static length value in the static space and we
-        // need to add an offset slot to the static space
+        // staticSpace represents either the root static space or the space for the
+        // elements of an array, which may actually also be in the dynamic space if
+        // we're encoding a dynamic array and this is a recursive call
 
         if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
         {
             throw new ArgumentException($"Invalid type: {abiType}");
         }
+
+        // IMPORTANT / post testing, we can remove the v1 array encoding, and also
+        // remove the nullable staticSpace and just always encode as per usual into
+        // either space depending on whether we're encoding a static or dynamic value
+
+        bool useV1ArrayEncoding = false;
 
         if (AbiTypes.IsArray(canonicalType))
         {
@@ -309,35 +317,49 @@ public class AbiEncoder : IAbiEncoder
 
             var array = (Array)value;
 
-            // it's a dynamic array; so we add an offset slot to the static section
-            // and then add the array length to the dynamic section along with slots
-            // for each element in the array (the slot will either be the actual value
-            // or an offset to the value, but will always be one slot per element)
-
-            // adding the offset slot to the static section is done in the AppendStatic
-            // method so we just need to build the dynamic data
-
-            var (lengthAndOffsets, elementsSlots) = dynamicSpace.AppendReservedArray(array.Length);
-            var pointerSlot = new Slot(pointsToFirst: lengthAndOffsets);
-
-            if (staticSpace != null) // depends on whether we're already encoding a dynamic value
+            if (useV1ArrayEncoding)
             {
-                staticSpace.Append(pointerSlot); // we're still in the static space
+                // array encoding: pointer to the encoding of the array -> length slot followed
+                // by the slots of the elements, each of which will either be the actual value
+                // or a pointer to the value, but will always be one slot per element
+
+                var (lengthAndOffsets, elementsSlots) = dynamicSpace.AppendReservedArrayV1(array.Length);
+                var pointerSlot = new Slot(pointsToFirst: lengthAndOffsets);
+
+                if (staticSpace != null) // depends on whether we're already encoding a dynamic value
+                {
+                    staticSpace.Append(pointerSlot); // we're still in the static space
+                }
+                else
+                {
+                    dynamicSpace.Append(pointerSlot); // we're in a nested encoding of a dynamic value
+                }
+
+                // now encode the inner elements
+
+                for (int i = 0; i < array.Length; i++)
+                {
+                    var elementValue = array.GetValue(i);       // get the element value
+                    var slots = elementsSlots[i];               // get the slots for the element
+                    var elementSpace = new SlotSpace(slots);    // wrap the slots
+
+                    this.EncodeValue(innerType, elementValue, null, elementSpace);
+                }
             }
             else
             {
-                dynamicSpace.Append(pointerSlot); // we're in a nested encoding of a dynamic value
-            }
+                // much simpler than the v1 encoding, which probably does not work
 
-            // now encode the inner elements
+                var reserved = dynamicSpace.AppendReservedArray(array.Length);
 
-            for (int i = 0; i < array.Length; i++)
-            {
-                var element = array.GetValue(i);
-                var slots = elementsSlots[i];
-                var elementSpace = new SlotSpace(slots);
+                // now encode the elements
 
-                this.EncodeValue(innerType, element, null, elementSpace);
+                for (int i = 0; i < array.Length; i++)
+                {
+                    var elementValue = array.GetValue(i);
+
+                    this.EncodeValue(innerType, elementValue, reserved.ElementsSpace, reserved.DynamicValuesSpace);
+                }
             }
         }
         else if (canonicalType == AbiTypeNames.String || canonicalType == AbiTypeNames.Bytes)
@@ -351,26 +373,56 @@ public class AbiEncoder : IAbiEncoder
 
             var paddedBytes = encoder!(value);
 
-            // make slots for the length and the actual string data
-
-            var lengthAndSlots = dynamicSpace.AppendReservedBytes(paddedBytes.Length);
-
-            // add pointer slot that will point to the offset of the string slots above
-
-            var pointerSlot = new Slot(pointsToFirst: lengthAndSlots);
-
-            if (staticSpace != null)
+            if (useV1ArrayEncoding)
             {
-                staticSpace.Append(pointerSlot);
+                // make slots for the length and the actual string data
+
+                var lengthAndSlots = dynamicSpace.AppendReservedBytesV1(paddedBytes.Length);
+
+                // add pointer slot that will point to the offset of the string slots above
+
+                var pointerSlot = new Slot(pointsToFirst: lengthAndSlots);
+
+                if (staticSpace != null)
+                {
+                    staticSpace.Append(pointerSlot);
+                }
+                else
+                {
+                    dynamicSpace.Append(pointerSlot);
+                }
+
+                // add the string data
+
+                dynamicSpace.Append(this.BytesToSlots(paddedBytes));
             }
             else
             {
-                dynamicSpace.Append(pointerSlot);
+                var reserved = dynamicSpace.AppendReservedBytes(paddedBytes.Length);
+
+                // create and add the pointer slot, which means wrapping the length slot
+                // in a slots object so we can point to it
+
+                var slots = new Slots(capacity: 1)
+                {
+                    reserved.LengthSlot
+                };
+
+                var pointerSlot = new Slot(pointsToFirst: slots);
+
+                if (staticSpace != null)
+                {
+                    staticSpace.Append(pointerSlot);
+                }
+                else
+                {
+                    dynamicSpace.Append(pointerSlot);
+                }
+
+                // add the string data
+
+                reserved.DynamicValueSpace.Append(this.BytesToSlots(paddedBytes));
             }
-
-            // add the string data
-
-            dynamicSpace.Append(this.BytesToSlots(paddedBytes));
         }
         else
         {

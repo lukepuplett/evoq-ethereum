@@ -38,6 +38,11 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
     /// <param name="encoded">The encoded bytes if successful.</param>
     public bool TryEncode(string abiType, object value, out byte[] encoded)
     {
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         encoded = Array.Empty<byte>();
 
         if (!this.IsCompatible(abiType, value.GetType(), out var _))
