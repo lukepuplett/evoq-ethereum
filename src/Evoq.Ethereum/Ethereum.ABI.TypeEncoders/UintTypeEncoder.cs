@@ -124,7 +124,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
     /// <summary>
     /// Encodes a uint as a 32-byte value.
     /// </summary>
-    /// <param name="bits">The number of bits to encode.</param>
+    /// <param name="bits">The number of bits to encode, e.g. 8 or 256 etc.</param>
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded value as 32 bytes.</returns>
     public static byte[] EncodeUint(int bits, BigInteger value)

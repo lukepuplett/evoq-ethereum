@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -55,6 +56,19 @@ public class AbiEncodingResult
     // ^ 1 static slot with 1 dynamic slot should have a current dynamic offset of 31 + 32 + 1 (64 bytes ~ 2 slots)
     // ^ 1 static slot with 2 dynamic slots should have a current dynamic offset of 31 + 64 + 1 (96 bytes ~ 3 slots)
 
+    //
+
+    /// <summary>
+    /// Gets the slots of the slot space.
+    /// </summary>
+    /// <returns>The slots of the slot space.</returns>
+    public IEnumerable<Slot> GetSlots()
+    {
+        this.SetOffsets();
+
+        return this.GetSlotsInternal();
+    }
+
     /// <summary>
     /// Gets the combined static and dynamic data as a byte array.
     /// </summary>
@@ -62,7 +76,11 @@ public class AbiEncodingResult
     public byte[] GetBytes()
     {
         if (this.staticData.Count() != this.staticSlotCount)
+        {
             throw new InvalidOperationException($"Expected {this.staticSlotCount} static slots but got {this.staticData.Count()}");
+        }
+
+        this.SetOffsets();
 
         return this.staticData.GetBytes().Concat(this.dynamicData.GetBytes()).ToArray();
     }
@@ -87,11 +105,51 @@ public class AbiEncodingResult
     /// </summary>
     /// <param name="slots">The array of 32-byte slots to add, each must be 32 bytes.</param>
     /// <returns>The slot index of the added data.</returns>
-    public void AppendDynamic(Slots slots)
+    public void AppendDynamic(SlotCollection slots)
     {
         var pointerSlot = new Slot(UintTypeEncoder.EncodeUint(256, this.CurrentDynamicOffset), pointsToFirst: slots);
         this.AppendStatic(pointerSlot);
 
         this.dynamicData.Append(slots);
+    }
+
+    //
+
+    private IEnumerable<Slot> GetSlotsInternal()
+    {
+        foreach (var slot in this.staticData.GetSlots())
+        {
+            yield return slot;
+        }
+
+        foreach (var slot in this.dynamicData.GetSlots())
+        {
+            yield return slot;
+        }
+    }
+
+    /// <summary>
+    /// Sets the byte offset on every slot in the slot space where slot zero has offset zero.
+    /// </summary>
+    /// <remarks>
+    /// Each slot is 32 bytes, so the second slot has offset 32, the third has offset 64, etc.
+    /// This method must be called after all the slots have been appended to the slot space
+    /// and the full bytes are read.
+    /// </remarks>
+    private void SetOffsets()
+    {
+        int offset = 0;
+        foreach (var slot in this.GetSlotsInternal())
+        {
+            slot.SetOffset(offset);
+            offset += Slot.Size;
+        }
+
+        // now we can encode the pointers
+
+        foreach (var slot in this.GetSlotsInternal())
+        {
+            slot.EncodePointer();
+        }
     }
 }

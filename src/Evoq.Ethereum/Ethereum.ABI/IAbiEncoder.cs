@@ -16,13 +16,13 @@ namespace Evoq.Ethereum.ABI
         /// <returns>The encoded parameters.</returns>
         AbiEncodingResult EncodeParameters(EvmParameters parameters, ITuple values);
 
-        /// <summary>
-        /// Resolves the encoder for a given type.
-        /// </summary>
-        /// <param name="abiType">The type to resolve the encoder for.</param>
-        /// <param name="value">The value to encode.</param>
-        /// <param name="encoder">The encoder for the given type.</param>
-        /// <returns>True if the encoder was resolved, false otherwise.</returns>
-        bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder);
+        // /// <summary>
+        // /// Resolves the encoder for a given type.
+        // /// </summary>
+        // /// <param name="abiType">The type to resolve the encoder for.</param>
+        // /// <param name="value">The value to encode.</param>
+        // /// <param name="encoder">The encoder for the given type.</param>
+        // /// <returns>True if the encoder was resolved, false otherwise.</returns>
+        // bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder);
     }
 }

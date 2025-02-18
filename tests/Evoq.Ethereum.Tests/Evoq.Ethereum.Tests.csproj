@@ -15,6 +15,10 @@
     <PackageReference Include="MSTest.TestAdapter" Version="2.2.10" />
     <PackageReference Include="MSTest.TestFramework" Version="2.2.10" />
     <PackageReference Include="coverlet.collector" Version="3.2.0" />
+    
+    <PackageReference Include="Nethereum.Signer" Version="4.29.0" />
+    <PackageReference Include="Nethereum.Util" Version="4.29.0" />
+    <PackageReference Include="Nethereum.Web3" Version="4.29.0" />
   </ItemGroup>
 
   <ItemGroup>

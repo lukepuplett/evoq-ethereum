@@ -10,7 +10,7 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class SlotSpace
 {
-    private readonly List<Slots> space = new();
+    private readonly List<SlotCollection> slotCollections = new(8);
 
     //
 
@@ -18,7 +18,7 @@ public class SlotSpace
     /// Initializes a new instance of the <see cref="SlotSpace"/> class.
     /// </summary>
     public SlotSpace()
-        : this(new List<Slots>(capacity: 8))
+        : this(new List<SlotCollection>(capacity: 8))
     {
     }
 
@@ -26,33 +26,28 @@ public class SlotSpace
     /// Initializes a new instance of the <see cref="SlotSpace"/> class.
     /// </summary>
     /// <param name="slots">The slots to initialize the slot space with.</param>
-    public SlotSpace(Slots slots)
-        : this(new List<Slots>(capacity: 8) { slots })
+    public SlotSpace(SlotCollection slots)
+        : this(new List<SlotCollection>(capacity: 8) { slots })
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SlotSpace"/> class.
     /// </summary>
-    /// <param name="space">The space to initialize the slot space with.</param>
-    public SlotSpace(IReadOnlyList<Slots> space)
+    /// <param name="slotCollectionList">The space to initialize the slot space with.</param>
+    private SlotSpace(IReadOnlyList<SlotCollection> slotCollectionList)
     {
-        if (space == null)
+        if (slotCollectionList == null)
         {
-            throw new ArgumentNullException(nameof(space));
+            throw new ArgumentNullException(nameof(slotCollectionList));
         }
 
-        if (space.Any(slots => slots == null))
+        if (slotCollectionList.Any(sc => sc == null || sc.Any(slot => slot == null)))
         {
-            throw new ArgumentException("Space cannot contain any null sets of slots", nameof(space));
+            throw new ArgumentException("Space cannot contain any null sets of slots", nameof(slotCollectionList));
         }
 
-        if (!space.Any())
-        {
-            throw new ArgumentException("Space must contain at least one set of slots", nameof(space));
-        }
-
-        this.space = new List<Slots>(space);
+        this.slotCollections = new(slotCollectionList);
     }
 
     //
@@ -87,7 +82,7 @@ public class SlotSpace
 
         // create empty slots for each of the elements
 
-        var elementsSlots = new Slots(capacity: length);
+        var elementsSlots = new SlotCollection(capacity: length);
         for (int i = 0; i < length; i++)
         {
             elementsSlots.Add(new Slot());
@@ -96,7 +91,7 @@ public class SlotSpace
         // create an empty space beyond the last element slot into which
         // any dynamic data for the array can be encoded
 
-        var dynamicSlots = new Slots(capacity: 8);
+        var dynamicSlots = new SlotCollection(capacity: 8);
 
         // append it all to this space
 
@@ -130,7 +125,7 @@ public class SlotSpace
 
         // create the slots for the bytes
 
-        var bytesSlots = new Slots(capacity: slotsNeededForBytes);
+        var bytesSlots = new SlotCollection(capacity: slotsNeededForBytes);
 
         // append the length slot and the bytes slots to the slot space
 
@@ -152,7 +147,7 @@ public class SlotSpace
     /// <param name="length">The length of the array.</param>
     /// <returns>The length and pointer slots, where each offset points to the slots for the element data, and the elements slots themselves.</returns>
     // <returns>The length and pointer slots and a new slot space for the elements. The pointer point to the elements in the elements space.</returns>
-    public (Slots LengthAndPointers, IReadOnlyList<Slots> Elements) AppendReservedArrayV1(int length)
+    public (SlotCollection LengthAndPointers, IReadOnlyList<SlotCollection> Elements) AppendReservedArrayV1(int length)
     {
         // IMPORTANT / this assumes that the array is dynamic since it creates
         // pointer slots
@@ -173,12 +168,12 @@ public class SlotSpace
         // create a list of empty slots for each of the elements;
         // each element will have its own set of empty, elastic slots
 
-        var elementsSlots = new List<Slots>();
+        var elementsSlots = new List<SlotCollection>();
 
         // create a set of slots for the length and pointer slots
 
         var lengthSlot = new Slot(UintTypeEncoder.EncodeUint(256, length));
-        var lengthAndElements = new Slots(capacity: 4)
+        var lengthAndElements = new SlotCollection(capacity: 4)
         {
             // add the array length
             lengthSlot,
@@ -195,7 +190,7 @@ public class SlotSpace
             // create empty set of elastic slots for the element
             // and append them to this slot space
 
-            var elementSlots = new Slots(capacity: 8);
+            var elementSlots = new SlotCollection(capacity: 8);
             this.Append(elementSlots);
 
             // then add these empty slots to the list of slots we're
@@ -218,12 +213,12 @@ public class SlotSpace
     /// </summary>
     /// <param name="length">The length of the bytes.</param>
     /// <returns>The slots for the bytes with the length slot at the beginning.</returns>
-    public Slots AppendReservedBytesV1(int length)
+    public SlotCollection AppendReservedBytesV1(int length)
     {
         var hasRemainingBytes = length % Slot.Size != 0;
         var slotsNeededForBytes = (length / Slot.Size) + (hasRemainingBytes ? 1 : 0);
 
-        var lengthAndSlots = new Slots(capacity: slotsNeededForBytes + 1) // +1 for the length slot
+        var lengthAndSlots = new SlotCollection(capacity: slotsNeededForBytes + 1) // +1 for the length slot
         {
             new Slot(UintTypeEncoder.EncodeUint(256, length))
         };
@@ -237,7 +232,7 @@ public class SlotSpace
     /// Gets the total number of slots in the slot space.
     /// </summary>
     /// <returns>The total number of slots in the slot space.</returns>
-    public int Count() => this.space.Sum(x => x.Count);
+    public int Count() => this.slotCollections.Sum(sc => sc.Count);
 
     /// <summary>
     /// Appends a slot to the last slots in the slot space.
@@ -245,16 +240,21 @@ public class SlotSpace
     /// <param name="slot">The slot to append.</param>
     public void Append(Slot slot)
     {
-        this.space.Last().Add(slot);
+        if (this.slotCollections.Count == 0)
+        {
+            this.slotCollections.Add(new SlotCollection(capacity: 8));
+        }
+
+        this.slotCollections.Last().Add(slot);
     }
 
     /// <summary>
     /// Appends a collection of slots to the slot space.
     /// </summary>
     /// <param name="slots">The slots to append.</param>
-    public void Append(Slots slots)
+    public void Append(SlotCollection slots)
     {
-        this.space.Add(slots);
+        this.slotCollections.Add(slots);
     }
 
     /// <summary>
@@ -263,6 +263,21 @@ public class SlotSpace
     /// <returns>The bytes of the slot space.</returns>
     public byte[] GetBytes()
     {
-        return this.space.SelectMany(x => x.SelectMany(y => y.Data)).ToArray();
+        return this.slotCollections.SelectMany(sc => sc.SelectMany(slot => slot.Data)).ToArray();
+    }
+
+    /// <summary>
+    /// Gets the slots of the slot space.
+    /// </summary>
+    /// <returns>The slots of the slot space.</returns>
+    public IEnumerable<Slot> GetSlots()
+    {
+        foreach (var slots in this.slotCollections)
+        {
+            foreach (var slot in slots)
+            {
+                yield return slot;
+            }
+        }
     }
 }

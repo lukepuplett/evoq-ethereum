@@ -51,35 +51,6 @@ public class AbiEncoder : IAbiEncoder
     //
 
     /// <summary>
-    /// Computes the number of 32-byte slots needed for the static portion of a value.
-    /// </summary>
-    /// <param name="abiType">The ABI type to compute the size for.</param>
-    /// <returns>The number of 32-byte slots needed.</returns>
-    public int ComputeStaticSlotCount(string abiType)
-    {
-        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
-        {
-            throw new ArgumentException($"Invalid type: {abiType}");
-        }
-
-        // dynamic types always take exactly one slot (for the pointer)
-
-        if (AbiTypes.IsDynamicType(canonicalType))
-        {
-            return 1;
-        }
-
-        if (AbiTypes.IsArray(canonicalType))
-        {
-            return ComputeArrayStaticSlotCount(canonicalType);
-        }
-
-        // simple types always take one slot
-
-        return 1;
-    }
-
-    /// <summary>
     /// Encodes a single parameter.
     /// </summary>
     /// <param name="parameters">The parameters to encode.</param>
@@ -105,7 +76,9 @@ public class AbiEncoder : IAbiEncoder
         var result = new AbiEncodingResult(staticSlotsRequired);
 
         if (singles.Count != values.Length)
+        {
             throw new ArgumentException($"Expected {singles.Count} values but got {values.Length}");
+        }
 
         for (int i = 0; i < singles.Count; i++)
         {
@@ -118,87 +91,15 @@ public class AbiEncoder : IAbiEncoder
         return result;
     }
 
-    /// <summary>
-    /// Resolves the encoder for a given type.
-    /// </summary>
-    /// <param name="abiType">The type to resolve the encoder for.</param>
-    /// <param name="value">The value to encode.</param>
-    /// <param name="encoder">The encoder for the given type.</param>
-    /// <returns>True if the encoder was resolved, false otherwise.</returns>
-    public bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder)
-    {
-        if (value == null)
-        {
-            encoder = _ => new Slot(new byte[32]); // null value is encoded as a 32-byte zero value
-            return true;
-        }
-
-        // get the canonical type
-
-        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
-        {
-            encoder = null;
-            return false;
-        }
-
-        foreach (var staticEncoder in this.staticTypeEncoders)
-        {
-            if (staticEncoder.TryEncode(canonicalType, value, out var bytes))
-            {
-                encoder = _ => new Slot(bytes);
-                return true;
-            }
-        }
-
-        throw new NotImplementedException(
-            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
-    }
-
-    /// <summary>
-    /// Resolves the encoder for a given type.
-    /// </summary>
-    /// <param name="abiType">The type to resolve the encoder for.</param>
-    /// <param name="value">The value to encode.</param>
-    /// <param name="encoder">The encoder for the given type.</param>
-    /// <returns>True if the encoder was resolved, false otherwise.</returns>
-    public bool TryFindDynamicBytesEncoder(string abiType, object value, out Func<object, byte[]>? encoder)
-    {
-        if (value == null)
-        {
-            encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
-            return true;
-        }
-
-        // get the canonical type
-
-        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
-        {
-            encoder = null;
-            return false;
-        }
-
-        foreach (var dynamicEncoder in this.dynamicTypeEncoders)
-        {
-            if (dynamicEncoder.TryEncode(canonicalType, value, out var bytes))
-            {
-                encoder = _ => bytes;
-                return true;
-            }
-        }
-
-        throw new NotImplementedException(
-            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
-    }
-
     //
 
-    private Slots BytesToSlots(byte[] bytes)
+    private SlotCollection BytesToSlots(byte[] bytes)
     {
         bool hasRemainingBytes = bytes.Length % 32 != 0;
 
         Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");
 
-        var slots = new Slots(capacity: bytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
+        var slots = new SlotCollection(capacity: bytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
 
         for (int i = 0; i < bytes.Length; i += 32)
         {
@@ -403,7 +304,7 @@ public class AbiEncoder : IAbiEncoder
                 // create and add the pointer slot, which means wrapping the length slot
                 // in a slots object so we can point to it
 
-                var slots = new Slots(capacity: 1)
+                var slots = new SlotCollection(capacity: 1)
                 {
                     reserved.LengthSlot
                 };
@@ -463,5 +364,87 @@ public class AbiEncoder : IAbiEncoder
         }
 
         return slotCount;
+    }
+
+    private bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder)
+    {
+        if (value == null)
+        {
+            encoder = _ => new Slot(new byte[32]); // null value is encoded as a 32-byte zero value
+            return true;
+        }
+
+        // get the canonical type
+
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
+        {
+            encoder = null;
+            return false;
+        }
+
+        foreach (var staticEncoder in this.staticTypeEncoders)
+        {
+            if (staticEncoder.TryEncode(canonicalType, value, out var bytes))
+            {
+                encoder = _ => new Slot(bytes);
+                return true;
+            }
+        }
+
+        throw new NotImplementedException(
+            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
+    }
+
+    private bool TryFindDynamicBytesEncoder(string abiType, object value, out Func<object, byte[]>? encoder)
+    {
+        if (value == null)
+        {
+            encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
+            return true;
+        }
+
+        // get the canonical type
+
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
+        {
+            encoder = null;
+            return false;
+        }
+
+        foreach (var dynamicEncoder in this.dynamicTypeEncoders)
+        {
+            if (dynamicEncoder.TryEncode(canonicalType, value, out var bytes))
+            {
+                encoder = _ => bytes;
+                return true;
+            }
+        }
+
+        throw new NotImplementedException(
+            $"Encoding for type {canonicalType} and value of type {value.GetType()} not implemented");
+    }
+
+    private int ComputeStaticSlotCount(string abiType)
+    {
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
+        {
+            throw new ArgumentException($"Invalid type: {abiType}");
+        }
+
+        // dynamic types always take exactly one slot (for the pointer)
+
+        if (AbiTypes.IsDynamicType(canonicalType))
+        {
+            return 1;
+        }
+
+        if (AbiTypes.IsArray(canonicalType))
+        {
+            return ComputeArrayStaticSlotCount(canonicalType);
+        }
+
+        // simple types always take one slot
+
+        return 1;
     }
 }

@@ -1,13 +1,16 @@
 using System;
+using System.Linq;
+using Evoq.Blockchain;
+using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
 /// <summary>
 /// Represents a 32-byte slot in the ABI encoding.
 /// </summary>
-public class Slot : IEquatable<Slot>
+public class Slot
 {
-    private readonly byte[] data;
+    private byte[] data;
 
     /// <summary>
     /// The size of a slot in bytes.
@@ -30,12 +33,17 @@ public class Slot : IEquatable<Slot>
     /// <param name="data">The 32-byte data.</param>
     /// <param name="pointsToFirst">The slot that this slot points to.</param>
     /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
-    public Slot(byte[] data, Slots? pointsToFirst = null)
+    public Slot(byte[] data, SlotCollection? pointsToFirst = null)
     {
         if (data == null)
+        {
             throw new ArgumentNullException(nameof(data));
+        }
+
         if (data.Length != Size)
+        {
             throw new ArgumentException($"Slot data must be exactly {Size} bytes", nameof(data));
+        }
 
         this.data = data;
         this.PointsTo = pointsToFirst;
@@ -45,7 +53,7 @@ public class Slot : IEquatable<Slot>
     /// Creates a new slot that points to the given slots.
     /// </summary>
     /// <param name="pointsToFirst">The slots that this slot points to (will point to the first slot).</param>
-    public Slot(Slots pointsToFirst)
+    public Slot(SlotCollection pointsToFirst)
     {
         this.data = new byte[Size];
         this.PointsTo = pointsToFirst;
@@ -56,7 +64,19 @@ public class Slot : IEquatable<Slot>
     /// <summary>
     /// The slot that this slot points to.
     /// </summary>
-    public Slots? PointsTo { get; internal set; }
+    public SlotCollection? PointsTo { get; private set; }
+
+    /// <summary>
+    /// Whether the slot is a pointer.
+    /// </summary>
+    public bool IsPointer => this.PointsTo != null;
+
+    /// <summary>
+    /// The offset of the slot.
+    /// </summary>
+    public int Offset { get; private set; } = -1;
+
+    //
 
     /// <summary>
     /// Gets the slot data.
@@ -66,55 +86,48 @@ public class Slot : IEquatable<Slot>
     //
 
     /// <summary>
-    /// Returns true if the two slots are equal.
+    /// Returns a string representation of the slot.
     /// </summary>
-    /// <param name="other">The other slot.</param>
-    /// <returns>True if the two slots are equal.</returns>
-    public bool Equals(Slot other)
+    /// <returns>A string representation of the slot.</returns>
+    public Hex ToHex()
     {
-        return this.data.AsSpan().SequenceEqual(other.data);
-    }
-
-    /// <summary>
-    /// Returns true if the slot is equal to the object.
-    /// </summary>
-    /// <param name="obj">The object.</param>
-    /// <returns>True if the slot is equal to the object.</returns> 
-    public override bool Equals(object? obj)
-    {
-        return obj is Slot slot && Equals(slot);
-    }
-
-    /// <summary>
-    /// Returns the hash code of the slot.
-    /// </summary>
-    /// <returns>The hash code of the slot.</returns>
-    public override int GetHashCode()
-    {
-        return this.data.AsSpan().GetHashCode();
+        return new Hex(this.data);
     }
 
     //
 
     /// <summary>
-    /// Returns true if the two slots are equal.
+    /// Returns a string representation of the slot.
     /// </summary>
-    /// <param name="left">The left slot.</param>
-    /// <param name="right">The right slot.</param>
-    /// <returns>True if the two slots are equal.</returns>
-    public static bool operator ==(Slot left, Slot right)
+    /// <returns>A string representation of the slot.</returns>
+    public override string ToString()
     {
-        return left.Equals(right);
+        return this.ToHex().ToString();
+    }
+
+    //
+
+    /// <summary>
+    /// Sets the offset of the slot within its slot space.
+    /// </summary>
+    /// <remarks>
+    /// The offset is the byte index of this slot in memory.
+    /// </remarks>
+    /// <param name="offset">The offset of the slot.</param>
+    internal void SetOffset(int offset)
+    {
+        this.Offset = offset;
     }
 
     /// <summary>
-    /// Returns true if the two slots are not equal.
+    /// Encodes the offset that this slot points to into the slot data.
     /// </summary>
-    /// <param name="left">The left slot.</param>
-    /// <param name="right">The right slot.</param>
-    /// <returns>True if the two slots are not equal.</returns>
-    public static bool operator !=(Slot left, Slot right)
+    internal void EncodePointer()
     {
-        return !left.Equals(right);
+        if (this.PointsTo != null && this.PointsTo.First() != null && this.PointsTo.First().Offset >= 0)
+        {
+            var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().Offset);
+            this.data = offset;
+        }
     }
 }
