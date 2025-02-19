@@ -280,4 +280,18 @@ public class SlotSpace
             }
         }
     }
+
+    /// <summary>
+    /// Gets the first slot of the slot space.
+    /// </summary>
+    /// <returns>The first slot of the slot space.</returns>
+    internal SlotCollection GetFirstSlotCollection()
+    {
+        if (this.slotCollections.Count == 0)
+        {
+            throw new InvalidOperationException("Slot space is empty");
+        }
+
+        return this.slotCollections.First();
+    }
 }

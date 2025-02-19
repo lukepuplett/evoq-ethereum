@@ -148,7 +148,7 @@ public class AbiTypeValidator : IAbiValueCompatible
 
         // handle dynamic types string or bytes
 
-        if (AbiTypes.IsDynamicType(canonicalType))
+        if (AbiTypes.IsDynamic(canonicalType))
         {
             if (tryEncoding)
             {

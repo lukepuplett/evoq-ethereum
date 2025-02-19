@@ -32,4 +32,18 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
     public SlotCollection(Slot slot) : base(new List<Slot> { slot })
     {
     }
+
+    //
+
+    /// <summary>
+    /// Adds a range of slots to the collection.
+    /// </summary>
+    /// <param name="slots">The slots to add.</param>
+    public void AddRange(IEnumerable<Slot> slots)
+    {
+        foreach (var slot in slots)
+        {
+            this.Add(slot);
+        }
+    }
 }

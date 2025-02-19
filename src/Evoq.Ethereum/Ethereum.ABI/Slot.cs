@@ -31,9 +31,30 @@ public class Slot
     /// Creates a new slot with the given data.
     /// </summary>
     /// <param name="data">The 32-byte data.</param>
-    /// <param name="pointsToFirst">The slot that this slot points to.</param>
     /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
-    public Slot(byte[] data, SlotCollection? pointsToFirst = null)
+    public Slot(byte[] data)
+    {
+        if (data == null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+
+        if (data.Length != Size)
+        {
+            throw new ArgumentException($"Slot data must be exactly {Size} bytes", nameof(data));
+        }
+
+        this.data = data;
+    }
+
+    /// <summary>
+    /// Creates a new slot with the given data.
+    /// </summary>
+    /// <param name="data">The 32-byte data.</param>
+    /// <param name="pointsToFirst">The slot collection that this slot points to.</param>
+    /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
+    [Obsolete]
+    public Slot(byte[] data, SlotCollection? pointsToFirst)
     {
         if (data == null)
         {
@@ -57,6 +78,16 @@ public class Slot
     {
         this.data = new byte[Size];
         this.PointsTo = pointsToFirst;
+    }
+
+    /// <summary>
+    /// Creates a new slot with the given data.
+    /// </summary>
+    /// <param name="pointsToFirst">The slot space that this slot points to.</param>
+    public Slot(SlotSpace pointsToFirst)
+    {
+        this.data = new byte[Size];
+        this.PointsTo = pointsToFirst.GetFirstSlotCollection();
     }
 
     //
@@ -124,7 +155,7 @@ public class Slot
     /// </summary>
     internal void EncodePointer()
     {
-        if (this.PointsTo != null && this.PointsTo.First() != null && this.PointsTo.First().Offset >= 0)
+        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
         {
             var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().Offset);
             this.data = offset;

@@ -8,7 +8,7 @@ using Evoq.Ethereum.ABI.TypeEncoders;
 namespace Evoq.Ethereum.ABI;
 
 /// <summary>
-/// Represents a param of parameters for a function or the components of a param.
+/// Represents a parameter of a function or the components of a parameter.
 /// </summary>
 public record struct EvmParam()
 {
@@ -32,7 +32,16 @@ public record struct EvmParam()
             throw new ArgumentException("Type must be a single type. Its array lengths must be specified as a separate parameter.", nameof(abiType));
         }
 
-        if (components != null)
+        if (components == null) // single type
+        {
+            this.AbiType = GetCanonicalType(abiType, arrayLengths);
+
+            if (!AbiTypes.IsValidType(this.AbiType))
+            {
+                throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
+            }
+        }
+        else
         {
             var canonicalType = GetCanonicalType(components, arrayLengths);
 
@@ -45,20 +54,16 @@ public record struct EvmParam()
 
             this.AbiType = canonicalType;
         }
-        else
-        {
-            this.AbiType = GetCanonicalType(abiType, arrayLengths);
-
-            if (!AbiTypes.IsValidType(this.AbiType))
-            {
-                throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
-            }
-        }
 
         this.Position = position;
         this.Name = name;
         this.ArrayLengths = arrayLengths;
         this.Components = components;
+
+        // the ABI spec says that if a single component value is dynamic then the whole param is dynamic
+
+        this.IsSingle = components == null || components.Count == 0;
+        this.IsDynamic = AbiTypes.IsDynamic(this.AbiType) || (!this.IsSingle && components!.Any(c => AbiTypes.IsDynamic(c.AbiType)));
     }
 
     /// <summary>
@@ -93,7 +98,12 @@ public record struct EvmParam()
     /// <summary>
     /// Whether the param is a single value.
     /// </summary>
-    public bool IsSingle => Components == null || Components.Count == 0;
+    public bool IsSingle { get; init; }
+
+    /// <summary>
+    /// Whether the param is a dynamic type.
+    /// </summary>
+    public bool IsDynamic { get; init; }
 
     /// <summary>
     /// The ordinal of the param.
@@ -192,7 +202,8 @@ public record struct EvmParam()
     /// <param name="includeSpaces">Whether to include spaces between the components.</param>
     /// <returns>The canonical type of the parameters.</returns>
     public static string GetCanonicalType(
-        IReadOnlyList<EvmParam> parameters, IReadOnlyList<int>? arrayLengths = null, bool includeNames = false, bool includeSpaces = false)
+        IReadOnlyList<EvmParam> parameters, IReadOnlyList<int>? arrayLengths = null,
+        bool includeNames = false, bool includeSpaces = false)
     {
         if (parameters.Count == 0)
         {

@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -10,19 +8,36 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiEncodingResult
 {
-    private readonly SlotSpace staticData;
+    private readonly SlotSpace staticData = new();
     private readonly SlotSpace dynamicData = new();
-    private readonly int staticSlotCount;
 
     //
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
-    /// <param name="staticSlotCount">The number of static slots.</param>
-    public AbiEncodingResult(int staticSlotCount)
+    /// <param name="head">The head.</param>
+    public AbiEncodingResult(SlotSpace head)
     {
-        this.staticSlotCount = staticSlotCount;
+        this.staticData = head;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
+    /// </summary>
+    /// <param name="staticSlots">The static slots.</param>
+    public AbiEncodingResult(SlotCollection staticSlots)
+    {
+        this.staticData = new SlotSpace(staticSlots);
+    }
+
+    // classic v0 constructor
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
+    /// </summary>
+    public AbiEncodingResult(int _ = 0) // TODO: remove this
+    {
         this.staticData = new SlotSpace();
     }
 
@@ -40,33 +55,17 @@ public class AbiEncodingResult
     /// </summary>
     public SlotSpace DynamicData => dynamicData;
 
-    /// <summary>
-    /// The slot index of the last dynamic slot.
-    /// </summary>
-    public int CurrentDynamicSlotIndex => staticSlotCount + dynamicData.Count();
-
-    /// <summary>
-    /// The dynamic offset which is the byte index of the next dynamic slot.
-    /// </summary>
-    public int CurrentDynamicOffset => this.CurrentDynamicSlotIndex * Slot.Size;
-
-    // ^ the end of the first slot is index 31, so the next dynamic slot is index 32
-    // ^ 1 static slots with 0 dynamic slots should have a current dynamic offset of 31 + 1 (32 bytes ~ 1 slot)
-    // ^ 2 static slots with 0 dynamic slots should have a current dynamic offset of 63 + 1 (64 bytes ~ 2 slots)
-    // ^ 1 static slot with 1 dynamic slot should have a current dynamic offset of 31 + 32 + 1 (64 bytes ~ 2 slots)
-    // ^ 1 static slot with 2 dynamic slots should have a current dynamic offset of 31 + 64 + 1 (96 bytes ~ 3 slots)
-
     //
 
     /// <summary>
     /// Gets the slots of the slot space.
     /// </summary>
     /// <returns>The slots of the slot space.</returns>
-    public IEnumerable<Slot> GetSlots()
+    public ISet<Slot> GetSlots()
     {
         this.SetOffsets();
 
-        return this.GetSlotsInternal();
+        return this.GetSlotsInternal().ToHashSet();
     }
 
     /// <summary>
@@ -75,42 +74,9 @@ public class AbiEncodingResult
     /// <returns>The combined static and dynamic data as a byte array.</returns>
     public byte[] GetBytes()
     {
-        if (this.staticData.Count() != this.staticSlotCount)
-        {
-            throw new InvalidOperationException($"Expected {this.staticSlotCount} static slots but got {this.staticData.Count()}");
-        }
-
         this.SetOffsets();
 
         return this.staticData.GetBytes().Concat(this.dynamicData.GetBytes()).ToArray();
-    }
-
-    //
-
-    /// <summary>
-    /// Adds static data.
-    /// </summary>
-    /// <param name="slot">The data to add.</param>
-    /// <returns>The slot index of the added data.</returns>
-    public void AppendStatic(Slot slot)
-    {
-        if (this.staticData.Count() >= this.staticSlotCount)
-            throw new InvalidOperationException($"Cannot add more than {this.staticSlotCount} static slots");
-
-        this.staticData.Append(slot);
-    }
-
-    /// <summary>
-    /// Adds dynamic data and adds an offset slot to the added static section.
-    /// </summary>
-    /// <param name="slots">The array of 32-byte slots to add, each must be 32 bytes.</param>
-    /// <returns>The slot index of the added data.</returns>
-    public void AppendDynamic(SlotCollection slots)
-    {
-        var pointerSlot = new Slot(UintTypeEncoder.EncodeUint(256, this.CurrentDynamicOffset), pointsToFirst: slots);
-        this.AppendStatic(pointerSlot);
-
-        this.dynamicData.Append(slots);
     }
 
     //

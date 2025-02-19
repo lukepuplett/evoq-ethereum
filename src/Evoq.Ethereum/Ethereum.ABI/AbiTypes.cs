@@ -59,17 +59,25 @@ public static class AbiTypes
     public static bool IsValidType(string type)
     {
         if (string.IsNullOrWhiteSpace(type))
+        {
             return false;
+        }
 
-        // Handle array types first
-        if (type.Contains('['))
+        if (IsArray(type))
+        {
             return IsValidArrayType(type);
+        }
+
+        if (IsTuple(type))
+        {
+            return EvmParameters.Parse(type).All(p => IsValidType(p.ToString()));
+        }
 
         return IsValidBaseType(type);
     }
 
     /// <summary>
-    /// Gets the canonical representation of a type.
+    /// Gets the canonical representation of a type, e.g. uint[3] -> uint256[3] or uint -> uint256.
     /// </summary>
     /// <param name="type">The type to normalize.</param>
     /// <param name="canonicalType">The canonical type string if successful.</param>
@@ -77,24 +85,38 @@ public static class AbiTypes
     public static bool TryGetCanonicalType(string type, out string? canonicalType)
     {
         canonicalType = null;
-        if (!IsValidType(type))
-            return false;
 
-        // Handle array types
+        if (!IsValidType(type))
+        {
+            return false;
+        }
+
         if (IsArray(type))
         {
             if (!TryGetArrayBaseType(type, out var baseType) || baseType == null)
+            {
                 return false;
+            }
+
+            if (!TryGetCanonicalBaseType(baseType, out var canonicalBase) || canonicalBase == null)
+            {
+                return false;
+            }
+
+            if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+            {
+                return false;
+            }
 
             var arrayPart = type[type.IndexOf('[')..];
 
-            if (!TryGetCanonicalBaseType(baseType, out var canonicalBase) || canonicalBase == null)
-                return false;
-
-            if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
-                return false;
-
             canonicalType = canonicalBase + arrayPart;
+
+            return true;
+        }
+        else if (IsTuple(type))
+        {
+            canonicalType = EvmParameters.Parse(type).GetCanonicalType(includeNames: false, includeSpaces: false);
 
             return true;
         }
@@ -110,16 +132,16 @@ public static class AbiTypes
     public static bool IsValidBaseType(string type)
     {
         if (BasicTypes.Contains(type))
+        {
             return true;
+        }
 
-        // Handle uint/int sizes
         if (type.StartsWith("uint", StringComparison.OrdinalIgnoreCase) ||
             type.StartsWith("int", StringComparison.OrdinalIgnoreCase))
         {
             return IsValidIntegerType(type);
         }
 
-        // Handle bytesN
         if (type.StartsWith("bytes", StringComparison.OrdinalIgnoreCase) && type.Length > 5)
         {
             return IsValidBytesType(type);
@@ -137,23 +159,49 @@ public static class AbiTypes
     }
 
     /// <summary>
+    /// Checks if the type is a tuple type.
+    /// </summary>
+    public static bool IsTuple(string type)
+    {
+        return type.Trim().StartsWith('(') && type.Trim().EndsWith(')');
+    }
+
+    /// <summary>
     /// Checks if the type is a dynamic array (ends with "[]").
     /// </summary>
     public static bool IsDynamicArray(string type)
     {
-        return TryGetArrayDimensions(type, out var dimensions) &&
-               dimensions != null &&
-               dimensions[0] == -1; // -1 represents dynamic size []
+        if (IsArray(type))
+        {
+            if (!TryGetArrayBaseType(type, out var baseType) || baseType == null)
+            {
+                throw new InvalidOperationException($"Invalid array type: {type}");
+            }
+
+            if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+            {
+                throw new InvalidOperationException($"Invalid array type: {type}");
+            }
+
+            return IsDynamic(baseType) || dimensions.Any(d => d == -1);
+        }
+
+        return false;
     }
 
     /// <summary>
-    /// Determines if a type is dynamic string, bytes or array.
+    /// Determines if a type is dynamic string, bytes or a dynamic array.
     /// </summary>
-    public static bool IsDynamicType(string type)
+    public static bool IsDynamic(string type)
     {
         if (type == AbiTypeNames.String || type == AbiTypeNames.Bytes)
         {
             return true;
+        }
+
+        if (IsTuple(type))
+        {
+            return EvmParameters.Parse(type).Any(p => IsDynamic(p.ToString()));
         }
 
         return IsDynamicArray(type);
@@ -201,7 +249,7 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Gets the array dimensions from a type (e.g., [-1] or [2,3] from "uint256[][3]").
+    /// Gets the array dimensions from a type e.g. uint256[][3] -> [-1, 3]
     /// </summary>
     /// <param name="type">The type to get dimensions from.</param>
     /// <param name="dimensions">The array dimensions if successful. -1 represents dynamic size [].</param>

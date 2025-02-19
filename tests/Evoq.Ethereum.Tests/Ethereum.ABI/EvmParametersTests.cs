@@ -370,4 +370,56 @@ public class EvmParametersTests
         Assert.AreEqual("items", parameters[0].Name, "Parameter should have name 'items'");
         Assert.AreEqual(parameterString, result, "Should format tuple array correctly");
     }
+
+    [TestMethod]
+    public void GetCanonicalType_WithSingleString_ReturnsCorrectFormat()
+    {
+        var parameterString = "(string)";
+        var parameters = EvmParameters.Parse(parameterString);
+
+        var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
+        var resultWithNames = parameters.GetCanonicalType(includeNames: true);
+
+        Assert.AreEqual("(string)", resultWithoutNames, "Should format single parameter without names correctly");
+        Assert.AreEqual("(string)", resultWithNames, "Should format single parameter with names correctly");
+    }
+
+    [TestMethod]
+    public void GetCanonicalType_WithNamedParams_ReturnsCorrectFormat()
+    {
+        var parameterString = "(string name, uint256 value)";
+        var parameters = EvmParameters.Parse(parameterString);
+
+        var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
+        var resultWithNames = parameters.GetCanonicalType(includeNames: true);
+
+        Assert.AreEqual("(string,uint256)", resultWithoutNames, "Should format parameters without names correctly");
+        Assert.AreEqual("(string name,uint256 value)", resultWithNames, "Should format parameters with names correctly");
+    }
+
+    [TestMethod]
+    public void GetCanonicalType_WithNestedTuple_ReturnsCorrectFormat()
+    {
+        var parameterString = "(string name, (uint256 value, bool valid) ticket)";
+        var parameters = EvmParameters.Parse(parameterString);
+
+        var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
+        var resultWithNames = parameters.GetCanonicalType(includeNames: true);
+
+        Assert.AreEqual("(string,(uint256,bool))", resultWithoutNames, "Should format nested tuple without names correctly");
+        Assert.AreEqual("(string name,(uint256 value,bool valid) ticket)", resultWithNames, "Should format nested tuple with names correctly");
+    }
+
+    [TestMethod]
+    public void GetCanonicalType_WithTupleArray_ReturnsCorrectFormat()
+    {
+        var parameterString = "((uint256 value, bool valid)[] items)";
+        var parameters = EvmParameters.Parse(parameterString);
+
+        var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
+        var resultWithNames = parameters.GetCanonicalType(includeNames: true);
+
+        Assert.AreEqual("((uint256,bool)[])", resultWithoutNames, "Should format tuple array without names correctly");
+        Assert.AreEqual("((uint256 value,bool valid)[] items)", resultWithNames, "Should format tuple array with names correctly");
+    }
 }

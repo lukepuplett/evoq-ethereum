@@ -111,46 +111,6 @@ public class EvmParamTests
     }
 
     [TestMethod]
-    public void ToString_WithBasicType_ReturnsTypeOnly()
-    {
-        var param = new EvmParam(0, "", "uint256");
-        Assert.AreEqual("uint256", param.ToString(), "Should return type only when no name is present");
-    }
-
-    [TestMethod]
-    public void ToString_WithNamedBasicType_ReturnsTypeAndName()
-    {
-        var param = new EvmParam(0, "amount", "uint256");
-        Assert.AreEqual("uint256 amount", param.ToString(), "Should return type and name when name is present");
-    }
-
-    [TestMethod]
-    public void ToString_WithUnnamedTuple_ReturnsTupleType()
-    {
-        var components = new List<EvmParam>
-        {
-            new(0, "", "bool"),
-            new(1, "", "address")
-        };
-
-        var param = new EvmParam(0, "", components);
-        Assert.AreEqual("(bool, address)", param.ToString(), "Should return tuple type when no names are present");
-    }
-
-    [TestMethod]
-    public void ToString_WithNamedTuple_ReturnsTupleTypeAndName()
-    {
-        var components = new List<EvmParam>
-        {
-            new(0, "valid", "bool"),
-            new(1, "owner", "address")
-        };
-
-        var param = new EvmParam(0, "details", components);
-        Assert.AreEqual("(bool valid, address owner) details", param.ToString(), "Should return tuple type with component names and tuple name");
-    }
-
-    [TestMethod]
     [DataRow("uint")]        // Valid - defaults to uint256
     [DataRow("uint256")]     // Valid
     [DataRow("address")]     // Valid
@@ -216,6 +176,46 @@ public class EvmParamTests
             new EvmParam(0, "param", "uint257", arrayLengths));
 
         StringAssert.Contains(ex.Message, "Invalid Solidity");
+    }
+
+    [TestMethod]
+    public void ToString_WithBasicType_ReturnsTypeOnly()
+    {
+        var param = new EvmParam(0, "", "uint256");
+        Assert.AreEqual("uint256", param.ToString(), "Should return type only when no name is present");
+    }
+
+    [TestMethod]
+    public void ToString_WithNamedBasicType_ReturnsTypeAndName()
+    {
+        var param = new EvmParam(0, "amount", "uint256");
+        Assert.AreEqual("uint256 amount", param.ToString(), "Should return type and name when name is present");
+    }
+
+    [TestMethod]
+    public void ToString_WithUnnamedTuple_ReturnsTupleType()
+    {
+        var components = new List<EvmParam>
+        {
+            new(0, "", "bool"),
+            new(1, "", "address")
+        };
+
+        var param = new EvmParam(0, "", components);
+        Assert.AreEqual("(bool, address)", param.ToString(), "Should return tuple type when no names are present");
+    }
+
+    [TestMethod]
+    public void ToString_WithNamedTuple_ReturnsTupleTypeAndName()
+    {
+        var components = new List<EvmParam>
+        {
+            new(0, "valid", "bool"),
+            new(1, "owner", "address")
+        };
+
+        var param = new EvmParam(0, "details", components);
+        Assert.AreEqual("(bool valid, address owner) details", param.ToString(), "Should return tuple type with component names and tuple name");
     }
 
     [TestMethod]
@@ -318,5 +318,122 @@ public class EvmParamTests
         var sig = FunctionSignature.Parse("process(((bool active, uint256 balance) account, (string name, uint8 age) profile) user, bool valid, uint256 amount)");
         var count = sig.Parameters.DeepCount();
         Assert.AreEqual(6, count, $"Should return 6 parameters; {sig.Parameters.GetCanonicalType()}");
+    }
+
+    [TestMethod]
+    [DataRow("string", true)]                // Basic dynamic type
+    [DataRow("bytes", true)]                 // Basic dynamic type
+    [DataRow("uint256", false)]             // Basic static type
+    [DataRow("bool", false)]                // Basic static type
+    [DataRow("address", false)]             // Basic static type
+    [DataRow("bytes32", false)]             // Fixed bytes (static)
+    public void IsDynamic_BasicTypes_ReturnsExpectedResult(string type, bool expectedDynamic)
+    {
+        var param = new EvmParam(0, "", type);
+        Assert.AreEqual(expectedDynamic, param.IsDynamic);
+    }
+
+    [TestMethod]
+    [DataRow("uint256[]", true)]            // Dynamic array
+    [DataRow("bool[2]", false)]             // Fixed array of static type
+    [DataRow("string[2]", true)]            // Fixed array of dynamic type
+    [DataRow("bytes32[][]", true)]          // Nested dynamic array
+    [DataRow("address[2][3]", false)]       // Fixed nested array
+    public void IsDynamic_ArrayTypes_ReturnsExpectedResult(string type, bool expectedDynamic)
+    {
+        var param = new EvmParam(0, "", type);
+        Assert.AreEqual(expectedDynamic, param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_TupleWithAllStaticComponents_ReturnsFalse()
+    {
+        var components = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "flag", "bool"),
+            new EvmParam(2, "addr", "address")
+        };
+        var param = new EvmParam(0, "tuple", components);
+
+        Assert.IsFalse(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_TupleWithDynamicComponent_ReturnsTrue()
+    {
+        var components = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "name", "string"),  // Dynamic component
+            new EvmParam(2, "flag", "bool")
+        };
+        var param = new EvmParam(0, "tuple", components);
+
+        Assert.IsTrue(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_NestedTupleWithAllStaticComponents_ReturnsFalse()
+    {
+        var innerComponents = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "flag", "bool")
+        };
+        var outerComponents = new List<EvmParam>
+        {
+            new EvmParam(0, "data", innerComponents),
+            new EvmParam(1, "addr", "address")
+        };
+        var param = new EvmParam(0, "nested", outerComponents);
+
+        Assert.IsFalse(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_NestedTupleWithDynamicComponent_ReturnsTrue()
+    {
+        var innerComponents = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "name", "string")  // Dynamic component
+        };
+        var outerComponents = new List<EvmParam>
+        {
+            new EvmParam(0, "data", innerComponents),
+            new EvmParam(1, "addr", "address")
+        };
+        var param = new EvmParam(0, "nested", outerComponents);
+
+        Assert.IsTrue(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_TupleWithDynamicArrayComponent_ReturnsTrue()
+    {
+        var components = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "array", "uint256[]"),  // Dynamic array
+            new EvmParam(2, "flag", "bool")
+        };
+        var param = new EvmParam(0, "tuple", components);
+
+        Assert.IsTrue(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_TupleWithFixedArrayOfDynamicType_ReturnsTrue()
+    {
+        var components = new List<EvmParam>
+        {
+            new EvmParam(0, "value", "uint256"),
+            new EvmParam(1, "names", "string[2]"),  // Fixed array of dynamic type
+            new EvmParam(2, "flag", "bool")
+        };
+        var param = new EvmParam(0, "tuple", components);
+
+        Assert.IsTrue(param.IsDynamic);
     }
 }

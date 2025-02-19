@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -53,10 +54,44 @@ public class AbiEncoder : IAbiEncoder
     /// <summary>
     /// Encodes a single parameter.
     /// </summary>
+    /// <typeparam name="T">The type of the value to encode. Must be a value type or string.</typeparam>
     /// <param name="parameters">The parameters to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded parameters.</returns>
-    public AbiEncodingResult EncodeParameters(EvmParameters parameters, object value)
+    public AbiEncodingResult EncodeParameters<T>(EvmParameters parameters, T value) where T : struct, IConvertible
+    {
+        return this.EncodeParameters(parameters, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a single string parameter.
+    /// </summary>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The string value to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public AbiEncodingResult EncodeParameters(EvmParameters parameters, string value)
+    {
+        return this.EncodeParameters(parameters, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a BigInteger parameter.
+    /// </summary>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The BigInteger value to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public AbiEncodingResult EncodeParameters(EvmParameters parameters, BigInteger value)
+    {
+        return this.EncodeParameters(parameters, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter.
+    /// </summary>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The byte array to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public AbiEncodingResult EncodeParameters(EvmParameters parameters, byte[] value)
     {
         return this.EncodeParameters(parameters, ValueTuple.Create(value));
     }
@@ -115,7 +150,7 @@ public class AbiEncoder : IAbiEncoder
 
     private void EncodeValue(string abiType, object value, SlotSpace? staticSpace, SlotSpace dynamicSpace)
     {
-        if (AbiTypes.IsDynamicType(abiType))
+        if (AbiTypes.IsDynamic(abiType))
         {
             this.EncodeDynamicValue(abiType, value, staticSpace, dynamicSpace);
         }
@@ -177,11 +212,27 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"Array length {array.Length} does not match expected length {dimensions[0]}");
         }
 
+        if (!this.TryFindStaticSlotEncoder(AbiTypeNames.IntegerTypes.Uint256, (uint)array.Length, out var lengthEncoder))
+        {
+            throw new NotImplementedException($"Cannot encode array length. Encoding for type {AbiTypeNames.IntegerTypes.Uint256} not implemented");
+        }
+
+        var slot = lengthEncoder!(array.Length);
+
+        if (staticSpace != null)
+        {
+            staticSpace.Append(slot);
+        }
+        else
+        {
+            dynamicSpace.Append(slot);
+        }
+
         // for static arrays, we encode each element in sequence, simply adding each element to the appropriate space
 
-        foreach (var element in array)
+        foreach (var v in array)
         {
-            this.EncodeStaticValue(baseType, element, staticSpace, dynamicSpace);
+            this.EncodeStaticValue(baseType, v, staticSpace, dynamicSpace);
         }
     }
 
@@ -200,11 +251,11 @@ public class AbiEncoder : IAbiEncoder
         // remove the nullable staticSpace and just always encode as per usual into
         // either space depending on whether we're encoding a static or dynamic value
 
-        bool useV1ArrayEncoding = false;
+        int ver = 2;
 
         if (AbiTypes.IsArray(canonicalType))
         {
-            // it's an array with a dynamic outer dimension
+            // it's an array with a dynamic outer dimension []
 
             if (!AbiTypes.TryRemoveOuterArrayDimension(canonicalType, out var innerType) ||
                 !AbiTypes.TryGetArrayBaseType(canonicalType, out var baseType) ||
@@ -218,7 +269,7 @@ public class AbiEncoder : IAbiEncoder
 
             var array = (Array)value;
 
-            if (useV1ArrayEncoding)
+            if (ver == 1)
             {
                 // array encoding: pointer to the encoding of the array -> length slot followed
                 // by the slots of the elements, each of which will either be the actual value
@@ -247,11 +298,20 @@ public class AbiEncoder : IAbiEncoder
                     this.EncodeValue(innerType, elementValue, null, elementSpace);
                 }
             }
-            else
+            else if (ver == 2)
             {
-                // much simpler than the v1 encoding, which probably does not work
-
                 var reserved = dynamicSpace.AppendReservedArray(array.Length);
+
+                var pointerSlot = new Slot(pointsToFirst: reserved.ElementsSpace);
+
+                if (staticSpace != null) // depends on whether we're already encoding a dynamic value
+                {
+                    staticSpace.Append(pointerSlot); // we're still in the static space
+                }
+                else
+                {
+                    dynamicSpace.Append(pointerSlot); // we're in a nested encoding of a dynamic value
+                }
 
                 // now encode the elements
 
@@ -261,6 +321,30 @@ public class AbiEncoder : IAbiEncoder
 
                     this.EncodeValue(innerType, elementValue, reserved.ElementsSpace, reserved.DynamicValuesSpace);
                 }
+            }
+            else if (ver == 3)
+            {
+                SlotCollection arraySlots = new(capacity: array.Length + 1);
+
+                arraySlots.Add(new Slot(UintTypeEncoder.EncodeUint(256, array.Length)));
+
+                for (int i = 0; i < array.Length; i++)
+                {
+                    var elementValue = array.GetValue(i);
+
+                    if (AbiTypes.IsDynamic(innerType))
+                    {
+
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Unsupported array encoding version: {ver}");
             }
         }
         else if (canonicalType == AbiTypeNames.String || canonicalType == AbiTypeNames.Bytes)
@@ -274,7 +358,7 @@ public class AbiEncoder : IAbiEncoder
 
             var paddedBytes = encoder!(value);
 
-            if (useV1ArrayEncoding)
+            if (ver == 1)
             {
                 // make slots for the length and the actual string data
 
@@ -297,7 +381,7 @@ public class AbiEncoder : IAbiEncoder
 
                 dynamicSpace.Append(this.BytesToSlots(paddedBytes));
             }
-            else
+            else if (ver == 2)
             {
                 var reserved = dynamicSpace.AppendReservedBytes(paddedBytes.Length);
 
@@ -324,10 +408,18 @@ public class AbiEncoder : IAbiEncoder
 
                 reserved.DynamicValueSpace.Append(this.BytesToSlots(paddedBytes));
             }
+            else if (ver == 3)
+            {
+                dynamicSpace.Append(this.BytesToSlots(paddedBytes));
+            }
+            else
+            {
+                throw new NotImplementedException($"Unsupported string encoding version: {ver}");
+            }
         }
         else
         {
-            throw new NotImplementedException($"Encoding for type {canonicalType} not implemented");
+            throw new NotImplementedException($"Unsupported type: {canonicalType}");
         }
     }
 
@@ -343,7 +435,8 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"Invalid array type: {abiType}");
         }
 
-        // Start with the size of the base type, which should be 1
+        // start with the size of the base type, which should be 1
+
         int slotCount = this.ComputeStaticSlotCount(baseType);
 
         Debug.Assert(slotCount == 1);
@@ -351,19 +444,21 @@ public class AbiEncoder : IAbiEncoder
         // Process dimensions from right to left
         for (int i = dimensions.Length - 1; i >= 0; i--)
         {
-            if (dimensions[i] == -1) // Dynamic dimension []
+            if (dimensions[i] == -1) // dynamic dimension []
             {
-                // Dynamic arrays only take one slot for the offset
+                // dynamic arrays only take one slot for the offset
+
                 slotCount = 1;
             }
-            else // Static dimension [N]
+            else // static dimension [N]
             {
-                // Multiply by the dimension size
+                // multiply by the dimension size
+
                 slotCount *= dimensions[i];
             }
         }
 
-        return slotCount;
+        return 1 + slotCount; // 1 for the length
     }
 
     private bool TryFindStaticSlotEncoder(string abiType, object value, out Func<object, Slot>? encoder)
@@ -433,7 +528,7 @@ public class AbiEncoder : IAbiEncoder
 
         // dynamic types always take exactly one slot (for the pointer)
 
-        if (AbiTypes.IsDynamicType(canonicalType))
+        if (AbiTypes.IsDynamic(canonicalType))
         {
             return 1;
         }

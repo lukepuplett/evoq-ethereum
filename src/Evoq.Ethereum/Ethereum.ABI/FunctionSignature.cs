@@ -124,12 +124,18 @@ public class FunctionSignature
         // Find the start of parameters
         var startIndex = input.IndexOf('(');
         if (startIndex == -1)
-            throw new ArgumentException("Invalid function signature format - missing opening parenthesis", nameof(fullSignature));
+        {
+            throw new ArgumentException(
+                "Invalid function signature format. Missing opening parenthesis", nameof(fullSignature));
+        }
 
         // Extract the function name
         var name = input[..startIndex];
         if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("Invalid function signature format - missing function name", nameof(fullSignature));
+        {
+            throw new ArgumentException(
+                "Invalid function signature format. Missing function name", nameof(fullSignature));
+        }
 
         var parameters = EvmParameters.Parse(input[startIndex..]);
 
