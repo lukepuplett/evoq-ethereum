@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -102,6 +101,17 @@ public class FunctionSignature
     //
 
     /// <summary>
+    /// Returns the canonical signature string.
+    /// </summary>
+    /// <returns>The canonical signature.</returns>
+    public override string ToString()
+    {
+        return GetCanonicalSignature();
+    }
+
+    //
+
+    /// <summary>
     /// Creates a function signature from a full signature string.
     /// </summary>
     /// <param name="fullSignature">The full function signature in one of these formats:
@@ -141,6 +151,8 @@ public class FunctionSignature
 
         return new FunctionSignature(name, parameters);
     }
+
+    //
 
     private static string NormalizeParameterType(string paramType)
     {

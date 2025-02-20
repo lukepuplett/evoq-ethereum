@@ -9,7 +9,7 @@ public class EvmParamTests
 
     public EvmParamTests()
     {
-        this.validator = new AbiEncoder().Validator;
+        this.validator = new AbiEncoderV2().Validator;
     }
 
     [TestMethod]
@@ -73,10 +73,8 @@ public class EvmParamTests
     [TestMethod]
     public void Constructor_WithEmptyComponents_CreatesEmptyList()
     {
-        var param = new EvmParam(0, "amount", new List<EvmParam>());
-        Assert.IsNotNull(param.Components, "Components should not be null when passed empty list");
-        Assert.AreEqual(0, param.Components!.Count, "Components should be empty when passed empty list");
-        Assert.AreEqual("()", param.AbiType, "Type should be empty tuple");
+        Assert.ThrowsException<ArgumentException>(() =>
+            new EvmParam(0, "amount", new List<EvmParam>()));
     }
 
     [TestMethod]
@@ -137,19 +135,6 @@ public class EvmParamTests
             new EvmParam(0, "param", type));
 
         StringAssert.Contains(ex.Message, "Invalid Solidity");
-    }
-
-    [TestMethod]
-    [DataRow("uint256[]")]       // Should be passed as arrayLengths
-    [DataRow("address[5]")]      // Should be passed as arrayLengths
-    [DataRow("bool[][5]")]       // Should be passed as arrayLengths
-    public void Constructor_WithArrayInType_ThrowsArgumentException(string type)
-    {
-        // Act & Assert
-        var ex = Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "param", type));
-
-        StringAssert.Contains(ex.Message, "must be a single type");
     }
 
     [TestMethod]
@@ -407,6 +392,32 @@ public class EvmParamTests
         var param = new EvmParam(0, "nested", outerComponents);
 
         Assert.IsTrue(param.IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_VeryNestedTupleWithDynamicComponent_ReturnsTrue()
+    {
+        var parameters = EvmParameters.Parse("(((uint8 age, (string first, string last) name) profile, uint256 id, bool active) user)");
+
+        Assert.IsTrue(parameters.First().IsDynamic);
+    }
+
+    [TestMethod]
+    public void IsDynamic_DisjointedNestedTuple_ReturnsTrue()
+    {
+        // "disjointed" because the tuple within the tuple is via an array
+
+        // logs is a tuple with two components, entries and count
+        // entries is an array of tuples with two components, eventId and eventType
+        // count is a uint256
+
+        var parameters = EvmParameters.Parse("(((uint256 eventId, uint8 eventType)[] entries, uint256 count) logs)");
+
+        Assert.AreEqual("logs", parameters.First().Name);
+        Assert.IsNotNull(parameters.First().Components);
+        Assert.IsFalse(parameters.First().IsArray);                         // logs is not an array
+        Assert.AreEqual("entries", parameters.First().Components!.First().Name); // entries is the first component
+        Assert.IsTrue(parameters.First().Components!.First().IsArray);           // entries is an array
     }
 
     [TestMethod]

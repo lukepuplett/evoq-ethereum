@@ -15,7 +15,7 @@ public record struct EvmParam()
     /// <summary>
     /// Initializes a new instance of the <see cref="EvmParam"/> struct.
     /// </summary>
-    /// <param name="position">The ordinal of the param.</param>
+    /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
     /// <param name="abiType">The type of the param.</param>
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
@@ -27,9 +27,24 @@ public record struct EvmParam()
         IReadOnlyList<EvmParam>? components = null)
         : this()
     {
-        if (abiType != null && (abiType.Contains("[") || abiType.Contains("]")))
+        if (abiType != null && abiType.Trim().EndsWith("]"))
         {
-            throw new ArgumentException("Type must be a single type. Its array lengths must be specified as a separate parameter.", nameof(abiType));
+            if (arrayLengths != null && arrayLengths.Count > 0)
+            {
+                throw new ArgumentException(
+                    "Type must be a single type when array lengths are specified.",
+                     nameof(abiType));
+            }
+            else
+            {
+                if (!AbiTypes.TryGetArrayDimensions(abiType, out var dimensions))
+                {
+                    throw new ArgumentException($"Invalid array type: {abiType}", nameof(abiType));
+                }
+
+                abiType = abiType.Substring(0, abiType.IndexOf('['));
+                arrayLengths = dimensions;
+            }
         }
 
         if (components == null) // single type
@@ -41,9 +56,14 @@ public record struct EvmParam()
                 throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
             }
         }
-        else
+        else // tuple
         {
-            var canonicalType = GetCanonicalType(components, arrayLengths);
+            if (components.Count == 0)
+            {
+                throw new ArgumentException("Tuple must have at least one component.", nameof(components));
+            }
+
+            var canonicalType = GetCanonicalType(components, arrayLengths); // e.g. "(uint256,uint256)[2]"
 
             if (!string.IsNullOrEmpty(abiType) && canonicalType != abiType)
             {
@@ -59,17 +79,18 @@ public record struct EvmParam()
         this.Name = name;
         this.ArrayLengths = arrayLengths;
         this.Components = components;
+        this.IsSingle = components == null || components.Count == 0;
+        this.IsArray = arrayLengths != null && arrayLengths.Count > 0;
 
         // the ABI spec says that if a single component value is dynamic then the whole param is dynamic
 
-        this.IsSingle = components == null || components.Count == 0;
-        this.IsDynamic = AbiTypes.IsDynamic(this.AbiType) || (!this.IsSingle && components!.Any(c => AbiTypes.IsDynamic(c.AbiType)));
+        this.IsDynamic = AbiTypes.IsDynamic(this.AbiType);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EvmParam"/> struct.
     /// </summary>
-    /// <param name="position">The ordinal of the param.</param>
+    /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
     /// <param name="abiType">The type of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the type is a tuple.</exception>
@@ -85,7 +106,7 @@ public record struct EvmParam()
     /// <summary>
     /// Initializes a new instance of the <see cref="EvmParam"/> struct.
     /// </summary>
-    /// <param name="position">The ordinal of the param.</param>
+    /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
     /// <param name="components">The components of the param.</param>
     public EvmParam(int position, string name, IReadOnlyList<EvmParam> components)
@@ -104,6 +125,11 @@ public record struct EvmParam()
     /// Whether the param is a dynamic type.
     /// </summary>
     public bool IsDynamic { get; init; }
+
+    /// <summary>
+    /// Whether the param is an array.
+    /// </summary>
+    public bool IsArray { get; init; }
 
     /// <summary>
     /// The ordinal of the param.

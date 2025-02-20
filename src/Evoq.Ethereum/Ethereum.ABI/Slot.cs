@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.TypeEncoders;
@@ -74,10 +75,12 @@ public class Slot
     /// Creates a new slot that points to the given slots.
     /// </summary>
     /// <param name="pointsToFirst">The slots that this slot points to (will point to the first slot).</param>
-    public Slot(SlotCollection pointsToFirst)
+    /// <param name="relativeTo">The slot space that the pointer is relative to.</param>
+    public Slot(SlotCollection pointsToFirst, SlotCollection relativeTo)
     {
         this.data = new byte[Size];
         this.PointsTo = pointsToFirst;
+        this.RelativeTo = relativeTo;
     }
 
     /// <summary>
@@ -98,14 +101,24 @@ public class Slot
     public SlotCollection? PointsTo { get; private set; }
 
     /// <summary>
+    /// The slot that this slot is relative to.
+    /// </summary>
+    public SlotCollection? RelativeTo { get; private set; }
+
+    /// <summary>
     /// Whether the slot is a pointer.
     /// </summary>
     public bool IsPointer => this.PointsTo != null;
 
     /// <summary>
-    /// The offset of the slot.
+    /// The offset of the slot within its container.
     /// </summary>
     public int Offset { get; private set; } = -1;
+
+    /// <summary>
+    /// The order of the slot within its container.
+    /// </summary>
+    public int Order { get; private set; } = -1;
 
     //
 
@@ -133,7 +146,9 @@ public class Slot
     /// <returns>A string representation of the slot.</returns>
     public override string ToString()
     {
-        return this.ToHex().ToString();
+        string pointsTo = this.PointsTo != null ? $", pointsTo: {this.PointsTo.First().Offset}" : "";
+
+        return $"{this.ToHex()} (offset: {this.Offset}, order: {this.Order}{pointsTo})";
     }
 
     //
@@ -151,6 +166,15 @@ public class Slot
     }
 
     /// <summary>
+    /// Sets the order of the slot within its container.
+    /// </summary>
+    /// <param name="order">The order of the slot.</param>
+    internal void SetOrder(int order)
+    {
+        this.Order = order;
+    }
+
+    /// <summary>
     /// Encodes the offset that this slot points to into the slot data.
     /// </summary>
     internal void EncodePointer()
@@ -158,6 +182,23 @@ public class Slot
         if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
         {
             var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().Offset);
+            this.data = offset;
+        }
+    }
+
+    /// <summary>
+    /// Encodes the offset that this slot points to into the slot data.
+    /// </summary>
+    internal void EncodePointerOffset()
+    {
+        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
+        {
+            Debug.Assert(this.RelativeTo != null, "RelativeTo is null");
+
+            int startingPosition = this.RelativeTo?.First().Order ?? 0;
+            int distance = this.PointsTo.First().Order - startingPosition;
+
+            var offset = UintTypeEncoder.EncodeUint(256, distance * Size);
             this.data = offset;
         }
     }

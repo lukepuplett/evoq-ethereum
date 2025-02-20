@@ -155,7 +155,7 @@ public static class AbiTypes
     /// </summary>
     public static bool IsArray(string type)
     {
-        return type.Contains('[');
+        return type.Trim().EndsWith(']');
     }
 
     /// <summary>
@@ -167,8 +167,13 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Checks if the type is a dynamic array (ends with "[]").
+    /// Checks if the type is a dynamic array.
     /// </summary>
+    /// <remarks>
+    /// A dynamic array is an array with a dynamic size, e.g. uint256[] or string[]
+    /// or bool[][2] because the inner array is dynamic, so it is considered a fixed
+    /// size array of two dynamic types (arrays).
+    /// </remarks>
     public static bool IsDynamicArray(string type)
     {
         if (IsArray(type))
@@ -201,7 +206,7 @@ public static class AbiTypes
 
         if (IsTuple(type))
         {
-            return EvmParameters.Parse(type).Any(p => IsDynamic(p.ToString()));
+            return EvmParameters.Parse(type).Any(p => IsDynamic(p.AbiType));
         }
 
         return IsDynamicArray(type);

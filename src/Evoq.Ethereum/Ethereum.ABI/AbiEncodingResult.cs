@@ -10,6 +10,7 @@ public class AbiEncodingResult
 {
     private readonly SlotSpace staticData = new();
     private readonly SlotSpace dynamicData = new();
+    private readonly SlotCollection final = new(capacity: 8);
 
     //
 
@@ -25,10 +26,20 @@ public class AbiEncodingResult
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
-    /// <param name="staticSlots">The static slots.</param>
-    public AbiEncodingResult(SlotCollection staticSlots)
+    /// <param name="slots">The final slots.</param>
+    /// <param name="skipFirstSlot">
+    /// Whether to skip the first slot; the encoder creates a root tuple for all the level 0 parameters.
+    /// </param>
+    public AbiEncodingResult(SlotCollection slots, bool skipFirstSlot = true)
     {
-        this.staticData = new SlotSpace(staticSlots);
+        if (skipFirstSlot)
+        {
+            this.final = new SlotCollection(slots.Skip(1).ToList());
+        }
+        else
+        {
+            this.final = slots;
+        }
     }
 
     // classic v0 constructor
@@ -63,7 +74,7 @@ public class AbiEncodingResult
     /// <returns>The slots of the slot space.</returns>
     public ISet<Slot> GetSlots()
     {
-        this.SetOffsets();
+        this.UpdateOffsetsAndEncodePointers();
 
         return this.GetSlotsInternal().ToHashSet();
     }
@@ -74,7 +85,7 @@ public class AbiEncodingResult
     /// <returns>The combined static and dynamic data as a byte array.</returns>
     public byte[] GetBytes()
     {
-        this.SetOffsets();
+        this.UpdateOffsetsAndEncodePointers();
 
         return this.staticData.GetBytes().Concat(this.dynamicData.GetBytes()).ToArray();
     }
@@ -83,6 +94,11 @@ public class AbiEncodingResult
 
     private IEnumerable<Slot> GetSlotsInternal()
     {
+        foreach (var slot in this.final)
+        {
+            yield return slot;
+        }
+
         foreach (var slot in this.staticData.GetSlots())
         {
             yield return slot;
@@ -95,18 +111,23 @@ public class AbiEncodingResult
     }
 
     /// <summary>
-    /// Sets the byte offset on every slot in the slot space where slot zero has offset zero.
+    /// Sets the byte offset on every slot.
     /// </summary>
     /// <remarks>
     /// Each slot is 32 bytes, so the second slot has offset 32, the third has offset 64, etc.
     /// This method must be called after all the slots have been appended to the slot space
     /// and the full bytes are read.
     /// </remarks>
-    private void SetOffsets()
+    private void UpdateOffsetsAndEncodePointers()
     {
         int offset = 0;
+        int order = 0;
+
         foreach (var slot in this.GetSlotsInternal())
         {
+            slot.SetOrder(order);
+            order++;
+
             slot.SetOffset(offset);
             offset += Slot.Size;
         }
@@ -115,7 +136,8 @@ public class AbiEncodingResult
 
         foreach (var slot in this.GetSlotsInternal())
         {
-            slot.EncodePointer();
+            slot.EncodePointer();           // TODO / remove
+            slot.EncodePointerOffset();
         }
     }
 }

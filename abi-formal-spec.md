@@ -102,6 +102,10 @@ contract Foo {
 }
 ```
 
+---
+
+### `bar(bytes3[2] memory)`
+
 Thus, for our Foo example, if we wanted to call bar with the argument `["abc", "def"]`, we would pass 68 bytes total, broken down into:
 
 `0xfce353f6`: the Method ID. This is derived from the signature `bar(bytes3[2])`.
@@ -115,6 +119,10 @@ In total:
 ```
 0xfce353f661626300000000000000000000000000000000000000000000000000000000006465660000000000000000000000000000000000000000000000000000000000
 ```
+
+---
+
+### `baz(uint32,bool)`
 
 If we wanted to call baz with the parameters 69 and true, we would pass 68 bytes total, which can be broken down into:
 
@@ -131,6 +139,10 @@ In total:
 ```
 
 It returns a single bool. If, for example, it were to return false, its output would be the single byte array `0x0000000000000000000000000000000000000000000000000000000000000000`, a single bool.
+
+---
+
+### `sam(bytes,bool,uint[] memory)`
 
 If we wanted to call sam with the arguments `"dave"`, `true` and `[1,2,3]`, we would pass 292 bytes total, broken down into:
 
@@ -160,7 +172,10 @@ In total:
 0xa5643bf20000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000464617665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003
 ```
 
-## Use of Dynamic Types
+
+## Use of Dynamic Types
+
+### `f(uint256,uint32[],bytes10,bytes)`
 
 A call to a function with the signature `f(uint256,uint32[],bytes10,bytes)` with values `(0x123, [0x456, 0x789], "1234567890", "Hello, world!")` is encoded in the following way:
 
@@ -202,6 +217,10 @@ All together, the encoding is (newline after function selector and each 32-bytes
   000000000000000000000000000000000000000000000000000000000000000d
   48656c6c6f2c20776f726c642100000000000000000000000000000000000000
 ```
+
+---
+
+### `g(uint256[][],string[])`
 
 Let us apply the same principle to encode the data for a function with a signature `g(uint256[][],string[])` with values `([[1, 2], [3]], ["one", "two", "three"])` but start from the most atomic parts of the encoding:
 

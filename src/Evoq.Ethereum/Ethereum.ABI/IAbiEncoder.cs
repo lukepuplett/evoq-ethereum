@@ -12,6 +12,18 @@ public interface IAbiEncoder
     /// <summary>
     /// Encodes the parameters.
     /// </summary>
+    /// <remarks>
+    /// If a signature has a single tuple parameter, the values must be forced into a
+    /// <see cref="ValueTuple"/> rather than using the () brackets for the root tuple.
+    /// 
+    /// For example, this signature:
+    /// <code>
+    /// function foo((bool isActive, uint256 seenUnix) prof)
+    /// </code>
+    /// 
+    /// 
+    /// 
+    /// </remarks>
     /// <param name="parameters">The parameters to encode.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded parameters.</returns>
@@ -82,6 +94,19 @@ public static class AbiEncoderExtensions
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters(
         this IAbiEncoder encoder, EvmParameters parameters, byte[] value)
+    {
+        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The array to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, EvmParameters parameters, Array value)
     {
         return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
     }

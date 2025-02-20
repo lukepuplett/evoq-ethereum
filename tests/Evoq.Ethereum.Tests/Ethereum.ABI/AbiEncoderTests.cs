@@ -130,7 +130,6 @@ public class AbiEncoderTests
         var parameters = new EvmParameters(signature.Parameters);
 
         var expectedRawHex = """
-            0x0000000000000000000000000000000000000000000000000000000000000002  // length
             0x0000000000000000000000000000000000000000000000000000000000000001  // element 0    
             0x0000000000000000000000000000000000000000000000000000000000000002  // element 1
             """;
@@ -147,6 +146,309 @@ public class AbiEncoderTests
         // Assert
 
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_JaggedStaticUint8Array_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(uint8[4][2])");
+
+        // uint8[4][2] / outer array contains two elements, each element is an array of four uint8
+        //
+        // [
+        //     [10, 20, 30, 40], // first element of outer array
+        //     [1, 2, 3, 4]     // second element of outer array
+        // ]
+        //
+        // the first uint8[4] of the outer array is [10, 20, 30, 40]
+        // the second uint8[4] of the outer array is [1, 2, 3, 4]
+        //
+        // these are layed out sequentially, 10, 20, 30, 40, then 1, 2, 3, 4
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x000000000000000000000000000000000000000000000000000000000000000a  // element 0 of uint8[4] first element of outer array
+            0x0000000000000000000000000000000000000000000000000000000000000014  // element 1 of uint8[4]
+            0x000000000000000000000000000000000000000000000000000000000000001e  // element 2 of uint8[4]
+            0x0000000000000000000000000000000000000000000000000000000000000028  // element 3 of uint8[4] 
+            0x0000000000000000000000000000000000000000000000000000000000000001  // element 0 of uint8[4] second element of outer array
+            0x0000000000000000000000000000000000000000000000000000000000000002  // element 1 of uint8[4]
+            0x0000000000000000000000000000000000000000000000000000000000000003  // element 2 of uint8[4]
+            0x0000000000000000000000000000000000000000000000000000000000000004  // element 3 of uint8[4]
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var first = new byte[] { 10, 20, 30, 40 };
+        var second = new byte[] { 1, 2, 3, 4 };
+        var array = new byte[][] { first, second };
+
+        var result = this.encoder.EncodeParameters(parameters, array);
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_TripleJaggedStaticUint8Array_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(uint8[3][2][1])");
+
+        // uint8[3][2][1] / outer array contains one element, which is an array of two uint8[3]
+        //
+        // the first and only uint8[3][2] of the outer array is [[1, 2, 3], [1, 2, 3]]
+        //
+        // these are layed out sequentially, 1, 2, 3, 1, 2, 3
+        //
+        // NOTE - there is no "outer array" for the single element, obviously
+        // NOTE - an array of length 1 is pretty weird as it isn't an array really
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // element 0 of uint8[3][2] first element of outer array
+            0x0000000000000000000000000000000000000000000000000000000000000002  // element 1 of uint8[3][2] 
+            0x0000000000000000000000000000000000000000000000000000000000000003  // element 2 of uint8[3][2] 
+            0x0000000000000000000000000000000000000000000000000000000000000001  // element 0 of uint8[3][2] second element of outer array
+            0x0000000000000000000000000000000000000000000000000000000000000002  // element 1 of uint8[3][2] 
+            0x0000000000000000000000000000000000000000000000000000000000000003  // element 2 of uint8[3][2] 
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var first = new byte[3] { 1, 2, 3 };
+        var second = new byte[3] { 1, 2, 3 };
+        var jagged = new byte[][] { first, second };
+        var tripleJagged = new byte[][][] { jagged };
+
+        var result = this.encoder.EncodeParameters(parameters, tripleJagged);
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_PointlessStaticTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        // This signature has a single parameter account which is a tuple containing two uint256
+        // values. The tuple is pointless as they could just be two separate parameters.
+        //
+        // This situation confuses the encoder so it must be forced into a ValueTuple.
+
+        var signature = FunctionSignature.Parse("function foo((uint256 id, uint256 balance) account)");
+
+        // static tuples are encoded like arrays: (3, 10)
+        //
+        // (
+        //      3                   // id is 3, encodes to 0x..3
+        //      10                  // balance is 10, encodes to 0x..a
+        // )
+        //
+        // these are layed out sequentially, 3, 10
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000003  // id is 3
+            0x000000000000000000000000000000000000000000000000000000000000000a  // balance is 10
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        // this throws an ArgumentException
+        Assert.ThrowsException<ArgumentException>(() => this.encoder.EncodeParameters(parameters, (3u, 10u)));
+
+        // this works, notice the extra () around the values passed in
+        var result = this.encoder.EncodeParameters(parameters, ValueTuple.Create((3u, 10u)));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_NestedStaticTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(bool isActive, (uint256 id, uint256 balance) account)");
+
+        // static tuples are encoded like arrays: true, (3, 10)
+        //
+        // 1                        // isActive true, encodes to 0x..1
+        // (
+        //      3                   // id is 3, encodes to 0x..3
+        //      10                  // balance is 10, encodes to 0x..a
+        // )
+        //
+        // these are layed out sequentially, 1, 3, 10
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
+            0x0000000000000000000000000000000000000000000000000000000000000003  // id is 3
+            0x000000000000000000000000000000000000000000000000000000000000000a  // balance is 10
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, (true, (3u, 10u)));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_TwoNestedStaticTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse(
+            "function foo((bool isActive, uint256 seenUnix) prof, (uint256 id, uint256 balance) account)");
+
+        // static tuples are encoded like arrays: (1, 20), (3, 10)
+        //
+        // (
+        //      1                   // isActive true, encodes to 0x..1
+        //      20                  // seenUnix is 20, encodes to 0x..14
+        // )
+        // (
+        //      3                   // id is 3, encodes to 0x..3
+        //      10                  // balance is 10, encodes to 0x..a
+        // )
+        //
+        // these are layed out sequentially, 1, 20, 3, 10
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
+            0x0000000000000000000000000000000000000000000000000000000000000014  // seenUnix is 20
+            0x0000000000000000000000000000000000000000000000000000000000000003  // id is 3
+            0x000000000000000000000000000000000000000000000000000000000000000a  // balance is 10
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, ((true, 20u), (3u, 10u)));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    [TestMethod]
+    public void Encode_DoubleNestedStaticTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse(
+            "function foo(((bool isActive, uint256 seenUnix) prof, uint256 id, uint256 balance) account)");
+
+        Assert.AreEqual("function foo(((bool,uint256),uint256,uint256))", signature.ToString());
+
+        // ((bool,uint256),uint256,uint256)
+
+        // static tuples are encoded like arrays: ((true, 20), 3, 10)
+        //
+        // (
+        //      (
+        //          1                   // isActive true, encodes to 0x..1
+        //          20                  // seenUnix is 20, encodes to 0x..14
+        //      )
+        //      3                   // id is 3, encodes to 0x..3
+        //      10                  // balance is 10, encodes to 0x..a
+        // )
+        //
+        // these are layed out sequentially, 1, 20, 3, 10
+
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
+            0x0000000000000000000000000000000000000000000000000000000000000014  // seenUnix is 20
+            0x0000000000000000000000000000000000000000000000000000000000000003  // id is 3
+            0x000000000000000000000000000000000000000000000000000000000000000a  // balance is 10
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, ValueTuple.Create(((true, 20u), 3u, 10u)));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+    }
+
+    // dynamic types
+
+    [TestMethod]
+    public void Encode_SimpleBytes_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(bytes)");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dynamic) length of bytes
+            0x0100000000000000000000000000000000000000000000000000000000000000  // (dynamic) element 0, byte 01, right-padded to 32 bytes
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, new byte[] { 1 });
+
+        var actualHexList = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexList, FormatSlotBlock(result.GetSlots()));
     }
 
     [TestMethod]
@@ -175,20 +477,20 @@ public class AbiEncoderTests
 
         // Assert
 
-        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatHexBlock(actualHexSet));
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 
     //
 
     private static string FormatHexLine(string hex) => hex.Trim().Substring(0, 64 + 2);
 
-    private static string FormatHexBlock(IList<Hex> hexList)
+    private static string FormatSlotBlock(ISet<Slot> slots)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Block:");
-        foreach (var hex in hexList)
+        foreach (var slot in slots)
         {
-            sb.AppendLine(hex.ToString());
+            sb.AppendLine(slot.ToString());
         }
         return sb.ToString();
     }
