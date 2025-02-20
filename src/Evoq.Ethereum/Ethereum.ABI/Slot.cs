@@ -194,6 +194,7 @@ public class Slot
         if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
         {
             Debug.Assert(this.RelativeTo != null, "RelativeTo is null");
+            Debug.Assert(this.RelativeTo.Count > 0, "RelativeTo is empty");
 
             int startingPosition = this.RelativeTo?.First().Order ?? 0;
             int distance = this.PointsTo.First().Order - startingPosition;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
@@ -68,13 +69,19 @@ public class AbiEncoderV2 : IAbiEncoder
             throw new ArgumentException($"Expected {slotCount} values but got {values.Length}");
         }
 
+        var canonicalType = parameters.GetCanonicalType();
         var rootParam = new EvmParam(0, "root", parameters);
-
         var root = new SlotCollection(capacity: slotCount * 8);
 
-        this.EncodeValue(rootParam.AbiType, values, root);
+        this.EncodeValue(rootParam.AbiType, values, root);       // consider using canonical type
 
-        return new AbiEncodingResult(root);
+        // we treat the root parameter as a tuple, which means that if it's dynamic,
+        // the first slot is a pointer to the first slot of the dynamic data, and
+        // that's probably not what we want, so we skip the first slot
+
+        var skipFirstSlot = root.First().IsPointer;
+
+        return new AbiEncodingResult(root, skipFirstSlot);
     }
 
     // /// <summary>
@@ -223,7 +230,7 @@ public class AbiEncoderV2 : IAbiEncoder
 
     // dynamic value
 
-    private void EncodeDynamicValue(string abiType, object value, SlotCollection heads, SlotCollection tail)
+    private void EncodeDynamicValue(string abiType, object value, SlotCollection destination)
     {
         // e.g. string or bytes, but not tuples like (string,bytes) or arrays like string[] or bytes[]
 
@@ -237,22 +244,39 @@ public class AbiEncoderV2 : IAbiEncoder
             throw new ArgumentException($"The type {abiType} is a tuple, not a single slot dynamic value");
         }
 
-        if (!this.TryFindDynamicBytesEncoder(abiType, value, out var encoder))
+        byte[] bytes;
+
+        if (value is byte[] bytesValue)
         {
-            throw NotImplemented(abiType, value.GetType().ToString());
+            bytes = bytesValue;
+        }
+        else if (value is string stringValue)
+        {
+            bytes = Encoding.UTF8.GetBytes(stringValue);
+        }
+        else
+        {
+            throw new ArgumentException($"The value of type {value.GetType()} must be a byte array or string");
         }
 
         // encode the value into the tail and add the offset pointer to the head
 
-        var bytes = encoder!(value);
         var lengthSlot = new Slot(UintTypeEncoder.EncodeUint(256, bytes.Length));
-        var dataSlots = this.BytesToSlots(bytes);
+        var bytesSlots = this.BytesToSlots(bytes);
 
-        var pointerSlot = new Slot(pointsToFirst: dataSlots, relativeTo: heads);
+        var heads = new SlotCollection(capacity: 1);
+        var tail = new SlotCollection(capacity: bytesSlots.Count);
+
+        var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
 
         heads.Add(pointerSlot);
         tail.Add(lengthSlot);
-        tail.AddRange(dataSlots);
+        tail.AddRange(bytesSlots);
+
+        // the pour those two into the destination
+
+        destination.AddRange(heads);
+        destination.AddRange(tail);
     }
 
     // dynamic iterables
@@ -331,8 +355,8 @@ public class AbiEncoderV2 : IAbiEncoder
 
                 // this.EncodeDynamicTuple(evmParams, value, heads, tail);
 
-                var heads = new SlotCollection(capacity: 8);
-                var tails = new List<SlotCollection>();
+                var heads = new SlotCollection(capacity: 8); // heads for this dynamic tuple
+                var tails = new List<SlotCollection>();      // tails for each dynamic component
 
                 var evmParams = EvmParameters.Parse(abiType);
                 var values = value as ITuple;
@@ -374,18 +398,7 @@ public class AbiEncoderV2 : IAbiEncoder
             {
                 // e.g. bytes, string
 
-                // the returned heads will have the offset pointer to the tail and the tail will have the data
-
-                var heads = new SlotCollection(capacity: 8);
-                var tail = new SlotCollection(capacity: 8);
-
-                this.EncodeDynamicValue(abiType, value, heads, tail);
-
-                // not sure if this is correct; it might be that we need to write the heads into the previous tail
-                // which would be the destination, and then hmmm.... what do we do with the tail?
-
-                destination.AddRange(heads);
-                destination.AddRange(tail); // ?
+                this.EncodeDynamicValue(abiType, value, destination);
             }
         }
         else
@@ -424,192 +437,6 @@ public class AbiEncoderV2 : IAbiEncoder
     // ((uint256 eventId, uint8 eventType)[] entries, uint256 count)        - logs tuple with two components, entries and count
     // (uint256 eventId, uint8 eventType)[] entries                         - entries parameter of type array
     // (uint256 eventId, uint8 eventType)                                   - single entry tuple with two components, eventId and eventType         
-
-    // old
-
-    private SlotCollection EncodeParameterValueOld(EvmParam parameter, object value)
-    {
-        var abiType = parameter.AbiType;
-
-        var heads = new SlotCollection(capacity: 8);
-        var tail = new SlotCollection(capacity: 8);
-
-        if (AbiTypes.IsDynamic(abiType))
-        {
-            // encode the value into the tail and add the offset pointer to the head
-
-            if (AbiTypes.IsArray(abiType))
-            {
-                // a dynamic array; encode the length and encode each element's value
-                // recursively where each element may be the value itself, or a pointer
-                // to a collection of slots containing the element data
-
-                // bool[]       - count of bools, then the bools themselves
-                // string[]     - count of strings, then offsets to the slots containing the strings
-                // bool[][2]    - 
-
-                if (!AbiTypes.TryRemoveOuterArrayDimension(abiType, out var innerType))
-                {
-                    throw new ArgumentException(
-                        $"Unable to remove outer array dimension from {abiType}");
-                }
-
-                var array = value as Array;
-                if (array == null)
-                {
-                    throw new ArgumentException(
-                        $"The parameter is of type '{abiType}' but the value is not an array");
-                }
-
-                // count the elements in the array
-
-                var count = array.Length;
-                var countBytes = UintTypeEncoder.EncodeUint(256, count);
-                var countSlot = new Slot(countBytes);
-                var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
-
-                heads.Add(pointerSlot);
-                tail.Add(countSlot);
-
-                // encode each element's value into the tail
-
-
-
-
-
-
-                if (AbiTypes.IsDynamic(innerType!))
-                {
-                    // has dynamic inner elements; we'll need pointers to the start of each element's data
-                    // to the heads and then encode each element's value into the tail
-
-                    throw new NotImplementedException("Dynamic arrays are not yet supported");
-                }
-                else
-                {
-                    // has static inner elements; we can encode each element's value directly into the head
-
-                    for (int i = 0; i < count; i++)
-                    {
-                        var elementValue = array.GetValue(i);
-
-                        if (!this.TryFindStaticSlotEncoder(innerType!, elementValue, out var encoder))
-                        {
-                            throw NotImplemented(innerType!, elementValue.GetType().ToString());
-                        }
-
-                        heads.Add(encoder!(elementValue));
-                    }
-                }
-            }
-            else if (!AbiTypes.IsTuple(abiType))
-            {
-                if (value is ITuple tuple)
-                {
-                    // a dynamic tuple; encode each component recursively
-
-                    for (int i = 0; i < tuple.Length; i++)
-                    {
-                        var headAndTail = this.EncodeParameterValueOld(parameter.Components![i], tuple[i]);
-
-                        var pointerSlot = new Slot(pointsToFirst: headAndTail, relativeTo: heads);
-
-                        heads.Add(pointerSlot);
-                        tail.AddRange(headAndTail);
-                    }
-                }
-                else
-                {
-                    throw NotImplemented(abiType, value.GetType().ToString());
-                }
-            }
-            else
-            {
-                // a dynamic value which is not an array, nor a tuple, so it's a string, bytes, etc.
-
-                // encode the value into the data and the offset pointer to the head
-
-                if (!this.TryFindDynamicBytesEncoder(abiType, value, out var encoder))
-                {
-                    throw NotImplemented(abiType, value.GetType().ToString());
-                }
-
-                var bytes = encoder!(value);
-                var slots = this.BytesToSlots(bytes);
-
-                var pointerSlot = new Slot(pointsToFirst: slots, relativeTo: heads);
-
-                heads.Add(pointerSlot);
-                tail.AddRange(slots);
-            }
-        }
-        else
-        {
-            // type is not dynamic
-
-            if (AbiTypes.IsArray(abiType))
-            {
-                // encode the elements directly into the heads starting with the count of
-                // elements in the array
-
-                // no need to encode the count; it's known from the type
-
-                if (!AbiTypes.TryRemoveOuterArrayDimension(abiType, out var innerType))
-                {
-                    throw new ArgumentException(
-                        $"Unable to remove outer array dimension from {abiType}");
-                }
-
-                var array = value as Array;
-                if (array == null)
-                {
-                    throw new ArgumentException(
-                        $"The parameter is of type '{abiType}' but the value is not an array");
-                }
-
-                for (int i = 0; i < array.Length; i++)
-                {
-                    var elementValue = array.GetValue(i);
-
-                    if (!this.TryFindStaticSlotEncoder(innerType!, elementValue, out var encoder))
-                    {
-                        throw NotImplemented(innerType!, elementValue.GetType().ToString());
-                    }
-
-                    heads.Add(encoder!(elementValue));
-                }
-            }
-            else if (!AbiTypes.IsTuple(abiType))
-            {
-                if (value is ITuple tuple)
-                {
-                    // encode each component recursively
-
-                    // TODO: implement this
-
-                    throw new NotImplementedException("Static tuples are not yet supported");
-                }
-                else
-                {
-                    throw NotImplemented(abiType, value.GetType().ToString());
-                }
-            }
-            else
-            {
-                // encode the value directly into the head, including fixed size arrays
-
-                if (!this.TryFindStaticSlotEncoder(abiType, value, out var encoder))
-                {
-                    throw NotImplemented(abiType, value.GetType().ToString());
-                }
-
-                heads.Add(encoder!(value));
-            }
-        }
-
-        heads.AddRange(tail);
-        return heads;
-    }
 
     //
 
@@ -676,19 +503,20 @@ public class AbiEncoderV2 : IAbiEncoder
         return false;
     }
 
-    private SlotCollection BytesToSlots(byte[] bytes)
+    private SlotCollection BytesToSlots(byte[] rawBytes)
     {
-        bool hasRemainingBytes = bytes.Length % 32 != 0;
+        var paddedBytes = BytesTypeEncoder.EncodeBytes(rawBytes);
+        bool hasRemainingBytes = paddedBytes.Length % 32 != 0;
 
         Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");
 
-        var slots = new SlotCollection(capacity: bytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
+        var slots = new SlotCollection(capacity: paddedBytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
 
-        for (int i = 0; i < bytes.Length; i += 32)
+        for (int i = 0; i < paddedBytes.Length; i += 32)
         {
             var chunk = new byte[32];
-            var count = Math.Min(32, bytes.Length - i);
-            Buffer.BlockCopy(bytes, i, chunk, 0, count);
+            var count = Math.Min(32, paddedBytes.Length - i);
+            Buffer.BlockCopy(paddedBytes, i, chunk, 0, count);
 
             slots.Add(new Slot(chunk));
         }

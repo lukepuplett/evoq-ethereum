@@ -30,7 +30,7 @@ public class AbiEncodingResult
     /// <param name="skipFirstSlot">
     /// Whether to skip the first slot; the encoder creates a root tuple for all the level 0 parameters.
     /// </param>
-    public AbiEncodingResult(SlotCollection slots, bool skipFirstSlot = true)
+    public AbiEncodingResult(SlotCollection slots, bool skipFirstSlot = false)
     {
         if (skipFirstSlot)
         {
