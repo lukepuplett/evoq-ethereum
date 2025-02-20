@@ -1,5 +1,7 @@
 # Formal Specification of the Encoding
 
+https://docs.soliditylang.org/en/latest/abi-spec.html
+
 We distinguish static and dynamic types. Static types are encoded in-place and dynamic types are encoded at a separately allocated location after the current block.
 
 **Definition**: The following types are called “dynamic”:
@@ -327,3 +329,13 @@ Finally we find the offsets `f` and `g` for their respective root dynamic arrays
 Offset `f` points to the start of the content of the array `[[1, 2], [3]]` which is line 2 (64 bytes); thus `f = 0x0000000000000000000000000000000000000000000000000000000000000040`.
 
 Offset `g` points to the start of the content of the array `["one", "two", "three"]` which is line 10 (320 bytes); thus `g = 0x0000000000000000000000000000000000000000000000000000000000000140`.
+
+## Notes
+
+ - The specification is not clear at all and lacks more complex examples.
+
+ - Consider a design where each EvmParam is able to encode itself into a SlotCollection, evmParm.Encode(v, slots) and this can cascade down into nested parameters.
+
+### Other Learning Resources
+
+ - https://www.rareskills.io/post/abi-encoding
