@@ -11,6 +11,7 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class Slot
 {
+    private readonly Guid id = Guid.NewGuid();
     private byte[] data;
 
     /// <summary>
@@ -146,9 +147,10 @@ public class Slot
     /// <returns>A string representation of the slot.</returns>
     public override string ToString()
     {
+        string idStr = this.id.ToString()[^4..];
         string pointsTo = this.PointsTo != null ? $", pointsTo: {this.PointsTo.First().Offset}" : "";
 
-        return $"{this.ToHex()} (offset: {this.Offset}, order: {this.Order}{pointsTo})";
+        return $"{this.ToHex()} (id: {idStr}, offset: {this.Offset}, order: {this.Order}{pointsTo})";
     }
 
     //

@@ -173,4 +173,17 @@ public class SolidityTypesTests
     {
         Assert.AreEqual(expected, AbiTypes.TryGetCanonicalType(input, out var canonicalType) ? canonicalType : null);
     }
+
+    [TestMethod]
+    [DataRow("uint256[]", "-1")]
+    [DataRow("uint256[2][]", "-1,2")]
+    [DataRow("uint256[][2]", "2,-1")]
+    [DataRow("uint256[2][3]", "3,2")]
+    public void TryGetArrayDimensions_ValidArrayTypes_ReturnsExpectedDimensions(string type, string expectedDimensions)
+    {
+        Assert.IsTrue(AbiTypes.TryGetArrayDimensions(type, out var dimensions));
+        Assert.AreEqual(expectedDimensions, string.Join(",", dimensions!));
+    }
+
+
 }

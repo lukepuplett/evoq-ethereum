@@ -8,20 +8,9 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiEncodingResult
 {
-    private readonly SlotSpace staticData = new();
-    private readonly SlotSpace dynamicData = new();
     private readonly SlotCollection final = new(capacity: 8);
 
     //
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
-    /// </summary>
-    /// <param name="head">The head.</param>
-    public AbiEncodingResult(SlotSpace head)
-    {
-        this.staticData = head;
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
@@ -42,29 +31,12 @@ public class AbiEncodingResult
         }
     }
 
-    // classic v0 constructor
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
-    /// </summary>
-    public AbiEncodingResult(int _ = 0) // TODO: remove this
-    {
-        this.staticData = new SlotSpace();
-    }
-
     //
 
-    // For testing and inspection
-
     /// <summary>
-    /// The static data. Each array must be exactly 32 bytes.
+    /// Gets the number of slots in the encoding result.
     /// </summary>
-    public SlotSpace StaticData => staticData;
-
-    /// <summary>
-    /// The dynamic data. Arrays can be any length but will be padded to 32-byte alignment.
-    /// </summary>
-    public SlotSpace DynamicData => dynamicData;
+    public int Count => this.final.Count;
 
     //
 
@@ -87,7 +59,7 @@ public class AbiEncodingResult
     {
         this.UpdateOffsetsAndEncodePointers();
 
-        return this.staticData.GetBytes().Concat(this.dynamicData.GetBytes()).ToArray();
+        return this.final.SelectMany(slot => slot.Data).ToArray();
     }
 
     //
@@ -95,16 +67,6 @@ public class AbiEncodingResult
     private IEnumerable<Slot> GetSlotsInternal()
     {
         foreach (var slot in this.final)
-        {
-            yield return slot;
-        }
-
-        foreach (var slot in this.staticData.GetSlots())
-        {
-            yield return slot;
-        }
-
-        foreach (var slot in this.dynamicData.GetSlots())
         {
             yield return slot;
         }

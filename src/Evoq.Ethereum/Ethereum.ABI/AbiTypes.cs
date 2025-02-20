@@ -259,14 +259,17 @@ public static class AbiTypes
     /// <param name="type">The type to get dimensions from.</param>
     /// <param name="dimensions">The array dimensions if successful. -1 represents dynamic size [].</param>
     /// <returns>True if dimensions were successfully parsed, false otherwise.</returns>
-    public static bool TryGetArrayDimensions(string type, out int[]? dimensions)
+    public static bool TryGetArrayDimensions(string type, out IReadOnlyList<int>? dimensions)
     {
         dimensions = null;
         var bracketIndex = type.IndexOf('[');
         if (bracketIndex <= 0)
+        {
             return false;
+        }
 
         dimensions = SplitArrayDimensions(type[bracketIndex..]);
+
         return dimensions != null;
     }
 
@@ -387,7 +390,7 @@ public static class AbiTypes
         return dimensions.All(dim => dim > 0 || dim == -1); // Allow positive sizes and dynamic (-1)
     }
 
-    private static int[]? SplitArrayDimensions(string arrayPart)
+    private static IReadOnlyList<int>? SplitArrayDimensions(string arrayPart)
     {
         var dimensions = new List<int>();
         var depth = 0;
@@ -418,6 +421,8 @@ public static class AbiTypes
                     return null; // Mismatched brackets
             }
         }
+
+        dimensions.Reverse();
 
         return depth == 0 ? dimensions.ToArray() : null;
     }

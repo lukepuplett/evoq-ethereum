@@ -448,6 +448,7 @@ public class AbiEncoderTests
 
         // Assert
 
+        Assert.AreEqual(expectedHexList.Count, result.Count);
         CollectionAssert.AreEquivalent(expectedHexList, actualHexList, FormatSlotBlock(result.GetSlots()));
     }
 
@@ -477,6 +478,7 @@ public class AbiEncoderTests
 
         // Assert
 
+        Assert.AreEqual(expectedHexList.Count, result.Count);
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 

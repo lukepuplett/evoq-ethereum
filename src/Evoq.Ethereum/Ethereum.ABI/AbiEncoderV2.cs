@@ -69,19 +69,21 @@ public class AbiEncoderV2 : IAbiEncoder
             throw new ArgumentException($"Expected {slotCount} values but got {values.Length}");
         }
 
-        var canonicalType = parameters.GetCanonicalType();
-        var rootParam = new EvmParam(0, "root", parameters);
         var root = new SlotCollection(capacity: slotCount * 8);
 
-        this.EncodeValue(rootParam.AbiType, values, root);       // consider using canonical type
+        string type;
+        type = parameters.GetCanonicalType();
+        type = new EvmParam(0, "root", parameters).AbiType;
+
+        this.EncodeValue(type, values, root);       // consider using canonical type
 
         // we treat the root parameter as a tuple, which means that if it's dynamic,
         // the first slot is a pointer to the first slot of the dynamic data, and
-        // that's probably not what we want, so we skip the first slot
+        // that's probably not what we want, so we skip the first slot if that's the case
 
-        var skipFirstSlot = root.First().IsPointer;
+        var isDynamicTupleRoot = AbiTypes.IsTuple(type) && AbiTypes.IsDynamic(type);
 
-        return new AbiEncodingResult(root, skipFirstSlot);
+        return new AbiEncodingResult(root, skipFirstSlot: isDynamicTupleRoot);
     }
 
     // /// <summary>
@@ -343,11 +345,75 @@ public class AbiEncoderV2 : IAbiEncoder
 
             if (AbiTypes.IsArray(abiType))
             {
-                // e.g. bool[][2] or uint256[][2] or string[], or even (bool,uint256)[]
+                // e.g. uint8[] or bool[][2] or uint256[][2] or string[], or even (bool,uint256)[]
 
                 // this.EncodeDynamicArray(abiType, value, head, tail);
 
-                throw new NotImplementedException($"Dynamic array '{abiType}' not yet supported");
+                // similar to the tuple case, except the type is always the same
+
+                var heads = new SlotCollection(capacity: 8); // heads for this array
+                var tails = new List<SlotCollection>();      // tails for each array element's value
+
+                if (value is not Array array)
+                {
+                    throw new ArgumentException($"The type {abiType} requires an array value");
+                }
+
+                if (!AbiTypes.TryRemoveOuterArrayDimension(abiType, out var innerType))
+                {
+                    throw new NotImplementedException($"The type '{abiType}' is not an array");
+                }
+
+                if (!AbiTypes.TryGetArrayDimensions(abiType, out var dimensions))
+                {
+                    throw new ArgumentException($"The type {abiType} is not an array");
+                }
+
+                if (dimensions.First() == -1)
+                {
+                    // T[] dynamic outer needs a single pointer in the heads pointing to its
+                    // element data tail, which starts with a count
+
+                    var tail = new SlotCollection(capacity: 8);
+                    tails.Add(tail);
+
+                    var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
+                    heads.Add(pointerSlot);
+
+                    var countSlot = new Slot(UintTypeEncoder.EncodeUint(256, array.Length));
+                    tail.Add(countSlot);
+
+                    for (int i = 0; i < array.Length; i++)
+                    {
+                        var element = array.GetValue(i);
+
+                        this.EncodeValue(innerType!, element, tail);
+
+                    }
+                }
+                else
+                {
+                    // T[k] fixed outer needs no count and each element has its own tail with
+                    // a pointer to it added to the heads
+
+                    for (int i = 0; i < array.Length; i++)
+                    {
+                        var tail = new SlotCollection(capacity: 8);
+                        tails.Add(tail);
+
+                        var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
+                        heads.Add(pointerSlot);
+
+                        var element = array.GetValue(i);
+
+                        this.EncodeValue(innerType!, element, tail);
+                    }
+                }
+
+                // pour the heads and tails into the destination
+
+                destination.AddRange(heads);
+                destination.AddRange(tails.SelectMany(tail => tail));
             }
             else if (AbiTypes.IsTuple(abiType))
             {
@@ -375,13 +441,12 @@ public class AbiEncoderV2 : IAbiEncoder
                         // and a pointer to the first slot of the tail
 
                         var tail = new SlotCollection(capacity: 8);
-                        var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
+                        tails.Add(tail);
 
+                        var pointerSlot = new Slot(pointsToFirst: tail, relativeTo: heads);
                         heads.Add(pointerSlot);
 
                         this.EncodeValue(componentType, element, tail);
-
-                        tails.Add(tail);
                     }
                     else
                     {
@@ -421,7 +486,9 @@ public class AbiEncoderV2 : IAbiEncoder
                 }
                 else
                 {
-                    throw new ArgumentException($"The type {abiType} requires a tuple value in its parameter");
+                    throw new ArgumentException(
+                        $"The type {abiType} requires a tuple value",
+                        nameof(value));
                 }
             }
             else
