@@ -12,7 +12,7 @@ record class EncodingContext(
     string AbiType,
     object Value,
     SlotCollection Block,
-    bool IsWithinIterable,
+    bool HasPointer,
     EncodingContext? Parent = null)
 {
     public bool IsRoot => this.Parent == null;
@@ -159,7 +159,7 @@ public class AbiEncoderV2 : IAbiEncoder
             {
                 // static, so we can encode directly into the heads
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, value, heads, true, context));
+                this.EncodeValue(new EncodingContext(parameter.AbiType, value, heads, false, context));
             }
         }
 
@@ -258,7 +258,7 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             var element = array.GetValue(i);
 
-            this.EncodeValue(new EncodingContext(innerType!, element, context.Block, true, context));
+            this.EncodeValue(new EncodingContext(innerType!, element, context.Block, false, context));
         }
     }
 
@@ -297,7 +297,7 @@ public class AbiEncoderV2 : IAbiEncoder
             var componentValue = tuple![i];
 
             this.EncodeValue(new EncodingContext(
-                parameter.AbiType, componentValue, context.Block, true, context)); // send back into the router
+                parameter.AbiType, componentValue, context.Block, false, context)); // send back into the router
         }
     }
 
@@ -340,7 +340,7 @@ public class AbiEncoderV2 : IAbiEncoder
         var heads = new SlotCollection(capacity: 1);
         var tail = new SlotCollection(capacity: bytesSlots.Count);
 
-        if (!context.IsWithinIterable)
+        if (!context.HasPointer)
         {
             // assume the outer loop has already added a pointer to the first slot of the tail
 
@@ -401,7 +401,7 @@ public class AbiEncoderV2 : IAbiEncoder
         }
         bool isVariableLength = dimensions.First() == -1;
 
-        if (context.IsWithinIterable && false) // FORCE FALSE FOR NOW
+        if (context.HasPointer && false) // FORCE FALSE FOR NOW
         {
             // already within an iterable, e.g. the outermost parameters, or an array or tuple
 
@@ -456,7 +456,7 @@ public class AbiEncoderV2 : IAbiEncoder
                     var element = array.GetValue(i);
 
                     this.EncodeValue(new EncodingContext(
-                        innerType!, element, context.Block, true, context));
+                        innerType!, element, context.Block, false, context));
                 }
             }
         }
@@ -509,7 +509,7 @@ public class AbiEncoderV2 : IAbiEncoder
                 // write the value directly into the heads
 
                 this.EncodeValue(new EncodingContext(
-                    componentType, componentValue, heads, true, context));
+                    componentType, componentValue, heads, false, context));
             }
         }
 
@@ -524,7 +524,7 @@ public class AbiEncoderV2 : IAbiEncoder
         bool isArray = context.IsArray;
         bool isTuple = context.IsTuple;
         bool isDynamic = context.IsDynamic;
-        bool isWithinIterable = context.IsWithinIterable;
+        bool isWithinIterable = context.HasPointer;
 
         // determine the type of the value and call the appropriate encoder
 
@@ -563,7 +563,7 @@ public class AbiEncoderV2 : IAbiEncoder
                     context.Block.Add(pointerSlot);
 
                     this.EncodeDynamicArray(new EncodingContext(
-                        context.AbiType, context.Value, tail, context.IsWithinIterable, context.Parent));
+                        context.AbiType, context.Value, tail, true, context.Parent));
 
                     context.Block.AddRange(tail);
                 }
