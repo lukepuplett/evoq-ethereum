@@ -221,7 +221,7 @@ public static class AbiTypes
     /// <param name="type">The type to get the bits for.</param>
     /// <param name="bits">The number of bits if successful.</param>
     /// <returns>True if the bits were successfully parsed, false otherwise.</returns>
-    public static bool TryGetBits(string type, out int bits)
+    public static bool TryGetMaxBitSize(string type, out int bits)
     {
         bits = 0;
         if (!IsValidType(type))
@@ -251,6 +251,32 @@ public static class AbiTypes
 
             bits = 256;
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the number of bytes for a type.
+    /// </summary>
+    /// <param name="type">The type to get the bytes for.</param>
+    /// <param name="bytes">The number of bytes if successful.</param>
+    /// <returns>True if the bytes were successfully parsed, false otherwise.</returns>
+    public static bool TryGetMaxBytesSize(string type, out int bytes)
+    {
+        bytes = 0;
+        if (!IsValidType(type))
+        {
+            return false;
+        }
+
+        if (type.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.Bytes.Length..], out var size))
+            {
+                bytes = size;
+                return true;
+            }
         }
 
         return false;

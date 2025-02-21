@@ -32,9 +32,10 @@ public class Slot
     /// <summary>
     /// Creates a new slot with the given data.
     /// </summary>
+    /// <param name="name">The name of the slot.</param>
     /// <param name="data">The 32-byte data.</param>
     /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
-    public Slot(byte[] data)
+    public Slot(string name, byte[] data)
     {
         if (data == null)
         {
@@ -47,16 +48,18 @@ public class Slot
         }
 
         this.data = data;
+        this.Name = name;
     }
 
     /// <summary>
     /// Creates a new slot with the given data.
     /// </summary>
+    /// <param name="name">The name of the slot.</param>
     /// <param name="data">The 32-byte data.</param>
     /// <param name="pointsToFirst">The slot collection that this slot points to.</param>
     /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
     [Obsolete]
-    public Slot(byte[] data, SlotCollection? pointsToFirst)
+    public Slot(string name, byte[] data, SlotCollection? pointsToFirst)
     {
         if (data == null)
         {
@@ -70,31 +73,29 @@ public class Slot
 
         this.data = data;
         this.PointsTo = pointsToFirst;
+        this.Name = name;
     }
 
     /// <summary>
     /// Creates a new slot that points to the given slots.
     /// </summary>
+    /// <param name="name">The name of the slot.</param>
     /// <param name="pointsToFirst">The slots that this slot points to (will point to the first slot).</param>
     /// <param name="relativeTo">The slot space that the pointer is relative to.</param>
-    public Slot(SlotCollection pointsToFirst, SlotCollection relativeTo)
+    public Slot(string name, SlotCollection pointsToFirst, SlotCollection relativeTo)
     {
         this.data = new byte[Size];
         this.PointsTo = pointsToFirst;
         this.RelativeTo = relativeTo;
-    }
-
-    /// <summary>
-    /// Creates a new slot with the given data.
-    /// </summary>
-    /// <param name="pointsToFirst">The slot space that this slot points to.</param>
-    public Slot(SlotSpace pointsToFirst)
-    {
-        this.data = new byte[Size];
-        this.PointsTo = pointsToFirst.GetFirstSlotCollection();
+        this.Name = name;
     }
 
     //
+
+    /// <summary>
+    /// The name of the slot.
+    /// </summary>
+    public string Name { get; init; } = "";
 
     /// <summary>
     /// The slot that this slot points to.
@@ -109,7 +110,7 @@ public class Slot
     /// <summary>
     /// Whether the slot is a pointer.
     /// </summary>
-    public bool IsPointer => this.PointsTo != null;
+    public bool IsPointer => this.PointsTo != null && this.PointsTo.Count > 0;
 
     /// <summary>
     /// The offset of the slot within its container.
@@ -148,9 +149,9 @@ public class Slot
     public override string ToString()
     {
         string idStr = this.id.ToString()[^4..];
-        string pointsTo = this.PointsTo != null ? $", pointsTo: {this.PointsTo.First().Offset}" : "";
+        string pointsTo = this.IsPointer ? $", ptr: {this.PointsTo.First().Offset} " : "";
 
-        return $"{this.ToHex()} (id: {idStr}, offset: {this.Offset}, order: {this.Order}{pointsTo})";
+        return $"{this.ToHex()} (id: {idStr}, off: {this.Offset}, ord: {this.Order}{pointsTo} - {this.Name})";
     }
 
     //

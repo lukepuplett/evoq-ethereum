@@ -54,7 +54,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode
 
         //
 
-        if (!AbiTypes.TryGetBits(abiType, out var bits))
+        if (!AbiTypes.TryGetMaxBitSize(abiType, out var bits))
         {
             return false;
         }

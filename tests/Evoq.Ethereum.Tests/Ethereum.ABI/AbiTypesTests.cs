@@ -150,8 +150,17 @@ public class SolidityTypesTests
     [DataRow("int", 256)]     // Default size
     public void TryGetBits_ValidTypes_ReturnsExpectedBits(string type, int expectedBits)
     {
-        Assert.IsTrue(AbiTypes.TryGetBits(type, out var bits));
+        Assert.IsTrue(AbiTypes.TryGetMaxBitSize(type, out var bits));
         Assert.AreEqual(expectedBits, bits);
+    }
+
+    [TestMethod]
+    [DataRow("bytes8", 8)]
+    [DataRow("bytes32", 32)]
+    public void TryGetBytes_ValidTypes_ReturnsExpectedBytes(string type, int expectedBytes)
+    {
+        Assert.IsTrue(AbiTypes.TryGetMaxBytesSize(type, out var bytes));
+        Assert.AreEqual(expectedBytes, bytes);
     }
 
     [TestMethod]
@@ -162,7 +171,7 @@ public class SolidityTypesTests
     [DataRow("bytes32")]
     public void TryGetBits_NonIntegerTypes_ReturnsFalse(string type)
     {
-        Assert.IsFalse(AbiTypes.TryGetBits(type, out _));
+        Assert.IsFalse(AbiTypes.TryGetMaxBitSize(type, out _));
     }
 
     [TestMethod]

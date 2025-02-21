@@ -448,7 +448,6 @@ public class AbiEncoderTests
 
         // Assert
 
-        Assert.AreEqual(expectedHexList.Count, result.Count);
         CollectionAssert.AreEquivalent(expectedHexList, actualHexList, FormatSlotBlock(result.GetSlots()));
     }
 
@@ -478,7 +477,6 @@ public class AbiEncoderTests
 
         // Assert
 
-        Assert.AreEqual(expectedHexList.Count, result.Count);
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 
@@ -510,7 +508,6 @@ public class AbiEncoderTests
 
         // Assert
 
-        Assert.AreEqual(expectedHexList.Count, result.Count);
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 
@@ -546,7 +543,42 @@ public class AbiEncoderTests
 
         // Assert
 
-        Assert.AreEqual(expectedHexList.Count, result.Count);
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    // examples from the formal spec
+
+    [TestMethod]
+    public void Example_n_FourMixedValues_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(uint256,uint32[],bytes10,bytes)");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000123  // uint256 value of 0x123
+            0x0000000000000000000000000000000000000000000000000000000000000080  // offset to start of data part of uint32[]
+            0x3132333435363738393000000000000000000000000000000000000000000000  // bytes10 value of "1234567890"
+            0x00000000000000000000000000000000000000000000000000000000000000e0  // offset to start of data part of bytes value
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000456  // (dyn) first element of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000789  // (dyn) second element of first dynamic array
+            0x000000000000000000000000000000000000000000000000000000000000000d  // (dyn) length of the bytes value
+            0x48656c6c6f2c20776f726c642100000000000000000000000000000000000000  // (dyn) data of the bytes value
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, (0x123u, new uint[] { 0x456u, 0x789u }, "1234567890", "Hello, world!"));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 

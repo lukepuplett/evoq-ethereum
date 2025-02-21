@@ -52,53 +52,54 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
 
         //
 
-        if (!AbiTypes.TryGetBits(abiType, out var bits))
+        if (!AbiTypes.TryGetMaxBitSize(abiType, out var maxBitsSize))
         {
             return false;
         }
 
-        // Check value fits within the target ABI type's bit width
+        // check value fits within the target ABI type's bit width
+
         if (value is byte byteValue)
         {
-            if (bits < 8) // value could be 8 bits but abiType is smaller
+            if (8 > maxBitsSize) // value could be 8 bits but abiType is smaller
             {
                 return false;
             }
 
-            encoded = EncodeUint(bits, byteValue);
+            encoded = EncodeUint(maxBitsSize, byteValue);
             return true;
         }
 
         if (value is ushort ushortValue)
         {
-            if (bits < 16)
+            if (16 > maxBitsSize)
             {
                 return false;
             }
 
-            encoded = EncodeUint(bits, ushortValue);
+            encoded = EncodeUint(maxBitsSize, ushortValue);
             return true;
         }
 
         if (value is uint uintValue)
         {
-            if (bits < 32)
+            if (32 > maxBitsSize)
             {
                 return false;
             }
 
-            encoded = EncodeUint(bits, uintValue);
+            encoded = EncodeUint(maxBitsSize, uintValue);
             return true;
         }
 
         if (value is ulong ulongValue)
         {
-            if (bits < 64)
+            if (64 > maxBitsSize)
             {
                 return false;
             }
 
-            encoded = EncodeUint(bits, ulongValue);
+            encoded = EncodeUint(maxBitsSize, ulongValue);
             return true;
         }
 
@@ -109,12 +110,12 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
                 return false;
             }
 
-            if (bits < 256)
+            if (256 > maxBitsSize)
             {
                 return false;
             }
 
-            encoded = EncodeUint(bits, bigIntegerValue);
+            encoded = EncodeUint(maxBitsSize, bigIntegerValue);
             return true;
         }
 

@@ -16,19 +16,9 @@ public class AbiEncodingResult
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
     /// <param name="slots">The final slots.</param>
-    /// <param name="skipFirstSlot">
-    /// Whether to skip the first slot; the encoder creates a root tuple for all the level 0 parameters.
-    /// </param>
-    public AbiEncodingResult(SlotCollection slots, bool skipFirstSlot = false)
+    public AbiEncodingResult(SlotCollection slots)
     {
-        if (skipFirstSlot)
-        {
-            this.final = new SlotCollection(slots.Skip(1).ToList());
-        }
-        else
-        {
-            this.final = slots;
-        }
+        this.final = slots;
     }
 
     //
