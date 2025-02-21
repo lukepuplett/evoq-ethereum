@@ -433,8 +433,8 @@ public class AbiEncoderTests
 
         var expectedRawHex = """
             0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
-            0x0000000000000000000000000000000000000000000000000000000000000001  // (dynamic) length of bytes
-            0x0100000000000000000000000000000000000000000000000000000000000000  // (dynamic) element 0, byte 01, right-padded to 32 bytes
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) length of bytes
+            0x0100000000000000000000000000000000000000000000000000000000000000  // (dyn) element 0, byte 01, right-padded to 32 bytes
             """;
 
         var lines = expectedRawHex.Split(Environment.NewLine);
@@ -462,9 +462,9 @@ public class AbiEncoderTests
 
         var expectedRawHex = """
             0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
-            0x0000000000000000000000000000000000000000000000000000000000000002  // (dynamic) length
-            0x0000000000000000000000000000000000000000000000000000000000000001  // (dynamic) element 0
-            0x0000000000000000000000000000000000000000000000000000000000000002  // (dynamic) element 1
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) element 0
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) element 1
             """;
 
         var lines = expectedRawHex.Split(Environment.NewLine);
@@ -473,6 +473,74 @@ public class AbiEncoderTests
         // Act
 
         var result = this.encoder.EncodeParameters(parameters, new byte[] { 1, 2 });
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        Assert.AreEqual(expectedHexList.Count, result.Count);
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void Encode_MoreComplexDynamicUint8Array_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(uint8[2][])");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length, 2 fixed arrays, ABI type hints at length of each
+            0x0000000000000000000000000000000000000000000000000000000000000001  // first fixed array, element 1 value of uint8[2]
+            0x0000000000000000000000000000000000000000000000000000000000000002  // first fixed array, element 2 value of uint8[2]
+            0x0000000000000000000000000000000000000000000000000000000000000003  // second fixed array, element 1 value of uint8[2]
+            0x0000000000000000000000000000000000000000000000000000000000000004  // second fixed array, element 2 value of uint8[2]
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } });
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        Assert.AreEqual(expectedHexList.Count, result.Count);
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void JaggedDynamicUint8Array_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(uint8[][])");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length, 2 dynamic arrays
+            0x0000000000000000000000000000000000000000000000000000000000000060  // (dyn) pointer to first dynamic array, relative to offset 32, which is the start of the block for this dynamic array data, i.e. the length slot, 3x 32
+            0x00000000000000000000000000000000000000000000000000000000000000C0  // (dyn) pointer to second dynamic array, relative to offset 32, which is the start of the block for this dynamic array data, i.e. the length slot, 6x 32
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length 2 of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) first dynamic array, element 1 value of uint8[]
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) first dynamic array, element 2 value of uint8[]
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length 2 of second dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) second dynamic array, element 1 value of uint8[]
+            0x0000000000000000000000000000000000000000000000000000000000000004  // (dyn) second dynamic array, element 2 value of uint8[]
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } });
 
         var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
 

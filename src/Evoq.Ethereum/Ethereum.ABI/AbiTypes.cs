@@ -167,12 +167,15 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Checks if the type is a dynamic array.
+    /// Checks if the type is either an array containing a variable-length type or itself has a variable-length.
     /// </summary>
     /// <remarks>
     /// A dynamic array is an array with a dynamic size, e.g. uint256[] or string[]
     /// or bool[][2] because the inner array is dynamic, so it is considered a fixed
     /// size array of two dynamic types (arrays).
+    /// 
+    /// Contract this with a fixed-length array of a fixed-length type, e.g. uint256[3]
+    /// which can be known ahead of time from the ABI alone.
     /// </remarks>
     public static bool IsDynamicArray(string type)
     {
@@ -195,7 +198,7 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Determines if a type is dynamic string, bytes or a dynamic array.
+    /// Determines if a type has a variable length such as a string, bytes or a dynamic array.
     /// </summary>
     public static bool IsDynamic(string type)
     {
