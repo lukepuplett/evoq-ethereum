@@ -116,7 +116,10 @@ public class AbiEncoderV2 : IAbiEncoder
 
         if (slotCount != values.Length)
         {
-            throw new ArgumentException($"Expected {slotCount} values but got {values.Length}");
+            string type = parameters.GetCanonicalType();
+            string valuesStr = string.Join(", ", values.GetElements().Select(v => v?.ToString() ?? "null"));
+
+            throw new ArgumentException($"Expected {slotCount} values for {type} but got {values.Length}, '{valuesStr}'. Nested tuples can be a source of confusion.");
         }
 
         // string type = parameters.GetCanonicalType();

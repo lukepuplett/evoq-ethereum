@@ -546,10 +546,167 @@ public class AbiEncoderTests
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 
+    [TestMethod]
+    public void NestedDynamicTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(bool isActive, (string id, uint256 balance) account)");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
+            0x0000000000000000000000000000000000000000000000000000000000000040  // offset to dynamic tuple 'account'
+            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) offset to dynamic string
+            0x0000000000000000000000000000000000000000000000000000000000000009  // (dyn) uint256 value (9)
+            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) string length
+            0x6162630000000000000000000000000000000000000000000000000000000000  // (dyn) string data ("abc" padded)
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, (true, ("abc", BigInteger.Parse("9"))));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void DoubleNestedDynamicTuple_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function foo(bool isActive, ((string id, string name) user, uint256 balance) account)");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
+            0x0000000000000000000000000000000000000000000000000000000000000040  // offset to outer dynamic tuple 'account'
+            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) offset to inner dynamic tuple 'user'
+            0x0000000000000000000000000000000000000000000000000000000000000009  // (dyn) uint256 value (9)
+            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) inner tuple: offset to string id
+            0x0000000000000000000000000000000000000000000000000000000000000080  // (dyn) inner tuple: offset to string name
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) length of string id
+            0x6100000000000000000000000000000000000000000000000000000000000000  // (dyn) string data ("a" padded)
+            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) length of string name
+            0x6162630000000000000000000000000000000000000000000000000000000000  // (dyn) string data ("abc" padded)
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, (true, (("a", "abc"), 9u)));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
     // examples from the formal spec
 
     [TestMethod]
-    public void Example_n_FourMixedValues_ReturnsCorrectEncoding()
+    public void Example_FromFormalSpec_FixedArrayOfBytes3_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function bar(bytes3[2])");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x6162630000000000000000000000000000000000000000000000000000000000  // first value of bytes3
+            0x6465660000000000000000000000000000000000000000000000000000000000  // second value of bytes3
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        // encoding of 'abc' is 0x616263
+        // encoding of 'def' is 0x646566
+
+        var result = this.encoder.EncodeParameters(parameters, new string[2] { "abc", "def" });
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void Example_FromFormalSpec_TwoSimpleValues_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function baz(uint256 x,bool y)");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000045  // first value
+            0x0000000000000000000000000000000000000000000000000000000000000001  // second value
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, (69u, true));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void Example_FromFormalSpec_ThreeValuesLastIsDynamicArray_ReturnsCorrectEncoding()
+    {
+        // Arrange
+
+        var signature = FunctionSignature.Parse("function sam(bytes,bool,uint[])");
+        var parameters = new EvmParameters(signature.Parameters);
+
+        var expectedRawHex = """
+            0x0000000000000000000000000000000000000000000000000000000000000060  // offset to start of data part of bytes value
+            0x0000000000000000000000000000000000000000000000000000000000000001  // second value
+            0x00000000000000000000000000000000000000000000000000000000000000a0  // offset to start of data part of uint[] value
+            0x0000000000000000000000000000000000000000000000000000000000000004  // (dyn) length of bytes value
+            0x6461766500000000000000000000000000000000000000000000000000000000  // (dyn) data of the bytes value
+            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) length of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) first element of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) second element of first dynamic array
+            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) third element of first dynamic array
+            """;
+
+        var lines = expectedRawHex.Split(Environment.NewLine);
+        var expectedHexList = lines.Select(line => Hex.Parse(FormatHexLine(line))).ToList();
+
+        // Act
+
+        var result = this.encoder.EncodeParameters(parameters, ("dave", true, new uint[] { 1, 2, 3 }));
+
+        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+
+        // Assert
+
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
+    }
+
+    [TestMethod]
+    public void Example_FromFormalSpec_FourMixedValues_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -589,6 +746,7 @@ public class AbiEncoderTests
     private static string FormatSlotBlock(ISet<Slot> slots)
     {
         var sb = new StringBuilder();
+        sb.AppendLine();
         sb.AppendLine("Block:");
         foreach (var slot in slots)
         {

@@ -149,7 +149,7 @@ public class Slot
     public override string ToString()
     {
         string idStr = this.id.ToString()[^4..];
-        string pointsTo = this.IsPointer ? $", ptr: {this.PointsTo.First().Offset} " : "";
+        string pointsTo = this.IsPointer ? $", ptr: {this.PointsTo.First().id.ToString()[^4..]} " : "";
 
         return $"{this.ToHex()} (id: {idStr}, off: {this.Offset}, ord: {this.Order}{pointsTo} - {this.Name})";
     }
