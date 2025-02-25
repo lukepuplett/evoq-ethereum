@@ -8,12 +8,12 @@ using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
-record class EncodingContext(
+record class EncodingContextV2(
     string AbiType,
     object Value,
     SlotCollection Block,
     bool HasPointer,
-    EncodingContext? Parent = null)
+    EncodingContextV2? Parent = null)
 {
     public bool IsRoot => this.Parent == null;
     public bool IsDynamic => AbiTypes.IsDynamic(this.AbiType);
@@ -122,20 +122,6 @@ public class AbiEncoderV2 : IAbiEncoder
             throw new ArgumentException($"Expected {slotCount} values for {type} but got {values.Length}, '{valuesStr}'. Nested tuples can be a source of confusion.");
         }
 
-        // string type = parameters.GetCanonicalType();
-
-        // if (AbiTypes.IsDynamic(type))
-        // {
-        // }
-        // else
-        // {
-        //     this.EncodeDynamicArray
-        // }
-
-        //
-        //
-        //
-
         var root = new SlotCollection(capacity: slotCount * 8);
         var heads = new SlotCollection(capacity: slotCount * 8);
         var tails = new List<SlotCollection>(capacity: slotCount);
@@ -144,7 +130,7 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             var parameter = parameters[i];
             var value = values[i];
-            var context = new EncodingContext(parameter.AbiType, value, root, true);
+            var context = new EncodingContextV2(parameter.AbiType, value, root, true);
 
             if (AbiTypes.IsDynamic(parameter.AbiType))
             {
@@ -156,13 +142,13 @@ public class AbiEncoderV2 : IAbiEncoder
                 var pointerSlot = new Slot(Name(context, "pointer_dyn_item"), pointsToFirst: tail, relativeTo: heads);
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, value, tail, true, context));
+                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, tail, true, context));
             }
             else
             {
                 // static, so we can encode directly into the heads
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, value, heads, false, context));
+                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, heads, false, context));
             }
         }
 
@@ -172,48 +158,13 @@ public class AbiEncoderV2 : IAbiEncoder
         root.AddRange(tails.SelectMany(tail => tail));
 
         return new AbiEncodingResult(root);
-
-        // var root = new SlotCollection(capacity: slotCount * 8);
-
-        // for (int i = 0; i < slotCount; i++)
-        // {
-        //     var parameter = parameters[i];
-        //     var value = values[i];
-
-        //     this.EncodeValue(new EncodingContext(parameter.AbiType, value, root, Parent: null));
-        // }
-
-        // return new AbiEncodingResult(root);
-
-        //
-        //
-        //
-
-        // var root = new SlotCollection(capacity: slotCount * 8);
-
-        // string type;
-        // type = parameters.GetCanonicalType();
-        // type = new EvmParam(0, "root", parameters).AbiType;
-
-        // this.EncodeValue(new EncodingContext(type, values, root));       // TODO / consider using canonical type
-
-        // // in the code above we treat the root parameter as a tuple, which means that if it's dynamic,
-        // // the first slot is a pointer to the first slot of the dynamic data, and that's probably not what we want,
-        // // so we skip the first slot if that's the case
-
-        // bool isRootTuple = AbiTypes.IsTuple(type);
-        // bool isRootDynamic = AbiTypes.IsDynamic(type);
-
-        // var isDynamicTupleRoot = isRootTuple && isRootDynamic;
-
-        // return new AbiEncodingResult(root, skipFirstSlot: isDynamicTupleRoot);
     }
 
     // privates
 
     // single-slot fixed-size values
 
-    private void EncodeSingleSlotStaticValue(EncodingContext context)
+    private void EncodeSingleSlotStaticValue(EncodingContextV2 context)
     {
         // e.g. bool or uint256, but not tuples like (bool,uint256)
 
@@ -232,7 +183,7 @@ public class AbiEncoderV2 : IAbiEncoder
 
     // single-slot fixed-size iterables
 
-    private void EncodeSingleSlotArray(EncodingContext context)
+    private void EncodeSingleSlotArray(EncodingContextV2 context)
     {
         // e.g. bool[2][2] or uint256[2], but not tuples like (bool,uint256)[4]
 
@@ -261,11 +212,11 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             var element = array.GetValue(i);
 
-            this.EncodeValue(new EncodingContext(innerType!, element, context.Block, false, context));
+            this.EncodeValue(new EncodingContextV2(innerType!, element, context.Block, false, context));
         }
     }
 
-    private void EncodeSingleSlotTuple(EncodingContext context)
+    private void EncodeSingleSlotTuple(EncodingContextV2 context)
     {
         // e.g. (bool, uint256) or (bool, (uint256, uint256))
 
@@ -299,14 +250,14 @@ public class AbiEncoderV2 : IAbiEncoder
             var parameter = evmParams[i];
             var componentValue = tuple![i];
 
-            this.EncodeValue(new EncodingContext(
+            this.EncodeValue(new EncodingContextV2(
                 parameter.AbiType, componentValue, context.Block, false, context)); // send back into the router
         }
     }
 
     // dynamic variable-size value
 
-    private void EncodeDynamicValue(EncodingContext context)
+    private void EncodeDynamicValue(EncodingContextV2 context)
     {
         // e.g. string or bytes, but not tuples like (string,bytes) or arrays like string[] or bytes[]
 
@@ -362,7 +313,7 @@ public class AbiEncoderV2 : IAbiEncoder
 
     // dynamic variable-size iterables
 
-    private void EncodeDynamicArray(EncodingContext context)
+    private void EncodeDynamicArray(EncodingContextV2 context)
     {
         // e.g. uint8[] or bool[][2] or uint256[][2] or string[], or even (bool,uint256)[]
 
@@ -444,7 +395,7 @@ public class AbiEncoderV2 : IAbiEncoder
                     // recursive call to encode will drop back into this function
                     // with the tail as the block, if the inner type is dynamic
 
-                    this.EncodeValue(new EncodingContext(
+                    this.EncodeValue(new EncodingContextV2(
                         innerType!, element, elementTail, true, context));
                 }
             }
@@ -458,7 +409,7 @@ public class AbiEncoderV2 : IAbiEncoder
                 {
                     var element = array.GetValue(i);
 
-                    this.EncodeValue(new EncodingContext(
+                    this.EncodeValue(new EncodingContextV2(
                         innerType!, element, context.Block, false, context));
                 }
             }
@@ -469,7 +420,7 @@ public class AbiEncoderV2 : IAbiEncoder
         context.Block.AddRange(elementTails.SelectMany(tail => tail));
     }
 
-    private void EncodeDynamicTuple(EncodingContext context)
+    private void EncodeDynamicTuple(EncodingContextV2 context)
     {
         // e.g. (bool, uint256) or (bool, (uint256, uint256))
 
@@ -504,14 +455,14 @@ public class AbiEncoderV2 : IAbiEncoder
                 var pointerSlot = new Slot(Name(context, $"pointer_dyn_comp_{i}"), pointsToFirst: tail, relativeTo: heads);
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContext(
+                this.EncodeValue(new EncodingContextV2(
                     componentType, componentValue, tail, true, context));
             }
             else
             {
                 // write the value directly into the heads
 
-                this.EncodeValue(new EncodingContext(
+                this.EncodeValue(new EncodingContextV2(
                     componentType, componentValue, heads, false, context));
             }
         }
@@ -522,12 +473,12 @@ public class AbiEncoderV2 : IAbiEncoder
 
     // router
 
-    private void EncodeValue(EncodingContext context)
+    private void EncodeValue(EncodingContextV2 context)
     {
         bool isArray = context.IsArray;
         bool isTuple = context.IsTuple;
         bool isDynamic = context.IsDynamic;
-        bool isWithinIterable = context.HasPointer;
+        bool hasPointer = context.HasPointer;
 
         // determine the type of the value and call the appropriate encoder
 
@@ -550,7 +501,7 @@ public class AbiEncoderV2 : IAbiEncoder
 
             if (isArray)
             {
-                if (isWithinIterable)
+                if (hasPointer)
                 {
                     // already has a pointer, so we can just encode the dynamic array
 
@@ -565,7 +516,7 @@ public class AbiEncoderV2 : IAbiEncoder
 
                     context.Block.Add(pointerSlot);
 
-                    this.EncodeDynamicArray(new EncodingContext(
+                    this.EncodeDynamicArray(new EncodingContextV2(
                         context.AbiType, context.Value, tail, true, context.Parent));
 
                     context.Block.AddRange(tail);
@@ -575,7 +526,7 @@ public class AbiEncoderV2 : IAbiEncoder
             {
                 // e.g. (bool, bytes) or (bool, (uint256[][2], uint256))
 
-                if (isWithinIterable)
+                if (hasPointer)
                 {
                     // TODO
                 }
@@ -630,7 +581,7 @@ public class AbiEncoderV2 : IAbiEncoder
     private static Exception NotImplemented(string abiType, string clrType) =>
         new NotImplementedException($"Encoding for type {abiType} and value of type {clrType} not implemented");
 
-    private bool TryFindStaticSlotEncoder(EncodingContext context, out Func<object, Slot>? encoder)
+    private bool TryFindStaticSlotEncoder(EncodingContextV2 context, out Func<object, Slot>? encoder)
     {
         if (context.Value == null)
         {
@@ -690,7 +641,7 @@ public class AbiEncoderV2 : IAbiEncoder
     //     return false;
     // }
 
-    private SlotCollection BytesToSlots(EncodingContext context, byte[] rawBytes)
+    private SlotCollection BytesToSlots(EncodingContextV2 context, byte[] rawBytes)
     {
         var paddedBytes = BytesTypeEncoder.EncodeBytes(rawBytes);
         bool hasRemainingBytes = paddedBytes.Length % 32 != 0;
@@ -711,8 +662,8 @@ public class AbiEncoderV2 : IAbiEncoder
         return slots;
     }
 
-    private static string Name(EncodingContext context, string name)
+    private static string Name(EncodingContextV2 context, string name)
     {
-        return $"{context.ToString()}.{name}";
+        return $"{context}.{name}";
     }
 }

@@ -39,6 +39,14 @@ This package targets .NET Standard 2.1 for maximum compatibility across:
 
 ## Building
 
+Testing depends on a Golang executable which is included in the repository along with its source code. The Golang executable is used to generate ABI encoding using go-ethereum and serves to test the .NET ABI encoding against the go-ethereum ABI encoding.
+
+The Golang executable is called **gabi** and was compiled for macOS on an M chip. It may need to be recompiled for other platforms.
+
+**Note** - The tests do not call the gabi executable, instead gabi is used to generate the expected output which is embedded into the test code as the expected output string.
+
+From the folder containing the solution file:
+
 ```bash
 dotnet build
 dotnet test

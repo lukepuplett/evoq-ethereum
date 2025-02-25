@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -50,6 +51,15 @@ public class AbiEncodingResult
         this.UpdateOffsetsAndEncodePointers();
 
         return this.final.SelectMany(slot => slot.Data).ToArray();
+    }
+
+    /// <summary>
+    /// Gets the hex representation of the encoding result.
+    /// </summary>
+    /// <returns>The hex representation of the encoding result.</returns>
+    public Hex GetHex()
+    {
+        return new Hex(this.GetBytes());
     }
 
     //

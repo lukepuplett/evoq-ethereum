@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -56,6 +57,26 @@ public class FunctionSignature
     public EvmParameters Parameters { get; }
 
     //
+
+    /// <summary>
+    /// Encodes the full function signature, including the name and parameters.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="values">The values to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public byte[] EncodeFullSignature(IAbiEncoder encoder, ITuple values)
+    {
+        var result = encoder.EncodeParameters(this.Parameters, values);
+
+        var selectorBytes = this.GetSelector();
+        var resultBytes = result.GetBytes();
+
+        var fullBytes = new byte[selectorBytes.Length + resultBytes.Length];
+        selectorBytes.CopyTo(fullBytes, 0);
+        resultBytes.CopyTo(fullBytes, selectorBytes.Length);
+
+        return fullBytes;
+    }
 
     /// <summary>
     /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
@@ -193,5 +214,78 @@ public class FunctionSignature
             "ufixed" => "ufixed128x18",
             _ => type.ToLowerInvariant()
         };
+    }
+}
+
+/// <summary>
+/// Extension methods for <see cref="FunctionSignature"/>.
+/// </summary>
+public static class FunctionSignatureExtensions
+{
+    /// <summary>
+    /// Encodes a single parameter for a function signature.
+    /// </summary>
+    /// <typeparam name="T">The type of the value to encode. Must be a value type or string.</typeparam>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="value">The value to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature<T>(
+        this FunctionSignature signature, IAbiEncoder encoder, T value)
+        where T : struct, IConvertible
+    {
+        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a single string parameter for a function signature.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="value">The string value to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature(
+        this FunctionSignature signature, IAbiEncoder encoder, string value)
+    {
+        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a BigInteger parameter for a function signature.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="value">The BigInteger value to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature(
+        this FunctionSignature signature, IAbiEncoder encoder, BigInteger value)
+    {
+        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter for a function signature.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="value">The byte array to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature(
+        this FunctionSignature signature, IAbiEncoder encoder, byte[] value)
+    {
+        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+    }
+
+    /// <summary>
+    /// Encodes an array parameter for a function signature.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="value">The array to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature(
+        this FunctionSignature signature, IAbiEncoder encoder, Array value)
+    {
+        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
     }
 }
