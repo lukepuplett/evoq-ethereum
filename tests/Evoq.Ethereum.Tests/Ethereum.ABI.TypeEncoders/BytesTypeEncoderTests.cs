@@ -1,6 +1,6 @@
 using Evoq.Ethereum.ABI.TypeEncoders;
 
-namespace Evoq.Ethereum.Tests.ABI.TypeEncoders;
+namespace Evoq.Ethereum.ABI.TypeEncoders;
 
 [TestClass]
 public class BytesTypeEncoderTests

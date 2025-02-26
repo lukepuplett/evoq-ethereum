@@ -284,15 +284,21 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"The type {context.AbiType} is an array, not a single slot dynamic value");
         }
 
-        byte[] bytes;
+        if (!this.TryFindDynamicBytesEncoder(context, out var encoder))
+        {
+            throw NotImplemented(context.AbiType, context.Value.GetType().ToString());
+        }
+
+        byte[] paddedBytes = encoder!(context.Value);
+        int length;
 
         if (context.Value is byte[] bytesValue)
         {
-            bytes = bytesValue;
+            length = bytesValue.Length;
         }
         else if (context.Value is string stringValue)
         {
-            bytes = Encoding.UTF8.GetBytes(stringValue);
+            length = Encoding.UTF8.GetBytes(stringValue).Length;
         }
         else
         {
@@ -301,8 +307,8 @@ public class AbiEncoder : IAbiEncoder
 
         // encode the value into the tail and add the offset pointer to the head
 
-        var lengthSlot = new Slot(Name(context, "length"), UintTypeEncoder.EncodeUint(256, bytes.Length));
-        var bytesSlots = this.BytesToSlots(context, bytes);
+        var lengthSlot = new Slot(Name(context, "length"), UintTypeEncoder.EncodeUint(256, length));
+        var bytesSlots = this.BytesToSlots(context, paddedBytes);
 
         var heads = new SlotCollection(capacity: 1);
         var tail = new SlotCollection(capacity: bytesSlots.Count);
@@ -333,24 +339,6 @@ public class AbiEncoder : IAbiEncoder
     {
         // e.g. uint8[] or bool[][2] or uint256[][2] or string[], or even (bool,uint256)[]
 
-        // experimental: I think when encoding an array, we enter a kind of special mode
-        // where recursion is within this special mode until the array is fully encoded
-        //
-        // this is because in the example I have for bool[][], the outer-most slot is a
-        // single pointer to its data tail, which starts with a count and then a pointer
-        // for each element of the array, pointing to the tails for those elements
-        //
-        // if we use the standard recursion where we add a single pointer to its data tail
-        // with its length, then "break off" the inner type bool[] and recursively encode
-        // that using the standard "back in the top" recursion, we get a result that is
-        // incorrect because the inner type bool[] is encoded as a *single* pointer to its
-        // own data tail, which is not what we want
-        //
-        // so we need to recurse this function to control it all
-        //
-        // the caller is responsible for adding the pointer and passing in the tail as the
-        // block
-
         // similar to the tuple case, except the type is always the same
 
         if (context.Value is not Array array)
@@ -379,12 +367,18 @@ public class AbiEncoder : IAbiEncoder
         }
         else
         {
-            // caller is responsible for adding the single pointer for this new
-            // dynamic array:
+            // caller is responsible for adding the single pointer for this new dynamic array:
             //
-            // the block starts with a count followed by the elements of type T (the
-            // inner type) which will either be pointers to their own tails or the
-            // actual encoded data if the inner type is not dynamic, I think
+            // we start with a count followed by the elements of type T (the inner type)
+            // which will either be pointers to their own tails or the actual encoded data
+            // if the inner type is not dynamic
+            //
+            // the count is only added if the array is variable length, otherwise the count
+            // is implied by the type and the number of elements in the array
+            //
+            // NOTE / the count does not form part of the "official" encoding of the array
+            // so it is not regarded as the slot from which pointers are relative to, so we
+            // make a set of heads that pointers can be relative to
 
             if (isVariableLength)
             {
@@ -605,7 +599,7 @@ public class AbiEncoder : IAbiEncoder
     //
 
     private static Exception NotImplemented(string abiType, string clrType) =>
-        new NotImplementedException($"Encoding for type {abiType} and value of type {clrType} not implemented");
+        new NotImplementedException($"Encoding for ABI type {abiType} with .NET type {clrType} not implemented");
 
     private bool TryFindStaticSlotEncoder(EncodingContext context, out Func<object, Slot>? encoder)
     {
@@ -637,39 +631,38 @@ public class AbiEncoder : IAbiEncoder
         return false;
     }
 
-    // private bool TryFindDynamicBytesEncoder(string abiType, object value, out Func<object, byte[]>? encoder)
-    // {
-    //     if (value == null)
-    //     {
-    //         encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
-    //         return true;
-    //     }
-
-    //     // get the canonical type
-
-    //     if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
-    //     {
-    //         // canonical type not found; this should never happen
-
-    //         throw new InvalidOperationException($"Canonical type not found for {abiType}");
-    //     }
-
-    //     foreach (var dynamicEncoder in this.dynamicTypeEncoders)
-    //     {
-    //         if (dynamicEncoder.TryEncode(canonicalType, value, out var bytes))
-    //         {
-    //             encoder = _ => bytes;
-    //             return true;
-    //         }
-    //     }
-
-    //     encoder = null;
-    //     return false;
-    // }
-
-    private SlotCollection BytesToSlots(EncodingContext context, byte[] rawBytes)
+    private bool TryFindDynamicBytesEncoder(EncodingContext context, out Func<object, byte[]>? encoder)
     {
-        var paddedBytes = BytesTypeEncoder.EncodeBytes(rawBytes);
+        if (context.Value == null)
+        {
+            encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
+            return true;
+        }
+
+        // get the canonical type
+
+        if (!AbiTypes.TryGetCanonicalType(context.AbiType, out var canonicalType) || canonicalType == null)
+        {
+            // canonical type not found; this should never happen
+
+            throw new InvalidOperationException($"Canonical type not found for {context.AbiType}");
+        }
+
+        foreach (var dynamicEncoder in this.dynamicTypeEncoders)
+        {
+            if (dynamicEncoder.TryEncode(canonicalType, context.Value, out var bytes))
+            {
+                encoder = _ => bytes;
+                return true;
+            }
+        }
+
+        encoder = null;
+        return false;
+    }
+
+    private SlotCollection BytesToSlots(EncodingContext context, byte[] paddedBytes)
+    {
         bool hasRemainingBytes = paddedBytes.Length % 32 != 0;
 
         Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");

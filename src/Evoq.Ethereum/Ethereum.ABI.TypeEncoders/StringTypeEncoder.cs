@@ -13,7 +13,7 @@ public class StringTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Initializes a new instance of the <see cref="StringTypeEncoder"/> class.
     /// </summary>
     public StringTypeEncoder()
-        : base(new HashSet<string> { "string" }, new HashSet<Type> { typeof(string) })
+        : base(new HashSet<string> { "string", "bytes" }, new HashSet<Type> { typeof(string) })
     {
     }
 
@@ -63,10 +63,7 @@ public class StringTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (abiType != "string")
-        {
-            return false;
-        }
+        //
 
         if (clrType == typeof(string))
         {
@@ -89,7 +86,12 @@ public class StringTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
         if (str == null)
             throw new ArgumentNullException(nameof(str));
 
-        return Encoding.UTF8.GetBytes(str);
+        byte[] stringBytes = Encoding.UTF8.GetBytes(str);
+        int paddedLength = ((stringBytes.Length + 31) / 32) * 32;
+        byte[] result = new byte[paddedLength];
+        Array.Copy(stringBytes, 0, result, 0, stringBytes.Length);
+
+        return result;
     }
 
     /// <summary>
