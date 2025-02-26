@@ -42,7 +42,7 @@ public class AbiEncoderTests_Original
     */
 
     [TestMethod]
-    public void Encode_SimpleUint256_ReturnsCorrectEncoding()
+    public void No1_Encode_SimpleUint256_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -69,7 +69,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_SimpleBool_ReturnsCorrectEncoding()
+    public void No2_Encode_SimpleBool_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -95,7 +95,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_SimpleUint8_And_Uint256_ReturnsCorrectEncoding()
+    public void No3_Encode_SimpleUint8_And_Uint256_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -122,7 +122,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_SimpleStaticUint8Array_ReturnsCorrectEncoding()
+    public void No4_Encode_SimpleStaticUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -145,11 +145,11 @@ public class AbiEncoderTests_Original
 
         // Assert
 
-        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet);
+        CollectionAssert.AreEquivalent(expectedHexList, actualHexSet, FormatSlotBlock(result.GetSlots()));
     }
 
     [TestMethod]
-    public void Encode_JaggedStaticUint8Array_ReturnsCorrectEncoding()
+    public void No5_Encode_JaggedStaticUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -199,7 +199,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_TripleJaggedStaticUint8Array_ReturnsCorrectEncoding()
+    public void No6_Encode_TripleJaggedStaticUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -245,7 +245,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_PointlessStaticTuple_ReturnsCorrectEncoding()
+    public void No7_Encode_PointlessStaticTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -291,7 +291,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_NestedStaticTuple_ReturnsCorrectEncoding()
+    public void No8_Encode_NestedStaticTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -330,7 +330,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_TwoNestedStaticTuple_ReturnsCorrectEncoding()
+    public void No9_Encode_TwoNestedStaticTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -374,7 +374,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_DoubleNestedStaticTuple_ReturnsCorrectEncoding()
+    public void No10_Encode_DoubleNestedStaticTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -424,7 +424,7 @@ public class AbiEncoderTests_Original
     // dynamic types
 
     [TestMethod]
-    public void Encode_SimpleBytes_ReturnsCorrectEncoding()
+    public void No11_Encode_SimpleBytes_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -452,7 +452,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_SimpleDynamicUint8Array_ReturnsCorrectEncoding()
+    public void No12_Encode_SimpleDynamicUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -481,7 +481,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Encode_MoreComplexDynamicUint8Array_ReturnsCorrectEncoding()
+    public void No13_Encode_MoreComplexDynamicUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -512,18 +512,18 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void JaggedDynamicUint8Array_ReturnsCorrectEncoding()
+    public void No14_JaggedDynamicUint8Array_ReturnsCorrectEncoding()
     {
         // Arrange
 
-        var signature = FunctionSignature.Parse("function foo(uint8[][])");
+        var signature = FunctionSignature.Parse("function foo(uint8[][])"); // [[1,2],[3,4]]
         var parameters = new EvmParameters(signature.Parameters);
 
         var expectedRawHex = """
             0x0000000000000000000000000000000000000000000000000000000000000020  // pointer to length at offset 32
             0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length, 2 dynamic arrays
-            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) pointer to first dynamic array, relative to offset 32, which is the start of the block for this dynamic array data, i.e. the length slot, 3x 32
-            0x000000000000000000000000000000000000000000000000000000000000000a  // (dyn) pointer to second dynamic array, relative to offset 32, which is the start of the block for this dynamic array data, i.e. the length slot, 6x 32
+            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) pointer to first dynamic array
+            0x00000000000000000000000000000000000000000000000000000000000000a0  // (dyn) pointer to second dynamic array
             0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) length 2 of first dynamic array
             0x0000000000000000000000000000000000000000000000000000000000000001  // (dyn) first dynamic array, element 1 value of uint8[]
             0x0000000000000000000000000000000000000000000000000000000000000002  // (dyn) first dynamic array, element 2 value of uint8[]
@@ -547,7 +547,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void NestedDynamicTuple_ReturnsCorrectEncoding()
+    public void No15_NestedDynamicTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -555,12 +555,12 @@ public class AbiEncoderTests_Original
         var parameters = new EvmParameters(signature.Parameters);
 
         var expectedRawHex = """
-            0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true
-            0x0000000000000000000000000000000000000000000000000000000000000040  // offset to dynamic tuple 'account'
-            0x0000000000000000000000000000000000000000000000000000000000000040  // (dyn) offset to dynamic string
-            0x0000000000000000000000000000000000000000000000000000000000000009  // (dyn) uint256 value (9)
-            0x0000000000000000000000000000000000000000000000000000000000000003  // (dyn) string length
-            0x6162630000000000000000000000000000000000000000000000000000000000  // (dyn) string data ("abc" padded)
+            0x0000000000000000000000000000000000000000000000000000000000000001  // .isActive = true
+            0x0000000000000000000000000000000000000000000000000000000000000040  // .account = offset to tail of dynamic tuple 'account'
+            0x0000000000000000000000000000000000000000000000000000000000000040  // .account.id = offset to tail of string 'id'
+            0x0000000000000000000000000000000000000000000000000000000000000009  // .account.balance = uint256 value (9)
+            0x0000000000000000000000000000000000000000000000000000000000000003  // .account.id.length = string length
+            0x6162630000000000000000000000000000000000000000000000000000000000  // .account.id.data = string data ("abc" padded)
             """;
 
         var lines = expectedRawHex.Split(Environment.NewLine);
@@ -578,7 +578,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void DoubleNestedDynamicTuple_ReturnsCorrectEncoding()
+    public void No16_DoubleNestedDynamicTuple_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -615,7 +615,7 @@ public class AbiEncoderTests_Original
     // examples from the formal spec
 
     [TestMethod]
-    public void Example_FromFormalSpec_FixedArrayOfBytes3_ReturnsCorrectEncoding()
+    public void No17_Example_FromFormalSpec_FixedArrayOfBytes3_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -645,7 +645,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Example_FromFormalSpec_TwoSimpleValues_ReturnsCorrectEncoding()
+    public void No18_Example_FromFormalSpec_TwoSimpleValues_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -672,7 +672,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Example_FromFormalSpec_ThreeValuesLastIsDynamicArray_ReturnsCorrectEncoding()
+    public void No19_Example_FromFormalSpec_ThreeValuesLastIsDynamicArray_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -706,7 +706,7 @@ public class AbiEncoderTests_Original
     }
 
     [TestMethod]
-    public void Example_FromFormalSpec_FourMixedValues_ReturnsCorrectEncoding()
+    public void No20_Example_FromFormalSpec_FourMixedValues_ReturnsCorrectEncoding()
     {
         // Arrange
 
@@ -743,7 +743,7 @@ public class AbiEncoderTests_Original
 
     private static string FormatHexLine(string hex) => hex.Trim().Substring(0, 64 + 2);
 
-    private static string FormatSlotBlock(ISet<Slot> slots)
+    private static string FormatSlotBlock(IReadOnlyList<Slot> slots)
     {
         var sb = new StringBuilder();
         sb.AppendLine();

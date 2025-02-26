@@ -69,7 +69,7 @@ public class AbiEncoderTests
 
     private static string FormatHexLine(string hex) => hex.Trim().Substring(0, 64 + 2);
 
-    private static string FormatSlotBlock(ISet<Slot> slots)
+    private static string FormatSlotBlock(IReadOnlyList<Slot> slots)
     {
         var sb = new StringBuilder();
         sb.AppendLine();

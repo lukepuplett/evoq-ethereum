@@ -110,7 +110,7 @@ public class Slot
     /// <summary>
     /// Whether the slot is a pointer.
     /// </summary>
-    public bool IsPointer => this.PointsTo != null && this.PointsTo.Count > 0;
+    public bool IsPointer => this.PointsTo != null;
 
     /// <summary>
     /// The offset of the slot within its container.
@@ -149,9 +149,34 @@ public class Slot
     public override string ToString()
     {
         string idStr = this.id.ToString()[^4..];
-        string pointsTo = this.IsPointer ? $", ptr: {this.PointsTo.First().id.ToString()[^4..]} " : "";
 
-        return $"{this.ToHex()} (id: {idStr}, off: {this.Offset}, ord: {this.Order}{pointsTo} - {this.Name})";
+        string pointsTo = "";
+        if (this.IsPointer)
+        {
+            if (this.PointsTo.Any())
+            {
+                pointsTo = $", ptr: {this.PointsTo.First().id.ToString()[^4..]}";
+            }
+            else
+            {
+                pointsTo = $", ptr: EMPTY! CHECK SLOTS WERE ADDED TO THE CORRECT COLLECTION";
+            }
+        }
+
+        string relTo = "";
+        if (this.IsPointer)
+        {
+            if (this.RelativeTo.Any())
+            {
+                relTo = $", rel: {this.RelativeTo.First().id.ToString()[^4..]}";
+            }
+            else
+            {
+                relTo = $", rel: EMPTY! CHECK SLOTS WERE ADDED TO THE CORRECT COLLECTION";
+            }
+        }
+
+        return $"{this.ToHex()} (id: {idStr}, off: {this.Offset}, ord: {this.Order}{pointsTo}{relTo} - {this.Name})";
     }
 
     //
@@ -194,16 +219,26 @@ public class Slot
     /// </summary>
     internal void EncodePointerOffset()
     {
-        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
+        if (this.PointsTo != null)
         {
-            Debug.Assert(this.RelativeTo != null, "RelativeTo is null");
-            Debug.Assert(this.RelativeTo.Count > 0, "RelativeTo is empty");
+            // Debug.Assert(this.PointsTo.Count > 0, "PointsTo an empty SlotCollection. Check slots were added to the correct collection.");
 
-            int startingPosition = this.RelativeTo?.First().Order ?? 0;
-            int distance = this.PointsTo.First().Order - startingPosition;
+            if (this.PointsTo.Count > 0)
+            {
+                // Debug.Assert(this.PointsTo.First().Offset >= 0, "PointsTo.First().Offset is negative");
 
-            var offset = UintTypeEncoder.EncodeUint(256, distance * Size);
-            this.data = offset;
+                if (this.PointsTo.First().Offset >= 0)
+                {
+                    Debug.Assert(this.RelativeTo != null, $"RelativeTo for slot {this.Name} is null");
+                    Debug.Assert(this.RelativeTo.Count > 0, $"RelativeTo for slot {this.Name} is empty");
+
+                    int startingPosition = this.RelativeTo?.First().Order ?? 0;
+                    int distance = this.PointsTo.First().Order - startingPosition;
+
+                    var offset = UintTypeEncoder.EncodeUint(256, distance * Size);
+                    this.data = offset;
+                }
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ record class EncodingContextV2(
     object Value,
     SlotCollection Block,
     bool HasPointer,
+    bool IsParameter,
     EncodingContextV2? Parent = null)
 {
     public bool IsRoot => this.Parent == null;
@@ -40,6 +41,15 @@ record class EncodingContextV2(
 
         tuple = null;
         return false;
+    }
+    public EncodingContextV2? GetParameterContext()
+    {
+        if (this.IsParameter)
+        {
+            return this;
+        }
+
+        return this.Parent?.GetParameterContext();
     }
     public override string ToString()
     {
@@ -130,7 +140,7 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             var parameter = parameters[i];
             var value = values[i];
-            var context = new EncodingContextV2(parameter.AbiType, value, root, true);
+            var context = new EncodingContextV2(parameter.AbiType, value, root, true, true);
 
             if (AbiTypes.IsDynamic(parameter.AbiType))
             {
@@ -139,16 +149,19 @@ public class AbiEncoderV2 : IAbiEncoder
                 var tail = new SlotCollection(capacity: 8);
                 tails.Add(tail);
 
-                var pointerSlot = new Slot(Name(context, "pointer_dyn_item"), pointsToFirst: tail, relativeTo: heads);
+                var pointerSlot = new Slot(
+                    Name(context, "pointer_dyn_item"),
+                    pointsToFirst: tail,
+                    relativeTo: heads);
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, tail, true, context));
+                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, tail, true, false, context));
             }
             else
             {
                 // static, so we can encode directly into the heads
 
-                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, heads, false, context));
+                this.EncodeValue(new EncodingContextV2(parameter.AbiType, value, heads, false, false, context));
             }
         }
 
@@ -212,7 +225,7 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             var element = array.GetValue(i);
 
-            this.EncodeValue(new EncodingContextV2(innerType!, element, context.Block, false, context));
+            this.EncodeValue(new EncodingContextV2(innerType!, element, context.Block, false, false, context));
         }
     }
 
@@ -251,7 +264,7 @@ public class AbiEncoderV2 : IAbiEncoder
             var componentValue = tuple![i];
 
             this.EncodeValue(new EncodingContextV2(
-                parameter.AbiType, componentValue, context.Block, false, context)); // send back into the router
+                parameter.AbiType, componentValue, context.Block, false, false, context)); // send back into the router
         }
     }
 
@@ -298,7 +311,10 @@ public class AbiEncoderV2 : IAbiEncoder
         {
             // assume the outer loop has already added a pointer to the first slot of the tail
 
-            var pointerSlot = new Slot(Name(context, "pointer_dyn_value"), pointsToFirst: tail, relativeTo: heads);
+            var pointerSlot = new Slot(
+                Name(context, "pointer_dyn_value"),
+                pointsToFirst: tail,
+                relativeTo: heads);
             heads.Add(pointerSlot);
         }
 
@@ -342,8 +358,6 @@ public class AbiEncoderV2 : IAbiEncoder
             throw new ArgumentException($"The type {context.AbiType} requires an array value");
         }
 
-        var elementTails = new List<SlotCollection>(capacity: array.Length + 1);      // tails for each element's value
-
         if (!AbiTypes.TryRemoveOuterArrayDimension(context.AbiType, out var innerType))
         {
             throw new NotImplementedException($"The type '{context.AbiType}' is not an array");
@@ -382,13 +396,20 @@ public class AbiEncoderV2 : IAbiEncoder
             {
                 // dynamic inner type, so we need new pointers and tails for each element
 
+                var heads = new SlotCollection(capacity: 8);
+                var elementTails = new List<SlotCollection>(capacity: array.Length + 1);
+
                 for (int i = 0; i < array.Length; i++)
                 {
                     var elementTail = new SlotCollection(capacity: 8);
                     elementTails.Add(elementTail);
 
-                    var elementPointerSlot = new Slot(Name(context, $"pointer_dyn_elem_{i}"), pointsToFirst: elementTail, relativeTo: context.Block);
-                    context.Block.Add(elementPointerSlot);
+                    var elementPointerSlot = new Slot(
+                        Name(context, $"pointer_dyn_elem_{i}"),
+                        pointsToFirst: elementTail,
+                        relativeTo: heads); // not relative to block, because the count slot is not regarded as part of the encoding!
+
+                    heads.Add(elementPointerSlot);
 
                     var element = array.GetValue(i);
 
@@ -396,8 +417,13 @@ public class AbiEncoderV2 : IAbiEncoder
                     // with the tail as the block, if the inner type is dynamic
 
                     this.EncodeValue(new EncodingContextV2(
-                        innerType!, element, elementTail, true, context));
+                        innerType!, element, elementTail, true, false, context));
                 }
+
+                // heads then tails
+
+                context.Block.AddRange(heads);
+                context.Block.AddRange(elementTails.SelectMany(tail => tail));
             }
             else
             {
@@ -410,14 +436,10 @@ public class AbiEncoderV2 : IAbiEncoder
                     var element = array.GetValue(i);
 
                     this.EncodeValue(new EncodingContextV2(
-                        innerType!, element, context.Block, false, context));
+                        innerType!, element, context.Block, false, false, context));
                 }
             }
         }
-
-        // pour it all into the block now that the tails are encoded
-
-        context.Block.AddRange(elementTails.SelectMany(tail => tail));
     }
 
     private void EncodeDynamicTuple(EncodingContextV2 context)
@@ -452,18 +474,21 @@ public class AbiEncoderV2 : IAbiEncoder
                 var tail = new SlotCollection(capacity: 8);
                 tails.Add(tail);
 
-                var pointerSlot = new Slot(Name(context, $"pointer_dyn_comp_{i}"), pointsToFirst: tail, relativeTo: heads);
+                var pointerSlot = new Slot(
+                    Name(context, $"pointer_dyn_comp_{i}"),
+                    pointsToFirst: tail,
+                    relativeTo: heads);
                 heads.Add(pointerSlot);
 
                 this.EncodeValue(new EncodingContextV2(
-                    componentType, componentValue, tail, true, context));
+                    componentType, componentValue, tail, true, false, context));
             }
             else
             {
                 // write the value directly into the heads
 
                 this.EncodeValue(new EncodingContextV2(
-                    componentType, componentValue, heads, false, context));
+                    componentType, componentValue, heads, false, false, context));
             }
         }
 
@@ -512,12 +537,15 @@ public class AbiEncoderV2 : IAbiEncoder
                     // fresh encounter with this dynamic value, so we need a pointer
 
                     var tail = new SlotCollection(capacity: 8);
-                    var pointerSlot = new Slot(Name(context, "pointer_dyn_array"), pointsToFirst: tail, relativeTo: context.Block);
+                    var pointerSlot = new Slot(
+                        Name(context, "pointer_dyn_array"),
+                        pointsToFirst: tail,
+                        relativeTo: context.Block);
 
                     context.Block.Add(pointerSlot);
 
                     this.EncodeDynamicArray(new EncodingContextV2(
-                        context.AbiType, context.Value, tail, true, context.Parent));
+                        context.AbiType, context.Value, tail, true, true, context.Parent));
 
                     context.Block.AddRange(tail);
                 }

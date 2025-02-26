@@ -35,11 +35,11 @@ public class AbiEncodingResult
     /// Gets the slots of the slot space.
     /// </summary>
     /// <returns>The slots of the slot space.</returns>
-    public ISet<Slot> GetSlots()
+    public IReadOnlyList<Slot> GetSlots()
     {
         this.UpdateOffsetsAndEncodePointers();
 
-        return this.GetSlotsInternal().ToHashSet();
+        return this.final.OrderBy(slot => slot.Order).ToList();
     }
 
     /// <summary>
@@ -48,9 +48,7 @@ public class AbiEncodingResult
     /// <returns>The combined static and dynamic data as a byte array.</returns>
     public byte[] GetBytes()
     {
-        this.UpdateOffsetsAndEncodePointers();
-
-        return this.final.SelectMany(slot => slot.Data).ToArray();
+        return this.GetSlots().SelectMany(slot => slot.Data).ToArray();
     }
 
     /// <summary>
@@ -63,14 +61,6 @@ public class AbiEncodingResult
     }
 
     //
-
-    private IEnumerable<Slot> GetSlotsInternal()
-    {
-        foreach (var slot in this.final)
-        {
-            yield return slot;
-        }
-    }
 
     /// <summary>
     /// Sets the byte offset on every slot.
@@ -85,7 +75,7 @@ public class AbiEncodingResult
         int offset = 0;
         int order = 0;
 
-        foreach (var slot in this.GetSlotsInternal())
+        foreach (var slot in this.final)
         {
             slot.SetOrder(order);
             order++;
@@ -96,7 +86,7 @@ public class AbiEncodingResult
 
         // now we can encode the pointers
 
-        foreach (var slot in this.GetSlotsInternal())
+        foreach (var slot in this.final)
         {
             slot.EncodePointer();           // TODO / remove
             slot.EncodePointerOffset();
