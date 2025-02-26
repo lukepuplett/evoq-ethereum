@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes an address type to its ABI binary representation.
 /// </summary>
-public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode
+public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AddressTypeEncoder"/> class.
@@ -85,6 +85,60 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode
         return false;
     }
 
+    /// <summary>
+    /// Attempts to decode an address type from its ABI binary representation.
+    /// </summary>
+    /// <param name="abiType">The ABI type to decode.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <param name="clrType">The CLR type to decode to.</param>
+    /// <param name="decoded">The decoded value if successful.</param>
+    /// <returns>True if the decoding was successful, false otherwise.</returns>
+    public bool TryDecode(string abiType, byte[] data, Type clrType, out object? decoded)
+    {
+        decoded = null;
+
+        if (!this.IsCompatible(abiType, clrType, out var _))
+        {
+            return false;
+        }
+
+        if (abiType != AbiTypeNames.Address)
+        {
+            decoded = null;
+            return false;
+        }
+
+        //
+
+        var address = DecodeAddress(data);
+
+        if (clrType == typeof(EthereumAddress))
+        {
+            decoded = address;
+            return true;
+        }
+
+        if (clrType == typeof(string))
+        {
+            decoded = address.ToString();
+            return true;
+        }
+
+        if (clrType == typeof(Hex))
+        {
+            decoded = new Hex(address.ToByteArray());
+            return true;
+        }
+
+        if (clrType == typeof(byte[]))
+        {
+            decoded = address.ToByteArray();
+            return true;
+        }
+
+        return false;
+    }
+
     //
 
     /// <summary>
@@ -110,5 +164,28 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode
         Debug.Assert(result.Length == 32);
 
         return result;
+    }
+
+    /// <summary>
+    /// Decodes an address from a 32-byte value.
+    /// </summary>
+    /// <param name="data">The 32-byte value to decode.</param>
+    /// <returns>The decoded address.</returns>
+    public static EthereumAddress DecodeAddress(byte[] data)
+    {
+        if (data == null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+
+        if (data.Length != 32)
+        {
+            throw new ArgumentException("Address must be 32 bytes", nameof(data));
+        }
+
+        var addressBytes = new byte[20];
+        Buffer.BlockCopy(data, 12, addressBytes, 0, 20);
+
+        return new EthereumAddress(addressBytes);
     }
 }

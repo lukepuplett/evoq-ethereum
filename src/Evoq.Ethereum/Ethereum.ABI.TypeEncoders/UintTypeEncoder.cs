@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a uint type to its ABI binary representation.
 /// </summary>
-public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
+public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="UintTypeEncoder"/> class.
@@ -29,6 +29,8 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
         })
     {
     }
+
+    //
 
     /// <summary>
     /// Attempts to encode a uint type to its ABI binary representation.
@@ -52,7 +54,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
 
         //
 
-        if (!AbiTypes.TryGetMaxBitSize(abiType, out var maxBitsSize))
+        if (!AbiTypes.TryGetMaxBitSize(abiType, out var maxAbiCapacity))
         {
             return false;
         }
@@ -61,45 +63,45 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
 
         if (value is byte byteValue)
         {
-            if (8 > maxBitsSize) // value could be 8 bits but abiType is smaller
+            if (8 > maxAbiCapacity) // value could be 8 bits but abiType is smaller
             {
                 return false;
             }
 
-            encoded = EncodeUint(maxBitsSize, byteValue);
+            encoded = EncodeUint(maxAbiCapacity, byteValue);
             return true;
         }
 
         if (value is ushort ushortValue)
         {
-            if (16 > maxBitsSize)
+            if (16 > maxAbiCapacity)
             {
                 return false;
             }
 
-            encoded = EncodeUint(maxBitsSize, ushortValue);
+            encoded = EncodeUint(maxAbiCapacity, ushortValue);
             return true;
         }
 
         if (value is uint uintValue)
         {
-            if (32 > maxBitsSize)
+            if (32 > maxAbiCapacity)
             {
                 return false;
             }
 
-            encoded = EncodeUint(maxBitsSize, uintValue);
+            encoded = EncodeUint(maxAbiCapacity, uintValue);
             return true;
         }
 
         if (value is ulong ulongValue)
         {
-            if (64 > maxBitsSize)
+            if (64 > maxAbiCapacity)
             {
                 return false;
             }
 
-            encoded = EncodeUint(maxBitsSize, ulongValue);
+            encoded = EncodeUint(maxAbiCapacity, ulongValue);
             return true;
         }
 
@@ -110,17 +112,101 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
                 return false;
             }
 
-            if (256 > maxBitsSize)
+            // Check if the value fits within the specified bit size
+            var two = new BigInteger(2);
+            var maxValue = BigInteger.Pow(two, maxAbiCapacity) - 1;
+
+            if (bigIntegerValue > maxValue)
             {
                 return false;
             }
 
-            encoded = EncodeUint(maxBitsSize, bigIntegerValue);
+            encoded = EncodeUint(maxAbiCapacity, bigIntegerValue);
             return true;
         }
 
         return false;
     }
+
+    /// <summary>
+    /// Attempts to decode a uint from its ABI binary representation.
+    /// </summary>
+    /// <param name="abiType">The ABI type to decode.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <param name="clrType">The CLR type to decode to.</param>
+    /// <param name="decoded">The decoded value if successful.</param>
+    /// <returns>True if the value was decoded successfully, false otherwise.</returns>
+    public bool TryDecode(string abiType, byte[] data, Type clrType, out object? decoded)
+    {
+        if (data == null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+
+        decoded = null;
+
+        if (!this.IsCompatible(abiType, clrType, out var _))
+        {
+            return false;
+        }
+
+        if (!AbiTypes.TryGetMaxBitSize(abiType, out var abiBits))
+        {
+            return false;
+        }
+
+        var bigIntValue = DecodeUint(abiBits, data);
+
+        if (clrType == typeof(byte))
+        {
+            if (bigIntValue > byte.MaxValue)
+            {
+                return false;
+            }
+            decoded = (byte)bigIntValue;
+            return true;
+        }
+
+        if (clrType == typeof(ushort))
+        {
+            if (bigIntValue > ushort.MaxValue)
+            {
+                return false;
+            }
+            decoded = (ushort)bigIntValue;
+            return true;
+        }
+
+        if (clrType == typeof(uint))
+        {
+            if (bigIntValue > uint.MaxValue)
+            {
+                return false;
+            }
+            decoded = (uint)bigIntValue;
+            return true;
+        }
+
+        if (clrType == typeof(ulong))
+        {
+            if (bigIntValue > ulong.MaxValue)
+            {
+                return false;
+            }
+            decoded = (ulong)bigIntValue;
+            return true;
+        }
+
+        if (clrType == typeof(BigInteger))
+        {
+            decoded = bigIntValue;
+            return true;
+        }
+
+        return false;
+    }
+
+    //
 
     /// <summary>
     /// Encodes a uint as a 32-byte value.
@@ -153,5 +239,41 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode
         Buffer.BlockCopy(bytes, 0, result, 32 - bytes.Length, bytes.Length);
 
         return result;
+    }
+
+    /// <summary>
+    /// Decodes a uint from its ABI binary representation.
+    /// </summary>
+    /// <param name="bits">The number of bits to decode.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <returns>The decoded value.</returns>
+    public static BigInteger DecodeUint(int bits, byte[] data)
+    {
+        if (bits < 8 || bits > 256 || bits % 8 != 0)
+        {
+            throw new ArgumentException("Bits must be between 8 and 256 and a multiple of 8", nameof(bits));
+        }
+
+        if (data == null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+
+        if (data.Length != 32)
+        {
+            throw new ArgumentException("Data must be exactly 32 bytes for ABI encoding", nameof(data));
+        }
+
+        BigInteger value = new BigInteger(data, isUnsigned: true, isBigEndian: true);
+
+        var two = new BigInteger(2);
+        var maxValue = BigInteger.Pow(two, bits) - 1;
+
+        if (value < 0 || value > maxValue)
+        {
+            throw new ArgumentException($"Decoded value {value} is outside the range for {bits} bits", nameof(data));
+        }
+
+        return value;
     }
 }

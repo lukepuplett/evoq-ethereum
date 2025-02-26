@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a bytes type to its ABI binary representation.
 /// </summary>
-public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode
+public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="FixedBytesTypeEncoder"/> class.
@@ -51,6 +51,8 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode
         }, new HashSet<Type> { typeof(byte[]), typeof(byte), typeof(sbyte), typeof(char), typeof(string) })
     {
     }
+
+    //
 
     /// <summary>
     /// Attempts to encode a bytes type to its ABI binary representation.
@@ -137,8 +139,99 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode
     }
 
     /// <summary>
+    /// Attempts to decode a bytes type from its ABI binary representation. 
+    /// </summary>
+    /// <param name="abiType">The ABI type to decode.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <param name="clrType">The CLR type to decode to.</param>
+    /// <param name="decoded">The decoded value if successful.</param>
+    /// <returns>True if the decoding was successful, false otherwise.</returns>
+    public bool TryDecode(string abiType, byte[] data, Type clrType, out object? decoded)
+    {
+        decoded = null;
+
+        if (!this.IsCompatible(abiType, clrType, out var _))
+        {
+            return false;
+        }
+
+        if (clrType != typeof(byte[]))
+        {
+            return false;
+        }
+
+        if (!AbiTypes.TryGetMaxBytesSize(abiType, out var maxBytesSize))
+        {
+            return false;
+        }
+
+        //
+
+        var bytes = DecodeBytes(data, maxBytesSize);
+
+        if (clrType == typeof(byte[]))
+        {
+            // all ABI types are fixed sizes and will fit into a byte array, so we can just decode the bytes
+
+            decoded = bytes;
+            return true;
+        }
+
+        if (clrType == typeof(byte))
+        {
+            if (maxBytesSize > 1) // risk of overflow
+            {
+                return false;
+            }
+
+            decoded = bytes[0];
+            return true;
+        }
+
+        if (clrType == typeof(sbyte))
+        {
+            if (maxBytesSize > 1) // risk of overflow
+            {
+                return false;
+            }
+
+            decoded = (sbyte)bytes[0];
+            return true;
+        }
+
+        if (clrType == typeof(char))
+        {
+            if (maxBytesSize > 2) // risk of overflow
+            {
+                return false;
+            }
+
+            decoded = (char)bytes[0];
+            return true;
+        }
+
+        if (clrType == typeof(string))
+        {
+            if (maxBytesSize > bytes.Length)
+            {
+                return false;
+            }
+
+            decoded = Encoding.UTF8.GetString(bytes).Trim('\0');
+            return true;
+        }
+
+        return false;
+    }
+
+    //
+
+    /// <summary>
     /// Encodes a bytes array as a 32-byte value.
     /// </summary>
+    /// <remarks>
+    /// Bytes are encoded with right-padding to 32 bytes.
+    /// </remarks>
     /// <param name="bytes">The bytes to encode.</param>
     /// <returns>The encoded bytes, padded to 32 bytes.</returns>
     public static byte[] EncodeBytes(byte[] bytes)
@@ -152,6 +245,30 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode
         Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
 
         Debug.Assert(result.Length == 32);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Decodes a bytes array from its ABI binary representation.
+    /// </summary>
+    /// <param name="data">The data to decode.</param>
+    /// <param name="length">The length of the bytes to decode.</param>
+    /// <returns>The decoded bytes.</returns>
+    public static byte[] DecodeBytes(byte[] data, int length)
+    {
+        if (data == null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+
+        if (length < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
+        var result = new byte[length];
+        Buffer.BlockCopy(data, 0, result, 0, length);
 
         return result;
     }

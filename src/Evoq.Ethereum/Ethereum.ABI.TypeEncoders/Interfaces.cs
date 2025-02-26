@@ -45,3 +45,19 @@ public interface IAbiEncode : IAbiTypeCompatible
     /// <returns>True if encoding was successful, false otherwise</returns>
     bool TryEncode(string abiType, object value, out byte[] bytes);
 }
+
+/// <summary>
+/// Interface for decoding specific ABI types from their binary representation
+/// </summary>
+public interface IAbiDecode
+{
+    /// <summary>
+    /// Attempts to decode a value from its ABI binary representation
+    /// </summary>
+    /// <param name="abiType">The ABI type string (e.g. "uint256", "address")</param>
+    /// <param name="data">The data to decode</param>
+    /// <param name="clrType">The CLR type to decode to</param>
+    /// <param name="decoded">The decoded value if successful</param>
+    /// <returns>True if decoding was successful, false otherwise</returns>
+    bool TryDecode(string abiType, byte[] data, Type clrType, out object? decoded);
+}

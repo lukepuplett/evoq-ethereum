@@ -9,7 +9,7 @@ public class AbiTypeValidatorTests
 
     public AbiTypeValidatorTests()
     {
-        this.validator = new AbiEncoderV2().Validator;
+        this.validator = new AbiEncoder().Validator;
     }
 
     [TestMethod]

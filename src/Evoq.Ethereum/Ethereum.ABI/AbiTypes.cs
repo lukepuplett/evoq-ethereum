@@ -257,7 +257,7 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Gets the number of bytes for a type.
+    /// Gets the maximum number of bytes a type can hold.
     /// </summary>
     /// <param name="type">The type to get the bytes for.</param>
     /// <param name="bytes">The number of bytes if successful.</param>

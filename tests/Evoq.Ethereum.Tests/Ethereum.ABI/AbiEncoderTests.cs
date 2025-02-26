@@ -7,12 +7,12 @@ namespace Evoq.Ethereum.ABI;
 [TestClass]
 public class AbiEncoderTests
 {
-    private IAbiEncoder encoder = new AbiEncoderV2();
+    private IAbiEncoder encoder = new AbiEncoder();
 
     [TestInitialize]
     public void Setup()
     {
-        encoder = new AbiEncoderV2();
+        encoder = new AbiEncoder();
     }
 
     /*

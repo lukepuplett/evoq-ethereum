@@ -110,7 +110,7 @@ public static class AbiTestCases
         ),
 
         [7] = new(
-            "Simple tuple with two uint256",
+            "Simple static tuple with two uint256",
             "function foo((uint256 id, uint256 balance) account)",
             ValueTuple.Create((3u, 10u)),
             new List<string> {
@@ -122,7 +122,7 @@ public static class AbiTestCases
         ),
 
         [8] = new(
-            "Bool and tuple with two uint256",
+            "Bool and static tuple with two uint256",
             "function foo(bool isActive, (uint256 id, uint256 balance) account)",
             (true, (3u, 10u)),
             new List<string> {
@@ -136,7 +136,7 @@ public static class AbiTestCases
         ),
 
         [9] = new(
-            "Two tuples with mixed types",
+            "Two static tuples with mixed static types",
             "function foo((bool isActive, uint256 seenUnix) prof, (uint256 id, uint256 balance) account)",
             ((true, 20u), (3u, 10u)),
             new List<string> {
@@ -152,7 +152,7 @@ public static class AbiTestCases
         ),
 
         [10] = new(
-            "Nested tuple with mixed types",
+            "Nested static tuple with mixed static types",
             "function foo(((bool isActive, uint256 seenUnix) prof, uint256 id, uint256 balance) account)",
             ValueTuple.Create(((true, 20u), 3u, 10u)),
             new List<string> {
