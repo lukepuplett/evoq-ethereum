@@ -47,14 +47,13 @@ public class AbiEncoderTests
     {
         // Arrange
         var signature = FunctionSignature.Parse(testCase.Signature);
-        var parameters = new AbiParameters(signature.Parameters);
 
         var expectedHexList = testCase.ExpectedLines
             .Select(line => Hex.Parse(FormatHexLine(line)))
             .ToList();
 
         // Act
-        var result = this.encoder.EncodeParameters(parameters, testCase.Values);
+        var result = this.encoder.EncodeParameters(signature.Parameters, testCase.Values);
         var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
 
         // Assert

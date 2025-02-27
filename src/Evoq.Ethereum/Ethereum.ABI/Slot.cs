@@ -23,11 +23,12 @@ public class Slot
     //
 
     /// <summary>
-    /// Creates a new slot with no data.
+    /// Creates a new slot with no data; a null slot.
     /// </summary>
     public Slot()
     {
         this.data = new byte[Size];
+        this.Name = "null";
     }
 
     /// <summary>
