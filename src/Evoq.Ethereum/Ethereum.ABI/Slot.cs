@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Evoq.Blockchain;
@@ -34,8 +35,9 @@ public class Slot
     /// </summary>
     /// <param name="name">The name of the slot.</param>
     /// <param name="data">The 32-byte data.</param>
+    /// <param name="order">The order of the slot within its container.</param>
     /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
-    public Slot(string name, byte[] data)
+    public Slot(string name, byte[] data, int order = -1)
     {
         if (data == null)
         {
@@ -49,31 +51,12 @@ public class Slot
 
         this.data = data;
         this.Name = name;
-    }
 
-    /// <summary>
-    /// Creates a new slot with the given data.
-    /// </summary>
-    /// <param name="name">The name of the slot.</param>
-    /// <param name="data">The 32-byte data.</param>
-    /// <param name="pointsToFirst">The slot collection that this slot points to.</param>
-    /// <exception cref="ArgumentException">Thrown if data is not exactly 32 bytes.</exception>
-    [Obsolete]
-    public Slot(string name, byte[] data, SlotCollection? pointsToFirst)
-    {
-        if (data == null)
+        if (order >= 0)
         {
-            throw new ArgumentNullException(nameof(data));
+            this.Order = order;
+            this.OffsetByte = order * Size;
         }
-
-        if (data.Length != Size)
-        {
-            throw new ArgumentException($"Slot data must be exactly {Size} bytes", nameof(data));
-        }
-
-        this.data = data;
-        this.PointsTo = pointsToFirst;
-        this.Name = name;
     }
 
     /// <summary>
@@ -115,7 +98,7 @@ public class Slot
     /// <summary>
     /// The offset of the slot within its container.
     /// </summary>
-    public int Offset { get; private set; } = -1;
+    public int OffsetByte { get; private set; } = -1;
 
     /// <summary>
     /// The order of the slot within its container.
@@ -176,7 +159,7 @@ public class Slot
             }
         }
 
-        return $"{this.ToHex()} (id: {idStr}, off: {this.Offset}, ord: {this.Order}{pointsTo}{relTo} - {this.Name})";
+        return $"{this.ToHex()} (id: {idStr}, off: {this.OffsetByte}, ord: {this.Order}{pointsTo}{relTo} - {this.Name})";
     }
 
     //
@@ -190,7 +173,7 @@ public class Slot
     /// <param name="offset">The offset of the slot.</param>
     internal void SetOffset(int offset)
     {
-        this.Offset = offset;
+        this.OffsetByte = offset;
     }
 
     /// <summary>
@@ -207,11 +190,45 @@ public class Slot
     /// </summary>
     internal void EncodePointer()
     {
-        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().Offset >= 0)
+        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().OffsetByte >= 0)
         {
-            var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().Offset);
+            var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().OffsetByte);
             this.data = offset;
         }
+    }
+
+    /// <summary>
+    /// Decodes the pointer that this slot points to.
+    /// </summary>
+    /// <param name="relativeTo">The slot space that the pointer is relative to.</param>
+    /// <param name="length">The length of the pointer, if known, else it'll be read from the first data slot.</param>
+    /// <exception cref="NotImplementedException">Thrown if the pointer is not implemented.</exception>
+    internal void DecodePointer(SlotCollection relativeTo, int? length)
+    {
+        if (this.IsPointer)
+        {
+            throw new InvalidOperationException("Slot is already a pointer");
+        }
+
+        this.OffsetByte = (int)UintTypeEncoder.DecodeUint(256, this.data);
+
+        int skipTo = this.OffsetByte / Size;
+        List<Slot> dataSlots;
+
+        if (length.HasValue)
+        {
+            dataSlots = relativeTo.Skip(skipTo + 1).Take(length.Value).ToList();
+        }
+        else
+        {
+            // decode the length from the first data slot
+
+            int len = (int)UintTypeEncoder.DecodeUint(256, relativeTo.Skip(skipTo).First().Data);
+
+            dataSlots = relativeTo.Skip(skipTo).Take(len).ToList();
+        }
+
+        this.PointsTo = new SlotCollection(dataSlots);
     }
 
     /// <summary>
@@ -227,7 +244,7 @@ public class Slot
             {
                 // Debug.Assert(this.PointsTo.First().Offset >= 0, "PointsTo.First().Offset is negative");
 
-                if (this.PointsTo.First().Offset >= 0)
+                if (this.PointsTo.First().OffsetByte >= 0)
                 {
                     Debug.Assert(this.RelativeTo != null, $"RelativeTo for slot {this.Name} is null");
                     Debug.Assert(this.RelativeTo.Count > 0, $"RelativeTo for slot {this.Name} is empty");

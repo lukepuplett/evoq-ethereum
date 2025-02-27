@@ -56,7 +56,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         //
 
-        if (!AbiTypes.TryGetMaxBitSize(abiType, out var maxAbiCapacity))
+        if (!AbiTypes.TryGetBitsSize(abiType, out var maxAbiCapacity))
         {
             return false;
         }
@@ -145,7 +145,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (!AbiTypes.TryGetMaxBitSize(abiType, out var abiBits))
+        if (!AbiTypes.TryGetBitsSize(abiType, out var abiBits))
         {
             return false;
         }

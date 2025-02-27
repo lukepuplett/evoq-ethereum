@@ -69,7 +69,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (!AbiTypes.TryGetMaxBytesSize(abiType, out var maxBytesSize))
+        if (!AbiTypes.TryGetBytesSize(abiType, out var maxBytesSize))
         {
             if (value is byte[] bytes)
             {
@@ -160,7 +160,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (!AbiTypes.TryGetMaxBytesSize(abiType, out var maxBytesSize))
+        if (!AbiTypes.TryGetBytesSize(abiType, out var maxBytesSize))
         {
             return false;
         }

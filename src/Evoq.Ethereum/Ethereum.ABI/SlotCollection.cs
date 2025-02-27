@@ -1,54 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Net.WebSockets;
 
 namespace Evoq.Ethereum.ABI;
-
-/// <summary>
-/// A collection of slots that are encoded into the tail of a dynamic value.
-/// </summary>
-public class TailSlotCollection : SlotCollection
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TailSlotCollection"/> class.
-    /// </summary>
-    public TailSlotCollection(int capacity) : base(capacity)
-    {
-    }
-}
-
-/// <summary>
-/// A collection of slots that hold the head of a value.
-/// </summary>
-public class HeadSlotCollection : SlotCollection
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="HeadSlotCollection"/> class.
-    /// </summary>
-    public HeadSlotCollection(int capacity) : base(capacity)
-    {
-    }
-
-    //
-
-    /// <summary>
-    /// Creates a pointer slot.
-    /// </summary>
-    /// <param name="name">The name of the pointer slot.</param>
-    /// <param name="tail">The tail of the pointer slot.</param>
-    /// <returns>A pointer slot.</returns>
-    internal Slot AddPointer(string name, out TailSlotCollection tail)
-    {
-        tail = new TailSlotCollection(8);
-
-        var pointerSlot = new Slot(name, tail, this);
-
-        this.Add(pointerSlot);
-
-        return pointerSlot;
-    }
-}
 
 /// <summary>
 /// A collection of slots.
@@ -113,25 +68,29 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
 
     //
 
-    // /// <summary>
-    // /// Reads a byte array into a slot collection.
-    // /// </summary>
-    // /// <param name="bytes">The bytes to read.</param>
-    // /// <returns>The slot collection.</returns>
-    // public static SlotCollection FromBytes(byte[] bytes)
-    // {
-    //     if (bytes.Length % 32 != 0)
-    //     {
-    //         throw new ArgumentException("Bytes must be a multiple of 32", nameof(bytes));
-    //     }
+    /// <summary>
+    /// Reads a byte array into a slot collection.
+    /// </summary>
+    /// <param name="slotNamePrefix">The prefix of the slots.</param>
+    /// <param name="paddedBytes">The padded bytes to read.</param>
+    /// <returns>The slot collection.</returns>
+    public static SlotCollection FromBytes(string slotNamePrefix, byte[] paddedBytes)
+    {
+        bool hasRemainingBytes = paddedBytes.Length % 32 != 0;
 
-    //     var slots = new SlotCollection(bytes.Length / 32);
+        Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");
 
-    //     for (int i = 0; i < bytes.Length; i += 32)
-    //     {
-    //         slots.Add(new Slot($"slot_{i}", bytes));
-    //     }
+        var slots = new SlotCollection(capacity: paddedBytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
 
-    //     return slots;
-    // }
+        for (int i = 0; i < paddedBytes.Length; i += 32)
+        {
+            var chunk = new byte[32];
+            var count = Math.Min(32, paddedBytes.Length - i);
+            Buffer.BlockCopy(paddedBytes, i, chunk, 0, count);
+
+            slots.Add(new Slot($"{slotNamePrefix}_{i}", chunk, i));
+        }
+
+        return slots;
+    }
 }

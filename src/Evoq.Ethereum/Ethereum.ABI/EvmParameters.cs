@@ -52,7 +52,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
 
         this.DeepVisit(child =>
         {
-            if (child.IsSingle)
+            if (child.HasComponents)
             {
                 singles.Add(child);
             }
@@ -71,7 +71,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
 
         this.DeepVisit(child =>
         {
-            if (child.IsSingle)
+            if (child.HasComponents)
             {
                 singles++;
             }

@@ -79,7 +79,7 @@ public record struct EvmParam()
         this.Name = name;
         this.ArrayLengths = arrayLengths;
         this.Components = components;
-        this.IsSingle = components == null || components.Count == 0;
+        this.HasComponents = components == null || components.Count == 0;
         this.IsArray = arrayLengths != null && arrayLengths.Count > 0;
 
         // the ABI spec says that if a single component value is dynamic then the whole param is dynamic
@@ -117,9 +117,9 @@ public record struct EvmParam()
     //
 
     /// <summary>
-    /// Whether the param is a single value.
+    /// Whether the param has components.
     /// </summary>
-    public bool IsSingle { get; init; }
+    public bool HasComponents { get; init; }
 
     /// <summary>
     /// Whether the param is a dynamic type.
@@ -167,7 +167,7 @@ public record struct EvmParam()
     public string GetCanonicalType(
         bool includeNames = false, bool includeSpaces = false)
     {
-        if (this.IsSingle)
+        if (this.HasComponents)
         {
             if (includeNames && !string.IsNullOrEmpty(this.Name))
             {
@@ -353,7 +353,7 @@ public record struct EvmParam()
         }
 
         // For basic types, use the existing validator
-        if (this.IsSingle)
+        if (this.HasComponents)
         {
             vc.IncrementVisitorCounter();
 

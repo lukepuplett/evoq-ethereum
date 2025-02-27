@@ -19,3 +19,21 @@ public class AbiDynamicTypeEncoders : System.Collections.ObjectModel.ReadOnlyCol
     {
     }
 }
+
+/// <summary>
+/// A collection of the built-in ABI type decoders for types that are dynamic.
+/// </summary>
+public class AbiDynamicTypeDecoders : System.Collections.ObjectModel.ReadOnlyCollection<IAbiDecode>
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiDynamicTypeDecoders"/> class.
+    /// </summary>
+    public AbiDynamicTypeDecoders()
+        : base(new List<IAbiDecode>
+        {
+            new StringTypeEncoder(),
+            new BytesTypeEncoder()
+        })
+    {
+    }
+}

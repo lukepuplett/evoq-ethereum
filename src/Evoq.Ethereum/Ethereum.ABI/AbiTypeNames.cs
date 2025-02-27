@@ -1,3 +1,5 @@
+using System;
+
 namespace Evoq.Ethereum.ABI;
 
 /// <summary>
@@ -126,11 +128,13 @@ public static class AbiTypeNames
         /// <summary>
         /// The Solidity 128-bit signed fixed-point type with 18 decimals.
         /// </summary>
+        [Obsolete("Not implemented in the EVM")]
         public const string Fixed128x18 = "fixed128x18";
 
         /// <summary>
         /// The Solidity 128-bit unsigned fixed-point type with 18 decimals.
         /// </summary>
+        [Obsolete("Not implemented in the EVM")]
         public const string Ufixed128x18 = "ufixed128x18";
     }
 
@@ -163,11 +167,6 @@ public static class AbiTypeNames
         /// The Solidity 5-byte type.
         /// </summary>
         public const string Bytes5 = "bytes5";
-
-        /// <summary>
-        /// The Solidity 32-byte type, commonly used for hashes and signatures.
-        /// </summary>
-        public const string Bytes32 = "bytes32";
 
         /// <summary>
         /// The Solidity 6-byte type.
@@ -298,5 +297,10 @@ public static class AbiTypeNames
         /// The Solidity 31-byte type.
         /// </summary>
         public const string Bytes31 = "bytes31";
+
+        /// <summary>
+        /// The Solidity 32-byte type, commonly used for hashes and signatures.
+        /// </summary>
+        public const string Bytes32 = "bytes32";
     }
 }

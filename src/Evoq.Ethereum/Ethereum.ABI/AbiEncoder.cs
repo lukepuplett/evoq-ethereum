@@ -308,7 +308,7 @@ public class AbiEncoder : IAbiEncoder
         // encode the value into the tail and add the offset pointer to the head
 
         var lengthSlot = new Slot(Name(context, "length"), UintTypeEncoder.EncodeUint(256, length));
-        var bytesSlots = this.BytesToSlots(context, paddedBytes);
+        var bytesSlots = BytesToSlots(context, paddedBytes);
 
         var heads = new SlotCollection(capacity: 1);
         var tail = new SlotCollection(capacity: bytesSlots.Count);
@@ -661,24 +661,11 @@ public class AbiEncoder : IAbiEncoder
         return false;
     }
 
-    private SlotCollection BytesToSlots(EncodingContext context, byte[] paddedBytes)
+    //
+
+    private static SlotCollection BytesToSlots(EncodingContext context, byte[] paddedBytes)
     {
-        bool hasRemainingBytes = paddedBytes.Length % 32 != 0;
-
-        Debug.Assert(!hasRemainingBytes, "Has remaining bytes; bytes expected to be a multiple of 32");
-
-        var slots = new SlotCollection(capacity: paddedBytes.Length / 32 + (hasRemainingBytes ? 1 : 0));
-
-        for (int i = 0; i < paddedBytes.Length; i += 32)
-        {
-            var chunk = new byte[32];
-            var count = Math.Min(32, paddedBytes.Length - i);
-            Buffer.BlockCopy(paddedBytes, i, chunk, 0, count);
-
-            slots.Add(new Slot(Name(context, $"chunk_{i}"), chunk));
-        }
-
-        return slots;
+        return SlotCollection.FromBytes(Name(context, "chunk"), paddedBytes);
     }
 
     private static string Name(EncodingContext context, string name)

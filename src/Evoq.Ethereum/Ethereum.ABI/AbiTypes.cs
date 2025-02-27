@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Evoq.Ethereum.ABI;
@@ -125,6 +126,64 @@ public static class AbiTypes
     }
 
     /// <summary>
+    /// Checks if the type has some form of length suffix, e.g. uint8 -> 8, uint256[] -> -1, uint256[][3] -> 3.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <param name="length">The length in bytes for a fixed-length type or the outer array length for an array.</param>
+    /// <returns>True if the type has a length suffix, false otherwise.</returns>
+    public static bool HasLengthSuffix(string type, out int length)
+    {
+        if (IsArray(type))
+        {
+            if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+            {
+                throw new InvalidOperationException($"Invalid array type: {type}");
+            }
+
+            if (dimensions.First() == -1)
+            {
+                // dynamic array has no length suffix
+
+                length = 0;
+                return false;
+            }
+
+            length = dimensions.First();
+            return true;
+        }
+
+        if (type.StartsWith(AbiTypeNames.IntegerTypes.Uint, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.IntegerTypes.Uint.Length..], out var bits))
+            {
+                length = bits / 8;
+                return true;
+            }
+        }
+
+        if (type.StartsWith(AbiTypeNames.IntegerTypes.Int, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.IntegerTypes.Int.Length..], out var bits))
+            {
+                length = bits / 8;
+                return true;
+            }
+        }
+
+        if (type.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.Bytes.Length..], out var bytesSize))
+            {
+                length = bytesSize;
+                return true;
+            }
+        }
+
+        length = 0;
+        return false;
+    }
+
+    /// <summary>
     /// Validates if a type string represents a valid base Solidity type (without array suffixes).
     /// </summary>
     /// <param name="type">The type to validate.</param>
@@ -221,7 +280,7 @@ public static class AbiTypes
     /// <param name="type">The type to get the bits for.</param>
     /// <param name="bits">The number of bits if successful.</param>
     /// <returns>True if the bits were successfully parsed, false otherwise.</returns>
-    public static bool TryGetMaxBitSize(string type, out int bits)
+    public static bool TryGetBitsSize(string type, out int bits)
     {
         bits = 0;
         if (!IsValidType(type))
@@ -253,6 +312,49 @@ public static class AbiTypes
             return true;
         }
 
+        if (type.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase))
+        {
+            if (int.TryParse(type[AbiTypeNames.Bytes.Length..], out var bytesSize))
+            {
+                bits = bytesSize * 8;
+                return true;
+            }
+        }
+
+        //
+
+        if (type == AbiTypeNames.Address)
+        {
+            // address is 20 bytes
+
+            bits = 20 * 8;
+            return true;
+        }
+
+        if (type == AbiTypeNames.Bool)
+        {
+            // bool is 1 bit
+
+            bits = 1;
+            return true;
+        }
+
+        //        
+
+        const int maxDivisibleBy8 = int.MaxValue - (int.MaxValue % 8);
+
+        if (type == AbiTypeNames.String)
+        {
+            bits = maxDivisibleBy8;
+            return true;
+        }
+
+        if (type == AbiTypeNames.Bytes)
+        {
+            bits = maxDivisibleBy8;
+            return true;
+        }
+
         return false;
     }
 
@@ -262,23 +364,15 @@ public static class AbiTypes
     /// <param name="type">The type to get the bytes for.</param>
     /// <param name="bytes">The number of bytes if successful.</param>
     /// <returns>True if the bytes were successfully parsed, false otherwise.</returns>
-    public static bool TryGetMaxBytesSize(string type, out int bytes)
+    public static bool TryGetBytesSize(string type, out int bytes)
     {
+        if (TryGetBitsSize(type, out var bits) && bits % 8 == 0)
+        {
+            bytes = bits / 8;
+            return true;
+        }
+
         bytes = 0;
-        if (!IsValidType(type))
-        {
-            return false;
-        }
-
-        if (type.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase))
-        {
-            if (int.TryParse(type[AbiTypeNames.Bytes.Length..], out var size))
-            {
-                bytes = size;
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -300,6 +394,38 @@ public static class AbiTypes
         dimensions = SplitArrayDimensions(type[bracketIndex..]);
 
         return dimensions != null;
+    }
+
+    /// <summary>
+    /// Gets the full multiplicative length of an array including all dimensions.
+    /// </summary>
+    /// <remarks>
+    /// For example:
+    /// - uint256[2] -> 2, one for each offset
+    /// - uint256[2][2] -> 4, two for the outer array and two for the inner
+    /// - uint256[2][3] -> 6, three for the inner array and two for the outer
+    /// - uint256[3][3][2] -> 18, two for the outer array and nine for the inner jagged array
+    /// - uint256[][3] -> -1, dynamic array
+    /// </remarks>
+    /// <param name="type">The type to get the length for.</param>
+    /// <param name="length">The length if successful.</param>
+    /// <returns>True if the length was successfully parsed, false otherwise.</returns>
+    public static bool TryGetArrayLength(string type, out int length)
+    {
+        if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+        {
+            length = 0;
+            return false;
+        }
+
+        if (dimensions.Any(d => d == -1))
+        {
+            length = -1;
+            return true;
+        }
+
+        length = dimensions.Aggregate(1, (acc, dim) => acc * dim);
+        return true;
     }
 
     /// <summary>

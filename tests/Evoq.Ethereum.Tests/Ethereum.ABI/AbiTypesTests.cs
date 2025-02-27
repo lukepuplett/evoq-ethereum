@@ -150,7 +150,7 @@ public class SolidityTypesTests
     [DataRow("int", 256)]     // Default size
     public void TryGetBits_ValidTypes_ReturnsExpectedBits(string type, int expectedBits)
     {
-        Assert.IsTrue(AbiTypes.TryGetMaxBitSize(type, out var bits));
+        Assert.IsTrue(AbiTypes.TryGetBitsSize(type, out var bits));
         Assert.AreEqual(expectedBits, bits);
     }
 
@@ -159,19 +159,18 @@ public class SolidityTypesTests
     [DataRow("bytes32", 32)]
     public void TryGetBytes_ValidTypes_ReturnsExpectedBytes(string type, int expectedBytes)
     {
-        Assert.IsTrue(AbiTypes.TryGetMaxBytesSize(type, out var bytes));
+        Assert.IsTrue(AbiTypes.TryGetBytesSize(type, out var bytes));
         Assert.AreEqual(expectedBytes, bytes);
     }
 
     [TestMethod]
-    [DataRow("bool")]
-    [DataRow("address")]
-    [DataRow("string")]
-    [DataRow("bytes")]
-    [DataRow("bytes32")]
-    public void TryGetBits_NonIntegerTypes_ReturnsFalse(string type)
+    [DataRow("bool", 1)]
+    [DataRow("address", 20 * 8)]
+    [DataRow("bytes32", 32 * 8)]
+    public void TryGetBits_NonIntegerTypes_ReturnsExpectedBits(string type, int expectedBits)
     {
-        Assert.IsFalse(AbiTypes.TryGetMaxBitSize(type, out _));
+        Assert.IsTrue(AbiTypes.TryGetBitsSize(type, out var bits));
+        Assert.AreEqual(expectedBits, bits);
     }
 
     [TestMethod]

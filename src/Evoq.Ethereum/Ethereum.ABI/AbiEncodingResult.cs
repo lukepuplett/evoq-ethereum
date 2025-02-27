@@ -88,7 +88,7 @@ public class AbiEncodingResult
 
         foreach (var slot in this.final)
         {
-            slot.EncodePointer();           // TODO / remove
+            slot.EncodePointer();
             slot.EncodePointerOffset();
         }
     }
