@@ -8,13 +8,13 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Static class for parsing and manipulating Ethereum function parameters.
 /// </summary>
-public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<EvmParam>
+public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<AbiParam>
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="EvmParameters"/> class.
+    /// Initializes a new instance of the <see cref="AbiParameters"/> class.
     /// </summary>
     /// <param name="list">The list of parameters.</param>
-    public EvmParameters(IList<EvmParam> list) : base(list)
+    public AbiParameters(IList<AbiParam> list) : base(list)
     {
     }
 
@@ -39,26 +39,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     /// <returns>The canonical type of the parameters.</returns>
     public string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
     {
-        return EvmParam.GetCanonicalType(this, null, includeNames, includeSpaces);
-    }
-
-    /// <summary>
-    /// Returns a list of single parameters from the current level and all nested levels, in order.
-    /// </summary>
-    /// <returns>A list of single parameters.</returns>
-    public IReadOnlyList<EvmParam> DeepSingleParams()
-    {
-        var singles = new List<EvmParam>();
-
-        this.DeepVisit(child =>
-        {
-            if (child.HasComponents)
-            {
-                singles.Add(child);
-            }
-        });
-
-        return singles;
+        return AbiParam.GetCanonicalType(this, null, includeNames, includeSpaces);
     }
 
     /// <summary>
@@ -71,7 +52,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
 
         this.DeepVisit(child =>
         {
-            if (child.HasComponents)
+            if (child.IsTuple)
             {
                 singles++;
             }
@@ -85,7 +66,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     /// </summary>
     /// <param name="visit">The visitor.</param>
     /// <param name="depth">The depth of the parameters to visit where 0 is the current level.</param>
-    internal void DeepVisit(Action<EvmParam> visit, int depth = int.MaxValue)
+    internal void DeepVisit(Action<AbiParam> visit, int depth = int.MaxValue)
     {
         foreach (var param in this)
         {
@@ -112,12 +93,12 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
     /// <param name="descriptor">The parameter string or function signature, e.g. ((string first, string last) name, uint256 age, address wallet) person or ((string,uint256,address),bool).</param>
     /// <returns>An enumerable of tuples.</returns>
     /// <exception cref="ArgumentException">Thrown when the parameter string is not a valid function signature.</exception>
-    public static EvmParameters Parse(string descriptor)
+    public static AbiParameters Parse(string descriptor)
     {
-        return new EvmParameters(SplitParams(descriptor));
+        return new AbiParameters(SplitParams(descriptor));
     }
 
-    private static List<EvmParam> SplitParams(string descriptor)
+    private static List<AbiParam> SplitParams(string descriptor)
     {
         // we're expecting a parameter string of the form:
         //
@@ -147,9 +128,9 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
         var skipWhitespace = false;
         var currentParamType = new List<char>();
         var currentParamName = new List<char>();
-        var currentParams = new List<EvmParam>();
+        var currentParams = new List<AbiParam>();
         var currentArrayLengths = new List<int>();
-        IReadOnlyList<EvmParam>? currentNestedParams = null;
+        IReadOnlyList<AbiParam>? currentNestedParams = null;
 
         for (int i = 0; i < descriptor.Length; i++)
         {
@@ -212,7 +193,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
 
         return currentParams;
 
-        EvmParam makeParam(IReadOnlyList<EvmParam>? components = null)
+        AbiParam makeParam(IReadOnlyList<AbiParam>? components = null)
         {
             var name = new string(currentParamName.ToArray());
 
@@ -221,7 +202,7 @@ public class EvmParameters : System.Collections.ObjectModel.ReadOnlyCollection<E
             {
                 type = new string(currentParamType.ToArray());
             }
-            return new EvmParam(ordinal, name, type, currentArrayLengths.ToArray(), components);
+            return new AbiParam(ordinal, name, type, currentArrayLengths.ToArray(), components);
         }
 
         int findClosingParen(string descriptor, int start)

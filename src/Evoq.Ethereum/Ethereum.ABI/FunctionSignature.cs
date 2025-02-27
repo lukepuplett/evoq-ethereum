@@ -34,19 +34,19 @@ public class FunctionSignature
         if (descriptor.StartsWith("(") && descriptor.EndsWith(")"))
         {
             _name = name;
-            Parameters = EvmParameters.Parse(descriptor);
+            Parameters = AbiParameters.Parse(descriptor);
         }
         else
         {
             _name = name;
-            Parameters = EvmParameters.Parse($"({descriptor})");
+            Parameters = AbiParameters.Parse($"({descriptor})");
         }
     }
 
-    private FunctionSignature(string name, IEnumerable<EvmParam> parameters)
+    private FunctionSignature(string name, IEnumerable<AbiParam> parameters)
     {
         _name = name;
-        Parameters = new EvmParameters(parameters.ToList());
+        Parameters = new AbiParameters(parameters.ToList());
     }
 
     //
@@ -54,7 +54,7 @@ public class FunctionSignature
     /// <summary>
     /// Gets the parameters of the function signature.
     /// </summary>
-    public EvmParameters Parameters { get; }
+    public AbiParameters Parameters { get; }
 
     //
 
@@ -168,7 +168,7 @@ public class FunctionSignature
                 "Invalid function signature format. Missing function name", nameof(fullSignature));
         }
 
-        var parameters = EvmParameters.Parse(input[startIndex..]);
+        var parameters = AbiParameters.Parse(input[startIndex..]);
 
         return new FunctionSignature(name, parameters);
     }

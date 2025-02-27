@@ -71,7 +71,7 @@ public static class AbiTypes
 
         if (IsTuple(type))
         {
-            return EvmParameters.Parse(type).All(p => IsValidType(p.ToString()));
+            return AbiParameters.Parse(type).All(p => IsValidType(p.ToString()));
         }
 
         return IsValidBaseType(type);
@@ -117,7 +117,7 @@ public static class AbiTypes
         }
         else if (IsTuple(type))
         {
-            canonicalType = EvmParameters.Parse(type).GetCanonicalType(includeNames: false, includeSpaces: false);
+            canonicalType = AbiParameters.Parse(type).GetCanonicalType(includeNames: false, includeSpaces: false);
 
             return true;
         }
@@ -268,7 +268,7 @@ public static class AbiTypes
 
         if (IsTuple(type))
         {
-            return EvmParameters.Parse(type).Any(p => IsDynamic(p.AbiType));
+            return AbiParameters.Parse(type).Any(p => IsDynamic(p.AbiType));
         }
 
         return IsDynamicArray(type);

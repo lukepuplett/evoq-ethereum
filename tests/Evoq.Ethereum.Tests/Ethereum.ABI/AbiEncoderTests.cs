@@ -47,7 +47,7 @@ public class AbiEncoderTests
     {
         // Arrange
         var signature = FunctionSignature.Parse(testCase.Signature);
-        var parameters = new EvmParameters(signature.Parameters);
+        var parameters = new AbiParameters(signature.Parameters);
 
         var expectedHexList = testCase.ExpectedLines
             .Select(line => Hex.Parse(FormatHexLine(line)))

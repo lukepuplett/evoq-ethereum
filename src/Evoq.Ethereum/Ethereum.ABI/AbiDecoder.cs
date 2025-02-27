@@ -6,6 +6,19 @@ using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
+/*
+
+// recursive reader
+
+- Use the ABI to guide the reader via EvmParam graph.
+- Read all slots into a collection.
+- The modes of reading, determinable by the ABI type information on the EvmParam, are:
+
+	• Static value, dynamic value (ptr), static tuple, static array, dynamic tuple (ptr), dynamic array (ptr)
+	• From binary into the EvmParamValue via TryFindStaticSlotDecoder(…).
+	
+*/
+
 record class DecodingContext() { }
 
 /// <summary>
@@ -46,7 +59,7 @@ public class AbiDecoder
     /// <param name="parameters">The parameters to decode.</param>
     /// <param name="data">The data to decode.</param>
     /// <returns>The decoded parameters.</returns>
-    public AbiDecodingResult DecodeParameters(EvmParameters parameters, byte[] data)
+    public AbiDecodingResult DecodeParameters(AbiParameters parameters, byte[] data)
     {
         var slots = SlotCollection.FromBytes("slot", data);
 
@@ -74,26 +87,10 @@ public class AbiDecoder
 
                 */
 
-                // the first pointer is relative to the root slots, and points to a set of
-                // slots that contain the data for the parameter
+                // the first pointer is relative to the root slots, and points to a slot that
+                // contains the data for the parameter
 
-                // the length of the pointer is either known in the ABI or read from the first
-                // data slot
-
-                // int length = 0;
-
-                // if (AbiTypes.HasLengthSuffix(parameter.AbiType, out var bytesLength))
-                // {
-                //     if (AbiTypes.TryGetArrayDimensions(parameter.AbiType, out var dims))
-                //     {
-                //         // multiply the dims together to get the total slots needed for the array
-
-                //         // consider what happens if a dim is -1, i.e. dynamic
-                //     }
-                //     // the length is known in the ABI
-                // }
-
-                // slot.DecodePointer(relativeTo: slots, length: parameter.Length);
+                slot.DecodePointer(relativeTo: slots);
             }
         }
 
@@ -101,6 +98,65 @@ public class AbiDecoder
     }
 
     //
+
+    private void DecodeSingleSlotStaticValue(AbiParam parameter, Slot slot)
+    {
+        // just decode the value
+
+
+    }
+
+    private void DecodeStaticParameter(AbiParam parameter, Slot slot)
+    {
+        if (parameter.IsArray)
+        {
+            // TODO
+        }
+        else if (parameter.IsTuple)
+        {
+            // TODO
+        }
+        else
+        {
+            // TODO
+        }
+    }
+    private void DecodeDynamicParameter(AbiParam parameter, Slot slot)
+    {
+
+    }
+
+    //
+
+    private bool TryFindStaticSlotDecoder(string abiType, Slot slot, out Func<object?>? decoder)
+    {
+        if (slot.IsNull)
+        {
+            decoder = () => null;
+            return true;
+        }
+
+        // get the canonical type
+
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
+        {
+            // canonical type not found; this should never happen
+
+            throw new InvalidOperationException($"Canonical type not found for {abiType}");
+        }
+
+        // foreach (var staticDecoder in this.staticTypeDecoders)
+        // {
+        //     if (staticDecoder.TryDecode(canonicalType, slot.Data, parameter.ClrType, out var value))
+        //     {
+        //         decoder = () => value;
+        //         return true;
+        //     }
+        // }
+
+        decoder = null;
+        return false;
+    }
 
     private static SlotCollection BytesToSlots(EncodingContext context, byte[] paddedBytes)
     {
@@ -113,15 +169,3 @@ public class AbiDecoder
     }
 }
 
-/*
-
-// recursive reader
-
-- Use the ABI to guide the reader via EvmParam graph.
-- Read all slots into a collection.
-- The modes of reading, determinable by the ABI type information on the EvmParam, are:
-
-	• Static value, dynamic value (ptr), static tuple, static array, dynamic tuple (ptr), dynamic array (ptr)
-	• From binary into the EvmParamValue via TryFindStaticSlotDecoder(…).
-	
-*/

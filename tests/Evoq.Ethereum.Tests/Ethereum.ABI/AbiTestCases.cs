@@ -12,7 +12,7 @@ namespace Evoq.Ethereum.ABI;
 public record AbiTestCase(
     string Name,
     string Signature,
-    ITuple Values,
+    IReadOnlyList<object> Values,
     List<string> ExpectedLines,
     string ReferenceHex = ""  // Default empty until Go tool output is provided
 );
@@ -24,7 +24,7 @@ public static class AbiTestCases
         [1] = new(
             "Simple uint256",
             "function foo(uint256)",
-            ValueTuple.Create(BigInteger.One),
+            new List<object> { BigInteger.One },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
             },
@@ -34,7 +34,7 @@ public static class AbiTestCases
         [2] = new(
             "Simple bool",
             "function foo(bool)",
-            ValueTuple.Create(true),
+            new List<object> { true },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)"
             },
@@ -44,7 +44,7 @@ public static class AbiTestCases
         [3] = new(
             "Simple uint8 and uint256",
             "function foo(uint8, uint256)",
-            ((byte)1, (uint)1),
+            new List<object> { (byte)1, (uint)1 },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint8 value of 1",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
@@ -56,7 +56,7 @@ public static class AbiTestCases
         [4] = new(
             "Simple static uint8 array",
             "function foo(uint8[2])",
-            ValueTuple.Create(new byte[] { 1, 2 }),
+            new List<object> { new byte[] { 1, 2 } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // element 0",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // element 1"
@@ -68,7 +68,7 @@ public static class AbiTestCases
         [5] = new(
             "Jagged static uint8 array",
             "function foo(uint8[4][2])",
-            ValueTuple.Create(new byte[][] { new byte[] { 10, 20, 30, 40 }, new byte[] { 1, 2, 3, 4 } }),
+            new List<object> { new byte[][] { new byte[] { 10, 20, 30, 40 }, new byte[] { 1, 2, 3, 4 } } },
             new List<string> {
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // element 0 of uint8[4] first element of outer array",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // element 1 of uint8[4]",
@@ -92,7 +92,7 @@ public static class AbiTestCases
         [6] = new(
             "Triple jagged static uint8 array",
             "function foo(uint8[3][2][1])",
-            ValueTuple.Create(new byte[][][] { new byte[][] { new byte[] { 1, 2, 3 }, new byte[] { 1, 2, 3 } } }),
+            new List<object> { new byte[][][] { new byte[][] { new byte[] { 1, 2, 3 }, new byte[] { 1, 2, 3 } } } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // first array: element 0",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // first array: element 1",
@@ -112,7 +112,7 @@ public static class AbiTestCases
         [7] = new(
             "Simple static tuple with two uint256",
             "function foo((uint256 id, uint256 balance) account)",
-            ValueTuple.Create((3u, 10u)),
+            new List<object> { (3u, 10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // account.balance"
@@ -124,7 +124,7 @@ public static class AbiTestCases
         [8] = new(
             "Bool and static tuple with two uint256",
             "function foo(bool isActive, (uint256 id, uint256 balance) account)",
-            (true, (3u, 10u)),
+            new List<object> { true, (3u, 10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
@@ -138,7 +138,7 @@ public static class AbiTestCases
         [9] = new(
             "Two static tuples with mixed static types",
             "function foo((bool isActive, uint256 seenUnix) prof, (uint256 id, uint256 balance) account)",
-            ((true, 20u), (3u, 10u)),
+            new List<object> { (true, 20u), (3u, 10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // prof.seenUnix",
@@ -154,7 +154,7 @@ public static class AbiTestCases
         [10] = new(
             "Nested static tuple with mixed static types",
             "function foo(((bool isActive, uint256 seenUnix) prof, uint256 id, uint256 balance) account)",
-            ValueTuple.Create(((true, 20u), 3u, 10u)),
+            new List<object> { ((true, 20u), 3u, 10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // account.prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // account.prof.seenUnix",
@@ -170,7 +170,7 @@ public static class AbiTestCases
         [11] = new(
             "Simple bytes",
             "function foo(bytes)",
-            ValueTuple.Create(new byte[] { 1 }),
+            new List<object> { new byte[] { 1 } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of bytes data",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // length of bytes",
@@ -184,7 +184,7 @@ public static class AbiTestCases
         [12] = new(
             "Simple dynamic uint8 array",
             "function foo(uint8[])",
-            ValueTuple.Create(new byte[] { 1, 2 }),
+            new List<object> { new byte[] { 1, 2 } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array data",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of array",
@@ -200,7 +200,7 @@ public static class AbiTestCases
         [13] = new(
             "Dynamic array of static uint8 arrays",
             "function foo(uint8[2][])",
-            ValueTuple.Create(new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
+            new List<object> { new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array data",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of outer array",
@@ -220,7 +220,7 @@ public static class AbiTestCases
         [14] = new(
             "Dynamic array of dynamic uint8 arrays",
             "function foo(uint8[][])",
-            ValueTuple.Create(new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
+            new List<object> { new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array of arrays",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of outer array",
@@ -248,7 +248,7 @@ public static class AbiTestCases
         [15] = new(
             "Dynamic string in tuple with bool",
             "function foo(bool isActive, (string id, uint256 balance) account)",
-            (true, ("abc", 9u)),
+            new List<object> { true, ("abc", 9u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to dynamic tuple 'account'",
@@ -268,7 +268,7 @@ public static class AbiTestCases
         [16] = new(
             "Nested tuple with two dynamic strings",
             "function foo(bool isActive, ((string id, string name) user, uint256 balance) account)",
-            (true, (("a", "abc"), 9u)),
+            new List<object> { true, (("a", "abc"), 9u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to outer dynamic tuple 'account'",
@@ -298,7 +298,7 @@ public static class AbiTestCases
         [17] = new(
             "Formal spec: Fixed array of bytes3",
             "function bar(bytes3[2])",
-            ValueTuple.Create(new string[2] { "abc", "def" }),
+            new List<object> { new string[] { "abc", "def" } },
             new List<string> {
                 "0x6162630000000000000000000000000000000000000000000000000000000000  // first bytes3 value ('abc')",
                 "0x6465660000000000000000000000000000000000000000000000000000000000  // second bytes3 value ('def')"
@@ -310,7 +310,7 @@ public static class AbiTestCases
         [18] = new(
             "Formal spec: Simple uint256 and bool",
             "function baz(uint256 x,bool y)",
-            (69u, true),
+            new List<object> { 69u, true },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000045  // uint256 value (69)",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)"
@@ -322,7 +322,7 @@ public static class AbiTestCases
         [19] = new(
             "Formal spec: Dynamic bytes with bool and uint array",
             "function sam(bytes,bool,uint[])",
-            ValueTuple.Create("dave", true, new uint[] { 1, 2, 3 }),
+            new List<object> { "dave", true, new uint[] { 1, 2, 3 } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000060  // offset to start of bytes data",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)",
@@ -348,7 +348,7 @@ public static class AbiTestCases
         [20] = new(
             "Formal spec: Mixed static and dynamic types",
             "function foo(uint256,uint32[],bytes10,bytes)",
-            (0x123u, new uint[] { 0x456u, 0x789u }, "1234567890", "Hello, world!"),
+            new List<object> { 0x123u, new uint[] { 0x456u, 0x789u }, "1234567890", "Hello, world!" },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000123  // uint256 value (0x123)",
                 "0x0000000000000000000000000000000000000000000000000000000000000080  // offset to start of uint32[] data",

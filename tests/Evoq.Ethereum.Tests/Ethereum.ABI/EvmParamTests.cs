@@ -15,7 +15,7 @@ public class EvmParamTests
     [TestMethod]
     public void Constructor_WithBasicTypes_SetsPropertiesCorrectly()
     {
-        var param = new EvmParam(0, "amount", "uint256");
+        var param = new AbiParam(0, "amount", "uint256");
 
         Assert.AreEqual("uint256", param.AbiType, "Type should be set correctly");
         Assert.AreEqual("amount", param.Name, "Name should be set correctly");
@@ -26,13 +26,13 @@ public class EvmParamTests
     [TestMethod]
     public void Constructor_WithTupleComponents_SetsPropertiesCorrectly()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
             new(0, "valid", "bool"),
             new(1, "owner", "address")
         };
 
-        var param = new EvmParam(0, "details", components);
+        var param = new AbiParam(0, "details", components);
 
         Assert.AreEqual("(bool,address)", param.AbiType, "Type should be derived from components");
         Assert.AreEqual("details", param.Name, "Name should be set correctly");
@@ -45,28 +45,28 @@ public class EvmParamTests
     public void Constructor_WithTupleType_ThrowsArgumentException()
     {
         Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "details", "(bool,address)"),
+            new AbiParam(0, "details", "(bool,address)"),
             "Should throw when trying to create tuple type without components");
     }
 
     [TestMethod]
     public void Constructor_WithMismatchedComponents_ThrowsArgumentException()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
             new(0, "valid", "bool"),
             new(1, "owner", "address")
         };
 
         Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "details", "(uint256,bool)", null, components),
+            new AbiParam(0, "details", "(uint256,bool)", null, components),
             "Should throw when components don't match specified type");
     }
 
     [TestMethod]
     public void Constructor_WithNullComponents_CreatesEmptyList()
     {
-        var param = new EvmParam(0, "amount", "uint256");
+        var param = new AbiParam(0, "amount", "uint256");
         Assert.IsNull(param.Components, "Components should be null for basic types");
     }
 
@@ -74,14 +74,14 @@ public class EvmParamTests
     public void Constructor_WithEmptyComponents_CreatesEmptyList()
     {
         Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "amount", new List<EvmParam>()));
+            new AbiParam(0, "amount", new List<AbiParam>()));
     }
 
     [TestMethod]
     public void Constructor_WithDynamicLengthArray_SetsPropertiesCorrectly()
     {
         var arrayLengths = new[] { -1 };
-        var param = new EvmParam(0, "values", "uint256", arrayLengths);
+        var param = new AbiParam(0, "values", "uint256", arrayLengths);
 
         Assert.AreEqual("uint256[]", param.AbiType, "Type should include array length");
         Assert.AreEqual("values", param.Name, "Name should be set correctly");
@@ -96,7 +96,7 @@ public class EvmParamTests
     public void Constructor_WithFixedLengthArray_SetsPropertiesCorrectly()
     {
         var arrayLengths = new[] { 16, 2 };
-        var param = new EvmParam(0, "values", "uint256", arrayLengths);
+        var param = new AbiParam(0, "values", "uint256", arrayLengths);
 
         Assert.AreEqual("uint256[16][2]", param.AbiType, "Type should include array length");
         Assert.AreEqual("values", param.Name, "Name should be set correctly");
@@ -117,7 +117,7 @@ public class EvmParamTests
     public void Constructor_WithValidSolidityType_DoesNotThrow(string type)
     {
         // Act & Assert
-        var param = new EvmParam(0, "param", type);
+        var param = new AbiParam(0, "param", type);
         Assert.AreEqual(type, param.AbiType);
     }
 
@@ -132,7 +132,7 @@ public class EvmParamTests
     {
         // Act & Assert
         var ex = Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "param", type));
+            new AbiParam(0, "param", type));
 
         StringAssert.Contains(ex.Message, "Invalid Solidity");
     }
@@ -144,7 +144,7 @@ public class EvmParamTests
         var arrayLengths = new[] { 5, -1 }; // Fixed size 5, then dynamic size
 
         // Act
-        var param = new EvmParam(0, "param", "uint256", arrayLengths);
+        var param = new AbiParam(0, "param", "uint256", arrayLengths);
 
         // Assert
         Assert.AreEqual("uint256[5][]", param.AbiType);
@@ -158,7 +158,7 @@ public class EvmParamTests
 
         // Act & Assert
         var ex = Assert.ThrowsException<ArgumentException>(() =>
-            new EvmParam(0, "param", "uint257", arrayLengths));
+            new AbiParam(0, "param", "uint257", arrayLengths));
 
         StringAssert.Contains(ex.Message, "Invalid Solidity");
     }
@@ -166,47 +166,47 @@ public class EvmParamTests
     [TestMethod]
     public void ToString_WithBasicType_ReturnsTypeOnly()
     {
-        var param = new EvmParam(0, "", "uint256");
+        var param = new AbiParam(0, "", "uint256");
         Assert.AreEqual("uint256", param.ToString(), "Should return type only when no name is present");
     }
 
     [TestMethod]
     public void ToString_WithNamedBasicType_ReturnsTypeAndName()
     {
-        var param = new EvmParam(0, "amount", "uint256");
+        var param = new AbiParam(0, "amount", "uint256");
         Assert.AreEqual("uint256 amount", param.ToString(), "Should return type and name when name is present");
     }
 
     [TestMethod]
     public void ToString_WithUnnamedTuple_ReturnsTupleType()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
             new(0, "", "bool"),
             new(1, "", "address")
         };
 
-        var param = new EvmParam(0, "", components);
+        var param = new AbiParam(0, "", components);
         Assert.AreEqual("(bool, address)", param.ToString(), "Should return tuple type when no names are present");
     }
 
     [TestMethod]
     public void ToString_WithNamedTuple_ReturnsTupleTypeAndName()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
             new(0, "valid", "bool"),
             new(1, "owner", "address")
         };
 
-        var param = new EvmParam(0, "details", components);
+        var param = new AbiParam(0, "details", components);
         Assert.AreEqual("(bool valid, address owner) details", param.ToString(), "Should return tuple type with component names and tuple name");
     }
 
     [TestMethod]
     public void ValidateValue_WithInvalidBasicType_ThrowsAbiValidationException()
     {
-        var param = new EvmParam(0, "amount", "uint256");
+        var param = new AbiParam(0, "amount", "uint256");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
             param.ValidateValue(this.validator, "not a number"));
@@ -222,9 +222,9 @@ public class EvmParamTests
     public void ValidateValue_WithInvalidNestedType_ThrowsAbiValidationException()
     {
         // "((string name, uint256 balance) user, bool active) data"
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
-            new(0, "user", new List<EvmParam>
+            new(0, "user", new List<AbiParam>
             {
                 new(0, "name", "string"),
                 new(1, "balance", "uint256")
@@ -232,7 +232,7 @@ public class EvmParamTests
             new(1, "active", "bool")
         };
 
-        var param = new EvmParam(0, "data", components);
+        var param = new AbiParam(0, "data", components);
         var value = (("John", "not a number"), true); // wrong type for balance
 
         Assert.AreEqual("uint256", components[0].Components![1].AbiType);
@@ -253,13 +253,13 @@ public class EvmParamTests
     [TestMethod]
     public void ValidateValue_WithWrongTupleLength_ThrowsAbiValidationException()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
             new(0, "name", "string"),
             new(1, "age", "uint256")
         };
 
-        var param = new EvmParam(0, "person", components);
+        var param = new AbiParam(0, "person", components);
         var value = ValueTuple.Create("John");
 
         var ex = Assert.ThrowsException<AbiValidationException>(() =>
@@ -314,7 +314,7 @@ public class EvmParamTests
     [DataRow("bytes32", false)]             // Fixed bytes (static)
     public void IsDynamic_BasicTypes_ReturnsExpectedResult(string type, bool expectedDynamic)
     {
-        var param = new EvmParam(0, "", type);
+        var param = new AbiParam(0, "", type);
         Assert.AreEqual(expectedDynamic, param.IsDynamic);
     }
 
@@ -326,20 +326,20 @@ public class EvmParamTests
     [DataRow("address[2][3]", false)]       // Fixed nested array
     public void IsDynamic_ArrayTypes_ReturnsExpectedResult(string type, bool expectedDynamic)
     {
-        var param = new EvmParam(0, "", type);
+        var param = new AbiParam(0, "", type);
         Assert.AreEqual(expectedDynamic, param.IsDynamic);
     }
 
     [TestMethod]
     public void IsDynamic_TupleWithAllStaticComponents_ReturnsFalse()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "flag", "bool"),
-            new EvmParam(2, "addr", "address")
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "flag", "bool"),
+            new AbiParam(2, "addr", "address")
         };
-        var param = new EvmParam(0, "tuple", components);
+        var param = new AbiParam(0, "tuple", components);
 
         Assert.IsFalse(param.IsDynamic);
     }
@@ -347,13 +347,13 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_TupleWithDynamicComponent_ReturnsTrue()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "name", "string"),  // Dynamic component
-            new EvmParam(2, "flag", "bool")
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "name", "string"),  // Dynamic component
+            new AbiParam(2, "flag", "bool")
         };
-        var param = new EvmParam(0, "tuple", components);
+        var param = new AbiParam(0, "tuple", components);
 
         Assert.IsTrue(param.IsDynamic);
     }
@@ -361,17 +361,17 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_NestedTupleWithAllStaticComponents_ReturnsFalse()
     {
-        var innerComponents = new List<EvmParam>
+        var innerComponents = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "flag", "bool")
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "flag", "bool")
         };
-        var outerComponents = new List<EvmParam>
+        var outerComponents = new List<AbiParam>
         {
-            new EvmParam(0, "data", innerComponents),
-            new EvmParam(1, "addr", "address")
+            new AbiParam(0, "data", innerComponents),
+            new AbiParam(1, "addr", "address")
         };
-        var param = new EvmParam(0, "nested", outerComponents);
+        var param = new AbiParam(0, "nested", outerComponents);
 
         Assert.IsFalse(param.IsDynamic);
     }
@@ -379,17 +379,17 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_NestedTupleWithDynamicComponent_ReturnsTrue()
     {
-        var innerComponents = new List<EvmParam>
+        var innerComponents = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "name", "string")  // Dynamic component
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "name", "string")  // Dynamic component
         };
-        var outerComponents = new List<EvmParam>
+        var outerComponents = new List<AbiParam>
         {
-            new EvmParam(0, "data", innerComponents),
-            new EvmParam(1, "addr", "address")
+            new AbiParam(0, "data", innerComponents),
+            new AbiParam(1, "addr", "address")
         };
-        var param = new EvmParam(0, "nested", outerComponents);
+        var param = new AbiParam(0, "nested", outerComponents);
 
         Assert.IsTrue(param.IsDynamic);
     }
@@ -397,7 +397,7 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_VeryNestedTupleWithDynamicComponent_ReturnsTrue()
     {
-        var parameters = EvmParameters.Parse("(((uint8 age, (string first, string last) name) profile, uint256 id, bool active) user)");
+        var parameters = AbiParameters.Parse("(((uint8 age, (string first, string last) name) profile, uint256 id, bool active) user)");
 
         Assert.IsTrue(parameters.First().IsDynamic);
     }
@@ -411,7 +411,7 @@ public class EvmParamTests
         // entries is an array of tuples with two components, eventId and eventType
         // count is a uint256
 
-        var parameters = EvmParameters.Parse("(((uint256 eventId, uint8 eventType)[] entries, uint256 count) logs)");
+        var parameters = AbiParameters.Parse("(((uint256 eventId, uint8 eventType)[] entries, uint256 count) logs)");
 
         Assert.AreEqual("logs", parameters.First().Name);
         Assert.IsNotNull(parameters.First().Components);
@@ -423,13 +423,13 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_TupleWithDynamicArrayComponent_ReturnsTrue()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "array", "uint256[]"),  // Dynamic array
-            new EvmParam(2, "flag", "bool")
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "array", "uint256[]"),  // Dynamic array
+            new AbiParam(2, "flag", "bool")
         };
-        var param = new EvmParam(0, "tuple", components);
+        var param = new AbiParam(0, "tuple", components);
 
         Assert.IsTrue(param.IsDynamic);
     }
@@ -437,13 +437,13 @@ public class EvmParamTests
     [TestMethod]
     public void IsDynamic_TupleWithFixedArrayOfDynamicType_ReturnsTrue()
     {
-        var components = new List<EvmParam>
+        var components = new List<AbiParam>
         {
-            new EvmParam(0, "value", "uint256"),
-            new EvmParam(1, "names", "string[2]"),  // Fixed array of dynamic type
-            new EvmParam(2, "flag", "bool")
+            new AbiParam(0, "value", "uint256"),
+            new AbiParam(1, "names", "string[2]"),  // Fixed array of dynamic type
+            new AbiParam(2, "flag", "bool")
         };
-        var param = new EvmParam(0, "tuple", components);
+        var param = new AbiParam(0, "tuple", components);
 
         Assert.IsTrue(param.IsDynamic);
     }

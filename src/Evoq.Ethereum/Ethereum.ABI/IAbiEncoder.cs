@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -27,7 +29,7 @@ public interface IAbiEncoder
     /// <param name="parameters">The parameters to encode.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded parameters.</returns>
-    AbiEncodingResult EncodeParameters(EvmParameters parameters, ITuple values);
+    AbiEncodingResult EncodeParameters(AbiParameters parameters, IReadOnlyList<object?> values);
 
     // /// <summary>
     // /// Resolves the encoder for a given type.
@@ -53,10 +55,10 @@ public static class AbiEncoderExtensions
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters<T>(
-        this IAbiEncoder encoder, EvmParameters parameters, T value)
+        this IAbiEncoder encoder, AbiParameters parameters, T value)
         where T : struct, IConvertible
     {
-        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+        return encoder.EncodeParameters(parameters, new List<object> { value });
     }
 
     /// <summary>
@@ -67,9 +69,9 @@ public static class AbiEncoderExtensions
     /// <param name="value">The string value to encode.</param>
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters(
-        this IAbiEncoder encoder, EvmParameters parameters, string value)
+        this IAbiEncoder encoder, AbiParameters parameters, string value)
     {
-        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+        return encoder.EncodeParameters(parameters, new List<object> { value });
     }
 
     /// <summary>
@@ -80,9 +82,9 @@ public static class AbiEncoderExtensions
     /// <param name="value">The BigInteger value to encode.</param>
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters(
-        this IAbiEncoder encoder, EvmParameters parameters, BigInteger value)
+        this IAbiEncoder encoder, AbiParameters parameters, BigInteger value)
     {
-        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+        return encoder.EncodeParameters(parameters, new List<object> { value });
     }
 
     /// <summary>
@@ -93,9 +95,9 @@ public static class AbiEncoderExtensions
     /// <param name="value">The byte array to encode.</param>
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters(
-        this IAbiEncoder encoder, EvmParameters parameters, byte[] value)
+        this IAbiEncoder encoder, AbiParameters parameters, byte[] value)
     {
-        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+        return encoder.EncodeParameters(parameters, new List<object> { value });
     }
 
     /// <summary>
@@ -106,8 +108,23 @@ public static class AbiEncoderExtensions
     /// <param name="value">The array to encode.</param>
     /// <returns>The encoded parameters.</returns>
     public static AbiEncodingResult EncodeParameters(
-        this IAbiEncoder encoder, EvmParameters parameters, Array value)
+        this IAbiEncoder encoder, AbiParameters parameters, Array value)
     {
-        return encoder.EncodeParameters(parameters, ValueTuple.Create(value));
+        return encoder.EncodeParameters(parameters, new List<object> { value });
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="tuple">The tuple to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, AbiParameters parameters, ITuple tuple)
+    {
+        var list = tuple.GetElements().ToList();
+
+        return encoder.EncodeParameters(parameters, list);
     }
 }

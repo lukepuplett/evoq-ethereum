@@ -10,10 +10,10 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Represents a parameter of a function or the components of a parameter.
 /// </summary>
-public record struct EvmParam()
+public record struct AbiParam()
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="EvmParam"/> struct.
+    /// Initializes a new instance of the <see cref="AbiParam"/> struct.
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
@@ -21,10 +21,10 @@ public record struct EvmParam()
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
     /// <param name="components">The components of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the components contain nested params.</exception>
-    public EvmParam(
+    public AbiParam(
         int position, string name, string abiType,
         IReadOnlyList<int>? arrayLengths = null,
-        IReadOnlyList<EvmParam>? components = null)
+        IReadOnlyList<AbiParam>? components = null)
         : this()
     {
         if (abiType != null && abiType.Trim().EndsWith("]"))
@@ -79,7 +79,7 @@ public record struct EvmParam()
         this.Name = name;
         this.ArrayLengths = arrayLengths;
         this.Components = components;
-        this.HasComponents = components == null || components.Count == 0;
+        this.IsTuple = components == null || components.Count == 0;
         this.IsArray = arrayLengths != null && arrayLengths.Count > 0;
 
         // the ABI spec says that if a single component value is dynamic then the whole param is dynamic
@@ -88,13 +88,13 @@ public record struct EvmParam()
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="EvmParam"/> struct.
+    /// Initializes a new instance of the <see cref="AbiParam"/> struct.
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
     /// <param name="abiType">The type of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the type is a tuple.</exception>
-    public EvmParam(int position, string name, string abiType)
+    public AbiParam(int position, string name, string abiType)
         : this(position, name, abiType, null)
     {
         if (abiType.Contains("("))
@@ -104,12 +104,12 @@ public record struct EvmParam()
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="EvmParam"/> struct.
+    /// Initializes a new instance of the <see cref="AbiParam"/> struct.
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
     /// <param name="components">The components of the param.</param>
-    public EvmParam(int position, string name, IReadOnlyList<EvmParam> components)
+    public AbiParam(int position, string name, IReadOnlyList<AbiParam> components)
         : this(position, name, GetCanonicalType(components), null, components)
     {
     }
@@ -119,7 +119,7 @@ public record struct EvmParam()
     /// <summary>
     /// Whether the param has components.
     /// </summary>
-    public bool HasComponents { get; init; }
+    public bool IsTuple { get; init; }
 
     /// <summary>
     /// Whether the param is a dynamic type.
@@ -154,7 +154,7 @@ public record struct EvmParam()
     /// <summary>
     /// The components of the param.
     /// </summary>
-    public IReadOnlyList<EvmParam>? Components { get; init; }
+    public IReadOnlyList<AbiParam>? Components { get; init; }
 
     //
 
@@ -167,7 +167,7 @@ public record struct EvmParam()
     public string GetCanonicalType(
         bool includeNames = false, bool includeSpaces = false)
     {
-        if (this.HasComponents)
+        if (this.IsTuple)
         {
             if (includeNames && !string.IsNullOrEmpty(this.Name))
             {
@@ -228,7 +228,7 @@ public record struct EvmParam()
     /// <param name="includeSpaces">Whether to include spaces between the components.</param>
     /// <returns>The canonical type of the parameters.</returns>
     public static string GetCanonicalType(
-        IReadOnlyList<EvmParam> parameters, IReadOnlyList<int>? arrayLengths = null,
+        IReadOnlyList<AbiParam> parameters, IReadOnlyList<int>? arrayLengths = null,
         bool includeNames = false, bool includeSpaces = false)
     {
         if (parameters.Count == 0)
@@ -300,7 +300,7 @@ public record struct EvmParam()
     /// </summary>
     /// <param name="visitor">The visitor.</param>
     /// <param name="depth">The depth of the parameter to visit where 0 is the current level.</param>
-    internal void DeepVisit(Action<EvmParam> visitor, int depth = int.MaxValue)
+    internal void DeepVisit(Action<AbiParam> visitor, int depth = int.MaxValue)
     {
         visitor(this);
 
@@ -353,7 +353,7 @@ public record struct EvmParam()
         }
 
         // For basic types, use the existing validator
-        if (this.HasComponents)
+        if (this.IsTuple)
         {
             vc.IncrementVisitorCounter();
 

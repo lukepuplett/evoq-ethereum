@@ -7,7 +7,7 @@ public class EvmParametersTests
     public void SplitParams_WithSingleString_ReturnsCorrectTuples()
     {
         var parameterString = "(string)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
         Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
@@ -20,7 +20,7 @@ public class EvmParametersTests
     public void SplitParams_WithSingleStringArray_ReturnsCorrectTuples()
     {
         var parameterString = "(string[2])";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
         Assert.AreEqual("string[2]", result[0].AbiType, "Parameter should be of type 'string[2]'");
@@ -35,7 +35,7 @@ public class EvmParametersTests
     public void SplitParams_WithTwoStrings_ReturnsCorrectTuples()
     {
         var parameterString = "(string,uint256)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
         Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
@@ -53,7 +53,7 @@ public class EvmParametersTests
     public void SplitParams_WithNamedTuple_ReturnsCorrectNamedTuple()
     {
         var parameterString = "((string name, uint256 value) item)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
         Assert.AreEqual("(string,uint256)", result[0].AbiType, "Parameter should be of type '(string,uint256)'");
@@ -72,7 +72,7 @@ public class EvmParametersTests
     public void SplitParams_WithNamedParam_ReturnsCorrectTuples()
     {
         var parameterString = "(string name)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
         Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
@@ -85,7 +85,7 @@ public class EvmParametersTests
     public void SplitParams_WithBadlyFormedNamedTuple_ReturnsCorrectTuples()
     {
         var parameterString = "(   (  string  name ,  uint256  age  )  data  ,  bool  enabled )";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
         Assert.AreEqual("(string,uint256)", result[0].AbiType, "First parameter should be of type '(string,uint256)'");
@@ -97,7 +97,7 @@ public class EvmParametersTests
     public void SplitParams_WithNamedParams_ReturnsCorrectTuples()
     {
         var parameterString = "(string name, uint256 value)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
         Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
@@ -115,7 +115,7 @@ public class EvmParametersTests
     public void SplitParams_WithNestedTuple_ReturnsCorrectTuples()
     {
         var parameterString = "(string name, (uint256 value, bool valid) ticket)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
@@ -149,7 +149,7 @@ public class EvmParametersTests
     public void SplitParams_WithUnnamedNestedTuple_ReturnsCorrectTuples()
     {
         var parameterString = "(string,(uint256,bool))";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
@@ -183,7 +183,7 @@ public class EvmParametersTests
     public void SplitParams_WithNestedTupleOnly_ReturnsCorrectTuples()
     {
         var parameterString = "(uint256 value, (bool valid, address owner) details)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
@@ -221,7 +221,7 @@ public class EvmParametersTests
     public void SplitParams_WithDoubleNestedTuple_ReturnsCorrectTuples()
     {
         var parameterString = "(string name, (uint256 value, (bool valid, address owner) details) ticket)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
 
@@ -274,7 +274,7 @@ public class EvmParametersTests
     public void SplitParams_WithTupleArray_ReturnsCorrectTuples()
     {
         var parameterString = "((uint256 value, bool valid)[] items)";
-        var result = EvmParameters.Parse(parameterString);
+        var result = AbiParameters.Parse(parameterString);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
 
@@ -304,7 +304,7 @@ public class EvmParametersTests
     public void ToString_WithSingleString_ReturnsCorrectFormat()
     {
         var parameterString = "(string)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format single parameter correctly");
@@ -314,7 +314,7 @@ public class EvmParametersTests
     public void ToString_WithTwoStrings_ReturnsCorrectFormat()
     {
         var parameterString = "(string, uint256)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format two parameters correctly");
@@ -324,7 +324,7 @@ public class EvmParametersTests
     public void ToString_WithNamedParams_ReturnsCorrectFormat()
     {
         var parameterString = "(string name, uint256 value)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format named parameters correctly");
@@ -334,7 +334,7 @@ public class EvmParametersTests
     public void ToString_WithNestedTuple_ReturnsCorrectFormat()
     {
         var parameterString = "(string name, (uint256 value, bool valid) ticket)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format nested tuple correctly");
@@ -344,7 +344,7 @@ public class EvmParametersTests
     public void ToString_WithUnnamedNestedTuple_ReturnsCorrectFormat()
     {
         var parameterString = "(string, (uint256, bool))";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format unnamed nested tuple correctly");
@@ -354,7 +354,7 @@ public class EvmParametersTests
     public void ToString_WithDoubleNestedTuple_ReturnsCorrectFormat()
     {
         var parameterString = "(string name, (uint256 value, (bool valid, address owner) details) ticket)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual(parameterString, result, "Should format double nested tuple correctly");
@@ -364,7 +364,7 @@ public class EvmParametersTests
     public void ToString_WithTupleArray_ReturnsCorrectFormat()
     {
         var parameterString = "((uint256 value, bool valid)[] items)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
         Assert.AreEqual("items", parameters[0].Name, "Parameter should have name 'items'");
@@ -375,7 +375,7 @@ public class EvmParametersTests
     public void GetCanonicalType_WithSingleString_ReturnsCorrectFormat()
     {
         var parameterString = "(string)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
 
         var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
         var resultWithNames = parameters.GetCanonicalType(includeNames: true);
@@ -388,7 +388,7 @@ public class EvmParametersTests
     public void GetCanonicalType_WithNamedParams_ReturnsCorrectFormat()
     {
         var parameterString = "(string name, uint256 value)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
 
         var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
         var resultWithNames = parameters.GetCanonicalType(includeNames: true);
@@ -401,7 +401,7 @@ public class EvmParametersTests
     public void GetCanonicalType_WithNestedTuple_ReturnsCorrectFormat()
     {
         var parameterString = "(string name, (uint256 value, bool valid) ticket)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
 
         var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
         var resultWithNames = parameters.GetCanonicalType(includeNames: true);
@@ -414,7 +414,7 @@ public class EvmParametersTests
     public void GetCanonicalType_WithTupleArray_ReturnsCorrectFormat()
     {
         var parameterString = "((uint256 value, bool valid)[] items)";
-        var parameters = EvmParameters.Parse(parameterString);
+        var parameters = AbiParameters.Parse(parameterString);
 
         var resultWithoutNames = parameters.GetCanonicalType(includeNames: false);
         var resultWithNames = parameters.GetCanonicalType(includeNames: true);

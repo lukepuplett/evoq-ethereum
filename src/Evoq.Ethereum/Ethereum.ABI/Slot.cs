@@ -68,8 +68,8 @@ public class Slot
     public Slot(string name, SlotCollection pointsToFirst, SlotCollection relativeTo)
     {
         this.data = new byte[Size];
-        this.PointsTo = pointsToFirst;
-        this.RelativeTo = relativeTo;
+        this.pointsToCollection = pointsToFirst;
+        this.relativeToCollection = relativeTo;
         this.Name = name;
     }
 
@@ -83,12 +83,32 @@ public class Slot
     /// <summary>
     /// The slot that this slot points to.
     /// </summary>
-    public SlotCollection? PointsTo { get; private set; }
+    public Slot? PointsTo
+    {
+        get => this.pointsToSlot ?? this.pointsToCollection?.FirstOrDefault();
+        set
+        {
+            this.pointsToSlot = value;
+            this.pointsToCollection = null;
+        }
+    }
+    private Slot? pointsToSlot;
+    private SlotCollection? pointsToCollection;
 
     /// <summary>
     /// The slot that this slot is relative to.
     /// </summary>
-    public SlotCollection? RelativeTo { get; private set; }
+    public Slot? RelativeTo
+    {
+        get => this.relativeToSlot ?? this.relativeToCollection?.FirstOrDefault();
+        set
+        {
+            this.relativeToSlot = value;
+            this.relativeToCollection = null;
+        }
+    }
+    private Slot? relativeToSlot;
+    private SlotCollection? relativeToCollection;
 
     /// <summary>
     /// Whether the slot is a pointer.
@@ -104,6 +124,11 @@ public class Slot
     /// The order of the slot within its container.
     /// </summary>
     public int Order { get; private set; } = -1;
+
+    /// <summary>
+    /// Whether the slot is null.
+    /// </summary>
+    public bool IsNull => this.data.Length == 0 || this.data.All(b => b == 0);
 
     //
 
@@ -136,9 +161,9 @@ public class Slot
         string pointsTo = "";
         if (this.IsPointer)
         {
-            if (this.PointsTo.Any())
+            if (this.PointsTo != null)
             {
-                pointsTo = $", ptr: {this.PointsTo.First().id.ToString()[^4..]}";
+                pointsTo = $", ptr: {this.PointsTo.id.ToString()[^4..]}";
             }
             else
             {
@@ -149,9 +174,9 @@ public class Slot
         string relTo = "";
         if (this.IsPointer)
         {
-            if (this.RelativeTo.Any())
+            if (this.RelativeTo != null)
             {
-                relTo = $", rel: {this.RelativeTo.First().id.ToString()[^4..]}";
+                relTo = $", rel: {this.RelativeTo.id.ToString()[^4..]}";
             }
             else
             {
@@ -190,20 +215,19 @@ public class Slot
     /// </summary>
     internal void EncodePointer()
     {
-        if (this.PointsTo != null && this.PointsTo.Count() > 0 && this.PointsTo.First().OffsetByte >= 0)
+        if (this.PointsTo != null && this.PointsTo.OffsetByte >= 0)
         {
-            var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.First().OffsetByte);
+            var offset = UintTypeEncoder.EncodeUint(256, this.PointsTo.OffsetByte);
             this.data = offset;
         }
     }
 
     /// <summary>
-    /// Decodes the pointer that this slot points to.
+    /// Decodes the pointer that this slot points to setting the OffsetByte, PointsTo and RelativeTo.
     /// </summary>
     /// <param name="relativeTo">The slot space that the pointer is relative to.</param>
-    /// <param name="length">The length of the pointer, if known, else it'll be read from the first data slot.</param>
     /// <exception cref="NotImplementedException">Thrown if the pointer is not implemented.</exception>
-    internal void DecodePointer(SlotCollection relativeTo, int? length)
+    internal void DecodePointer(SlotCollection relativeTo)
     {
         if (this.IsPointer)
         {
@@ -211,24 +235,8 @@ public class Slot
         }
 
         this.OffsetByte = (int)UintTypeEncoder.DecodeUint(256, this.data);
-
-        int skipTo = this.OffsetByte / Size;
-        List<Slot> dataSlots;
-
-        if (length.HasValue)
-        {
-            dataSlots = relativeTo.Skip(skipTo + 1).Take(length.Value).ToList();
-        }
-        else
-        {
-            // decode the length from the first data slot
-
-            int len = (int)UintTypeEncoder.DecodeUint(256, relativeTo.Skip(skipTo).First().Data);
-
-            dataSlots = relativeTo.Skip(skipTo).Take(len).ToList();
-        }
-
-        this.PointsTo = new SlotCollection(dataSlots);
+        this.PointsTo = relativeTo.Skip(this.OffsetByte / Size).First();
+        this.RelativeTo = relativeTo.First();
     }
 
     /// <summary>
@@ -238,23 +246,15 @@ public class Slot
     {
         if (this.PointsTo != null)
         {
-            // Debug.Assert(this.PointsTo.Count > 0, "PointsTo an empty SlotCollection. Check slots were added to the correct collection.");
-
-            if (this.PointsTo.Count > 0)
+            if (this.PointsTo.OffsetByte >= 0)
             {
-                // Debug.Assert(this.PointsTo.First().Offset >= 0, "PointsTo.First().Offset is negative");
+                Debug.Assert(this.RelativeTo != null, $"RelativeTo for slot {this.Name} is null");
 
-                if (this.PointsTo.First().OffsetByte >= 0)
-                {
-                    Debug.Assert(this.RelativeTo != null, $"RelativeTo for slot {this.Name} is null");
-                    Debug.Assert(this.RelativeTo.Count > 0, $"RelativeTo for slot {this.Name} is empty");
+                int startingPosition = this.RelativeTo?.Order ?? 0;
+                int distance = this.PointsTo.Order - startingPosition;
 
-                    int startingPosition = this.RelativeTo?.First().Order ?? 0;
-                    int distance = this.PointsTo.First().Order - startingPosition;
-
-                    var offset = UintTypeEncoder.EncodeUint(256, distance * Size);
-                    this.data = offset;
-                }
+                var offset = UintTypeEncoder.EncodeUint(256, distance * Size);
+                this.data = offset;
             }
         }
     }

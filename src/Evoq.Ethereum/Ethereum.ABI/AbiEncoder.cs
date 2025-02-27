@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -10,7 +9,7 @@ namespace Evoq.Ethereum.ABI;
 
 record class EncodingContext(
     string AbiType,
-    object Value,
+    object? Value,
     SlotCollection Block,
     bool HasPointer,
     bool IsParameter,
@@ -120,16 +119,16 @@ public class AbiEncoder : IAbiEncoder
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded parameters.</returns>
     /// <exception cref="ArgumentException">Thrown if the number of values does not match the number of parameters.</exception>
-    public AbiEncodingResult EncodeParameters(EvmParameters parameters, ITuple values)
+    public AbiEncodingResult EncodeParameters(AbiParameters parameters, IReadOnlyList<object?> values)
     {
         var slotCount = parameters.Count;
 
-        if (slotCount != values.Length)
+        if (slotCount != values.Count)
         {
             string type = parameters.GetCanonicalType();
-            string valuesStr = string.Join(", ", values.GetElements().Select(v => v?.ToString() ?? "null"));
+            string valuesStr = string.Join(", ", values.Select(v => v?.ToString() ?? "null"));
 
-            throw new ArgumentException($"Expected {slotCount} values for {type} but got {values.Length}, '{valuesStr}'. Nested tuples can be a source of confusion.");
+            throw new ArgumentException($"Expected {slotCount} values for {type} but got {values.Count}, '{valuesStr}'. Nested tuples can be a source of confusion.");
         }
 
         var root = new SlotCollection(capacity: slotCount * 8);
@@ -256,7 +255,7 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"The value is not an ITuple");
         }
 
-        var evmParams = EvmParameters.Parse(context.AbiType);
+        var evmParams = AbiParameters.Parse(context.AbiType);
 
         for (int i = 0; i < evmParams.Count; i++)
         {
@@ -449,7 +448,7 @@ public class AbiEncoder : IAbiEncoder
         var heads = new SlotCollection(capacity: 8); // heads for this dynamic tuple
         var tails = new List<SlotCollection>();      // tails for each dynamic component
 
-        var evmParams = EvmParameters.Parse(context.AbiType);
+        var evmParams = AbiParameters.Parse(context.AbiType);
 
         for (int i = 0; i < evmParams.Count; i++)
         {
