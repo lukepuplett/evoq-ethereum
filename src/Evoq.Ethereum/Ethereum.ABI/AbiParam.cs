@@ -5,6 +5,32 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
+/*
+
+When encoding, the ClrType and Value properties are optional because we can use a
+list of values to encode a tuple and each value is of a ClrType and has a Value.
+
+When decoding, they are mandatory because we need to know the type of the value
+to decode it correctly.
+
+To populate the ClrType and Value properties for encoding, we could add a new method
+to either the AbiValidator or to the AbiParameters class which outputs AbiParam
+objects matching the expected parameters and structure.
+
+The new method would take an object which would be expected to be a list of values,
+including further lists and tuples. The method would return a list of tuples where
+each tuple contains the ClrType and Value of the value in the list at the same
+position.
+
+Or, the new method could accept an object which is a POCO with properties that
+match the expected parameters, potentially using the attributes to specify the
+position and name of the parameter.
+
+The ClrType and Value properties are used to store the value of the parameter in the
+CLR type system.
+
+*/
+
 namespace Evoq.Ethereum.ABI;
 
 /// <summary>
@@ -81,10 +107,18 @@ public record struct AbiParam()
         this.Components = components;
         this.IsTuple = components == null || components.Count == 0;
         this.IsArray = arrayLengths != null && arrayLengths.Count > 0;
-
-        // the ABI spec says that if a single component value is dynamic then the whole param is dynamic
-
         this.IsDynamic = AbiTypes.IsDynamic(this.AbiType);
+
+        // pick a default CLR type for the ABI type
+
+        if (AbiTypes.TryGetDefaultClrType(this.AbiType, out var clrType))
+        {
+            this.ClrType = clrType;
+        }
+        else
+        {
+            this.ClrType = typeof(object);
+        }
     }
 
     /// <summary>
@@ -157,6 +191,31 @@ public record struct AbiParam()
     public IReadOnlyList<AbiParam>? Components { get; init; }
 
     //
+
+    internal Type ClrType { get; init; }
+    internal object? Value { get; set; }
+
+    //
+
+    internal T? GetAs<T>()
+    {
+        if (this.Value == null)
+        {
+            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
+            {
+                throw new InvalidCastException($"Cannot cast null to non-nullable value type {typeof(T)}");
+            }
+
+            return default; // null for reference types or Nullable<T>
+        }
+
+        if (!typeof(T).IsAssignableFrom(this.ClrType))
+        {
+            throw new InvalidCastException($"Cannot cast {this.ClrType} to {typeof(T)}");
+        }
+
+        return (T)this.Value;
+    }
 
     /// <summary>
     /// Returns the canonical type of the parameter, e.g. "uint256" or "(uint256,bool)" or "(uint256 value, bool valid) ticket".

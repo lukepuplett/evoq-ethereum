@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -123,6 +123,108 @@ public static class AbiTypes
         }
 
         return TryGetCanonicalBaseType(type, out canonicalType);
+    }
+
+    /// <summary>
+    /// Gets the default CLR type for an ABI type.
+    /// </summary>
+    /// <param name="abiType">The ABI type.</param>
+    /// <param name="clrType">The CLR type if successful.</param>
+    /// <returns>True if a CLR type was successfully matched, false otherwise.</returns>
+    public static bool TryGetDefaultClrType(string abiType, out Type clrType)
+    {
+        clrType = typeof(object);
+
+        if (!IsValidType(abiType))
+        {
+            return false;
+        }
+
+        if (IsArray(abiType))
+        {
+            if (!TryGetArrayBaseType(abiType, out var baseType) || baseType == null)
+            {
+                return false;
+            }
+
+            if (!TryGetDefaultClrType(baseType, out var baseClrType))
+            {
+                return false;
+            }
+
+            if (!TryGetArrayDimensions(abiType, out var dimensions) || dimensions == null)
+            {
+                return false;
+            }
+
+            clrType = baseClrType;
+            foreach (var _ in dimensions)
+            {
+                clrType = clrType.MakeArrayType(); // this is the only way to get a jagged array
+            }
+
+            return true;
+        }
+        else if (IsTuple(abiType))
+        {
+            clrType = typeof(List<object?>); // supports nested tuples via object
+            return true;
+        }
+        else
+        {
+            // Handle base types using the type encoders
+
+            // Try uint types
+            if (abiType.StartsWith(AbiTypeNames.IntegerTypes.Uint, StringComparison.OrdinalIgnoreCase))
+            {
+                return TypeEncoders.UintTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try int types
+            if (abiType.StartsWith(AbiTypeNames.IntegerTypes.Int, StringComparison.OrdinalIgnoreCase))
+            {
+                return TypeEncoders.IntTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try fixed bytes types (bytes1 to bytes32)
+            if (abiType.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase) && abiType.Length > AbiTypeNames.Bytes.Length)
+            {
+                return TypeEncoders.FixedBytesTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try dynamic bytes type
+            if (abiType == AbiTypeNames.Bytes)
+            {
+                return TypeEncoders.BytesTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try string type
+            if (abiType == AbiTypeNames.String)
+            {
+                return TypeEncoders.StringTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try address type
+            if (abiType == AbiTypeNames.Address)
+            {
+                return TypeEncoders.AddressTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Try bool type
+            if (abiType == AbiTypeNames.Bool)
+            {
+                return TypeEncoders.BoolTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // Handle byte alias (which is bytes1)
+            if (abiType == AbiTypeNames.Byte)
+            {
+                return TypeEncoders.FixedBytesTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
+            }
+
+            // If we get here, we don't have a handler for this type
+            return false;
+        }
     }
 
     /// <summary>
@@ -377,7 +479,7 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Gets the array dimensions from a type e.g. uint256[][3] -> [-1, 3]
+    /// Gets the array dimensions from a type from outer to inner e.g. uint256[][3] -> [3, -1]
     /// </summary>
     /// <param name="type">The type to get dimensions from.</param>
     /// <param name="dimensions">The array dimensions if successful. -1 represents dynamic size [].</param>
@@ -397,6 +499,24 @@ public static class AbiTypes
     }
 
     /// <summary>
+    /// Gets the length of the outer array dimension.
+    /// </summary>
+    /// <param name="type">The type to get the length for.</param>
+    /// <param name="length">The length if successful.</param>
+    /// <returns>True if the length was successfully parsed, false otherwise.</returns>
+    public static bool TryGetOuterArrayLength(string type, out int length)
+    {
+        if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+        {
+            length = 0;
+            return false;
+        }
+
+        length = dimensions.First();
+        return true;
+    }
+
+    /// <summary>
     /// Gets the full multiplicative length of an array including all dimensions.
     /// </summary>
     /// <remarks>
@@ -410,7 +530,7 @@ public static class AbiTypes
     /// <param name="type">The type to get the length for.</param>
     /// <param name="length">The length if successful.</param>
     /// <returns>True if the length was successfully parsed, false otherwise.</returns>
-    public static bool TryGetArrayLength(string type, out int length)
+    public static bool TryGetArrayMultiLength(string type, out int length)
     {
         if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
         {
@@ -458,7 +578,7 @@ public static class AbiTypes
     /// - "bool[2][4][12]" -> "bool[2][4]"
     /// - "uint256" -> null (not an array type)
     /// </remarks>
-    public static bool TryRemoveOuterArrayDimension(string type, out string? innerType)
+    public static bool TryGetArrayInnerType(string type, out string? innerType)
     {
         innerType = null;
 
@@ -616,4 +736,6 @@ public static class AbiTypes
         };
         return true;
     }
+
+
 }

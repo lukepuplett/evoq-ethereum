@@ -79,7 +79,7 @@ public class SolidityTypesTests
     public void TryRemoveOuterArrayDimension_ValidArrayTypes_ReturnsInnerType(string type, string expectedInnerType)
     {
         // Act
-        var success = AbiTypes.TryRemoveOuterArrayDimension(type, out var actualInnerType);
+        var success = AbiTypes.TryGetArrayInnerType(type, out var actualInnerType);
 
         // Assert
         Assert.IsTrue(success);
@@ -99,7 +99,7 @@ public class SolidityTypesTests
     public void TryRemoveOuterArrayDimension_NonArrayTypes_ReturnsFalse(string type)
     {
         // Act
-        var success = AbiTypes.TryRemoveOuterArrayDimension(type, out var innerType);
+        var success = AbiTypes.TryGetArrayInnerType(type, out var innerType);
 
         // Assert
         Assert.IsFalse(success);
@@ -175,8 +175,8 @@ public class SolidityTypesTests
 
     [TestMethod]
     [DataRow("byte", "bytes1")]
-    [DataRow("fixed", "fixed128x18")]
-    [DataRow("ufixed", "ufixed128x18")]
+    // [DataRow("fixed", "fixed128x18")]   // not supported
+    // [DataRow("ufixed", "ufixed128x18")] // not supported
     public void TryGetCanonicalType_SpecialCases_ReturnsExpectedType(string input, string expected)
     {
         Assert.AreEqual(expected, AbiTypes.TryGetCanonicalType(input, out var canonicalType) ? canonicalType : null);
@@ -193,5 +193,105 @@ public class SolidityTypesTests
         Assert.AreEqual(expectedDimensions, string.Join(",", dimensions!));
     }
 
+    [TestMethod]
+    [DataRow("uint8", typeof(byte))]
+    [DataRow("uint16", typeof(ushort))]
+    [DataRow("uint32", typeof(uint))]
+    [DataRow("uint64", typeof(ulong))]
+    [DataRow("uint128", typeof(System.Numerics.BigInteger))]
+    [DataRow("uint256", typeof(System.Numerics.BigInteger))]
+    [DataRow("uint", typeof(System.Numerics.BigInteger))] // Default uint is uint256
+    public void TryGetDefaultClrType_UintTypes_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.Name}");
+    }
+
+    [TestMethod]
+    [DataRow("int8", typeof(sbyte))]
+    [DataRow("int16", typeof(short))]
+    [DataRow("int32", typeof(int))]
+    [DataRow("int64", typeof(long))]
+    [DataRow("int128", typeof(System.Numerics.BigInteger))]
+    [DataRow("int256", typeof(System.Numerics.BigInteger))]
+    [DataRow("int", typeof(System.Numerics.BigInteger))] // Default int is int256
+    public void TryGetDefaultClrType_IntTypes_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.Name}");
+    }
+
+    [TestMethod]
+    [DataRow("bytes1", typeof(byte))]
+    [DataRow("bytes32", typeof(byte[]))]
+    [DataRow("byte", typeof(byte))] // byte is alias for bytes1
+    [DataRow("bytes", typeof(byte[]))]
+    [DataRow("string", typeof(string))]
+    [DataRow("address", typeof(Evoq.Ethereum.EthereumAddress))]
+    [DataRow("bool", typeof(bool))]
+    public void TryGetDefaultClrType_OtherTypes_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.Name}");
+    }
+
+    [TestMethod]
+    [DataRow("uint8[]", typeof(byte[]))]
+    [DataRow("bool[]", typeof(bool[]))]
+    [DataRow("string[]", typeof(string[]))]
+    [DataRow("uint256[][]", typeof(System.Numerics.BigInteger[][]))]
+    [DataRow("bool[][2][]", typeof(bool[][][]))]
+    [DataRow("address[3][2]", typeof(Evoq.Ethereum.EthereumAddress[][]))]
+    public void TryGetDefaultClrType_ArrayTypes_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.FullName}");
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)", typeof(List<object?>))]
+    [DataRow("(uint8,string,address)", typeof(List<object?>))]
+    public void TryGetDefaultClrType_TupleTypes_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.Name}");
+    }
+
+    [TestMethod]
+    [DataRow("uint257")] // Invalid uint size
+    [DataRow("int512")] // Invalid int size
+    [DataRow("bytes33")] // Invalid bytes size
+    [DataRow("notAType")] // Invalid type name
+    [DataRow("uint[")] // Incomplete array
+    [DataRow("uint[0]")] // Invalid array size
+    public void TryGetDefaultClrType_InvalidTypes_ReturnsFalse(string abiType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsFalse(success, $"Should return false for invalid type {abiType}");
+        Assert.AreEqual(typeof(object), actualType, "Default type should be object for invalid types");
+    }
 
 }

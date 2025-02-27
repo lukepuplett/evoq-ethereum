@@ -163,10 +163,11 @@ public class FunctionSignatureTests
 
         // Arrange
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
-        var values = (
-            Address: new EthereumAddress("0x1234567890123456789012345678901234567890"),
-            Amount: BigInteger.Parse("1000000000000000000")
-        );
+        var values = new List<object?>
+        {
+            new EthereumAddress("0x1234567890123456789012345678901234567890"),
+            BigInteger.Parse("1000000000000000000")
+        };
 
         // Act & Assert
         Assert.IsTrue(signature.ValidateParameters(this.validator, values, out m), m);
@@ -181,9 +182,9 @@ public class FunctionSignatureTests
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
 
         // Act & Assert
-        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create("not an address", 123), out m), m); // Wrong types
-        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")), out m), m); // Missing parameter
-        Assert.IsFalse(signature.ValidateParameters(this.validator, ValueTuple.Create<object?, BigInteger>(null, BigInteger.One), out m), m); // Null not allowed
+        Assert.IsFalse(signature.ValidateParameters(this.validator, new List<object?> { "not an address", 123 }, out m), m); // Wrong types
+        Assert.IsFalse(signature.ValidateParameters(this.validator, new List<object?> { new EthereumAddress("0x1234567890123456789012345678901234567890") }, out m), m); // Missing parameter
+        Assert.IsFalse(signature.ValidateParameters(this.validator, new List<object?> { null, BigInteger.One }, out m), m); // Null not allowed
     }
 
     [TestMethod]
@@ -193,13 +194,14 @@ public class FunctionSignatureTests
 
         // Arrange
         var signature = FunctionSignature.Parse("complexFunction(bytes32,uint8[],bool)");
-        var values = (
-            Hash: new byte[32],
-            Numbers: new byte[] { 1, 2, 3 },
-            Flag: true
-        );
+        var values = new List<object?>
+        {
+            new byte[32],
+            new byte[] { 1, 2, 3 },
+            true
+        };
 
-        var with31 = (new byte[31], values.Numbers, values.Flag);
+        var with31 = new List<object?> { new byte[31], values[1], values[2] };
 
         // Act & Assert
         Assert.IsTrue(signature.ValidateParameters(this.validator, values, out m), m);

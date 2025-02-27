@@ -50,6 +50,24 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
         }
     }
 
+    /// <summary>
+    /// Skips the slot and returns a new collection of the remaining slots.
+    /// </summary>
+    /// <param name="slot">The slot to skip.</param>
+    /// <returns>A new collection of the remaining slots.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the slot is not found in the collection.</exception>
+    public SlotCollection Skip(Slot slot)
+    {
+        var index = this.IndexOf(slot);
+
+        if (index == -1)
+        {
+            throw new InvalidOperationException("Slot not found in collection");
+        }
+
+        return new SlotCollection(this.Skip(index).ToList());
+    }
+
     //
 
     /// <summary>

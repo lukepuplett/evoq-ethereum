@@ -271,4 +271,58 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         return value;
     }
+
+    /// <summary>
+    /// Attempts to get the default CLR type for an int type.
+    /// </summary>
+    /// <param name="abiType">The ABI type to get the default CLR type for.</param>
+    /// <param name="clrType">The default CLR type if successful.</param>
+    /// <returns>True if the default CLR type was successfully retrieved, false otherwise.</returns>
+    public static bool TryGetDefaultClrType(string abiType, out Type clrType)
+    {
+        clrType = typeof(object);
+
+        if (!AbiTypes.TryGetBitsSize(abiType, out var bits))
+        {
+            return false;
+        }
+
+        if (bits == 8)
+        {
+            clrType = typeof(sbyte);
+            return true;
+        }
+
+        if (bits == 16)
+        {
+            clrType = typeof(short);
+            return true;
+        }
+
+        if (bits == 32)
+        {
+            clrType = typeof(int);
+            return true;
+        }
+
+        if (bits == 64)
+        {
+            clrType = typeof(long);
+            return true;
+        }
+
+        if (bits == 128)
+        {
+            clrType = typeof(BigInteger);
+            return true;
+        }
+
+        if (bits == 256)
+        {
+            clrType = typeof(BigInteger);
+            return true;
+        }
+
+        return false;
+    }
 }

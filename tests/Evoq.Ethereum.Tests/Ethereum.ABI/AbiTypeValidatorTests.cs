@@ -112,10 +112,11 @@ public class AbiTypeValidatorTests
         string m;
 
         var signature = FunctionSignature.Parse("transfer(address,uint256)");
-        var values = (
-            To: new EthereumAddress("0x1234567890123456789012345678901234567890"),
-            Amount: BigInteger.Parse("1000000000000000000")
-        );
+        var values = new List<object?>
+        {
+            new EthereumAddress("0x1234567890123456789012345678901234567890"),
+            BigInteger.Parse("1000000000000000000")
+        };
 
         // Valid parameters
         Assert.IsTrue(this.validator.ValidateParameters(signature, values, out m), m);
@@ -123,13 +124,13 @@ public class AbiTypeValidatorTests
         // Invalid parameters
         Assert.IsFalse(this.validator.ValidateParameters(
             signature,
-            ValueTuple.Create("not an address", 123),
+            new List<object?> { "not an address", 123 },
             out m), m);
 
         // Wrong number of parameters
         Assert.IsFalse(this.validator.ValidateParameters(
             signature,
-            ValueTuple.Create(new EthereumAddress("0x1234567890123456789012345678901234567890")),
+            new List<object?> { new EthereumAddress("0x1234567890123456789012345678901234567890") },
             out m), m);
     }
 
@@ -147,10 +148,11 @@ public class AbiTypeValidatorTests
             }
         };
 
-        var values = (
-            To: new EthereumAddress("0x1234567890123456789012345678901234567890"),
-            Amount: BigInteger.Parse("1000000000000000000")
-        );
+        var values = new List<object?>
+        {
+            new EthereumAddress("0x1234567890123456789012345678901234567890"),
+            BigInteger.Parse("1000000000000000000")
+        };
 
         string m;
 
@@ -377,25 +379,27 @@ public class AbiTypeValidatorTests
 
         var signature = FunctionSignature.Parse("setPersonData((string,uint256,address),bool)");
 
-        var validParams = ValueTuple.Create(
+        var validParams = new List<object?>
+        {
             (
                 Name: "Alice",
                 Age: BigInteger.Parse("25"),
                 Wallet: new EthereumAddress("0x1234567890123456789012345678901234567890")
             ),
             true
-        );
+        };
 
         Assert.IsTrue(this.validator.ValidateParameters(signature, validParams, out m), m);
 
-        var invalidParams = ValueTuple.Create(
+        var invalidParams = new List<object?>
+        {
             (
                 Name: "Alice",
                 Age: DateTime.Now, // Wrong type
                 Wallet: new EthereumAddress("0x1234567890123456789012345678901234567890")
             ),
             true
-        );
+        };
 
         Assert.IsFalse(this.validator.ValidateParameters(signature, invalidParams, out m), m);
     }

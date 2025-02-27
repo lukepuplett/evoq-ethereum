@@ -102,4 +102,23 @@ public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     {
         return data[31] == 1;
     }
+
+    /// <summary>
+    /// Attempts to get the default CLR type for a boolean type.
+    /// </summary>
+    /// <param name="abiType">The ABI type to get the default CLR type for.</param>
+    /// <param name="clrType">The default CLR type if successful.</param>
+    /// <returns>True if the default CLR type was successfully retrieved, false otherwise.</returns>
+    public static bool TryGetDefaultClrType(string abiType, out Type clrType)
+    {
+        clrType = typeof(object);
+
+        if (abiType != AbiTypeNames.Bool)
+        {
+            return false;
+        }
+
+        clrType = typeof(bool);
+        return true;
+    }
 }

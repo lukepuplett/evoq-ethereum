@@ -114,7 +114,7 @@ public class FunctionSignature
     /// <param name="m">The message if the parameters are invalid.</param>
     /// <param name="tryEncoding">If true, the validator will try to encode the values to validate them.</param>
     /// <returns>True if the parameters are valid, false otherwise.</returns>
-    public bool ValidateParameters(AbiTypeValidator validator, ITuple values, out string m, bool tryEncoding = false)
+    public bool ValidateParameters(AbiTypeValidator validator, IReadOnlyList<object?> values, out string m, bool tryEncoding = false)
     {
         return validator.ValidateParameters(this, values, out m, tryEncoding);
     }

@@ -220,7 +220,7 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"The type {context.AbiType} is a tuple, not an array");
         }
 
-        if (!AbiTypes.TryRemoveOuterArrayDimension(context.AbiType, out var innerType))
+        if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerType))
         {
             throw new ArgumentException($"The type {context.AbiType} is not an array");
         }
@@ -363,7 +363,7 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"The type {context.AbiType} requires an array value");
         }
 
-        if (!AbiTypes.TryRemoveOuterArrayDimension(context.AbiType, out var innerType))
+        if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerType))
         {
             throw new NotImplementedException($"The type '{context.AbiType}' is not an array");
         }
