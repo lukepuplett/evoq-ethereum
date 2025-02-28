@@ -37,7 +37,7 @@ record class DecodingContext() { }
 /// <summary>
 /// A new and improved ABI decoder that uses a more efficient decoding scheme.
 /// </summary>
-public class AbiDecoder
+public class AbiDecoder : IAbiDecoder
 {
     private readonly IReadOnlyList<IAbiDecode> staticTypeDecoders;
     private readonly IReadOnlyList<IAbiDecode> dynamicTypeDecoders;
@@ -102,7 +102,7 @@ public class AbiDecoder
             }
         }
 
-        throw new NotImplementedException();
+        return new AbiDecodingResult();
     }
 
     // routers
@@ -181,7 +181,7 @@ public class AbiDecoder
 
         (Array Array, int Skip) getArray(string abiType, Type clrType, int skip, IList<object?> values)
         {
-            if (!AbiTypes.TryGetOuterArrayLength(abiType, out var length))
+            if (!AbiTypes.TryGetArrayOuterLength(abiType, out var length))
             {
                 throw new InvalidOperationException($"Failed to get length for {abiType}");
             }
@@ -277,7 +277,7 @@ public class AbiDecoder
 
     private void DecodeDynamicValue(AbiParam parameter, Slot pointer, SlotCollection allSlots)
     {
-        // a dynamic value has its pointer and then the length and then the data slots
+        // a dynamic value has its pointer and then the length and then the data slots, e.g. string, bytes, etc.
 
         var subSlots = allSlots.SkipToPoint(pointer).ToList();
         var lengthSlot = subSlots[0];
@@ -302,6 +302,15 @@ public class AbiDecoder
 
     private void DecodeDynamicArray(AbiParam parameter, Slot pointer, SlotCollection allSlots)
     {
+        // for variable length arrays the length is in the first slot, else it's in the ABI type
+
+        if (!AbiTypes.TryGetArrayOuterLength(parameter.AbiType, out var length))
+        {
+            throw new InvalidOperationException($"Failed to get length for {parameter.AbiType}");
+        }
+
+
+
         throw new NotImplementedException();
     }
 

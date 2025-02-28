@@ -105,9 +105,6 @@ public record struct AbiParam()
         this.Name = name;
         this.ArrayLengths = arrayLengths;
         this.Components = components;
-        this.IsTuple = components == null || components.Count == 0;
-        this.IsArray = arrayLengths != null && arrayLengths.Count > 0;
-        this.IsDynamic = AbiTypes.IsDynamic(this.AbiType);
 
         // pick a default CLR type for the ABI type
 
@@ -153,17 +150,17 @@ public record struct AbiParam()
     /// <summary>
     /// Whether the param has components.
     /// </summary>
-    public bool IsTuple { get; init; }
+    public bool IsTuple => this.Components != null && this.Components.Count > 0;
 
     /// <summary>
     /// Whether the param is a dynamic type.
     /// </summary>
-    public bool IsDynamic { get; init; }
+    public bool IsDynamic => AbiTypes.IsDynamic(this.AbiType);
 
     /// <summary>
     /// Whether the param is an array.
     /// </summary>
-    public bool IsArray { get; init; }
+    public bool IsArray => this.ArrayLengths != null && this.ArrayLengths.Count > 0;
 
     /// <summary>
     /// The ordinal of the param.
@@ -192,7 +189,7 @@ public record struct AbiParam()
 
     //
 
-    internal Type ClrType { get; init; }
+    internal Type ClrType { get; init; } = typeof(object);
     internal object? Value { get; set; }
 
     //
@@ -226,7 +223,7 @@ public record struct AbiParam()
     public string GetCanonicalType(
         bool includeNames = false, bool includeSpaces = false)
     {
-        if (this.IsTuple)
+        if (!this.IsTuple)
         {
             if (includeNames && !string.IsNullOrEmpty(this.Name))
             {
@@ -412,7 +409,7 @@ public record struct AbiParam()
         }
 
         // For basic types, use the existing validator
-        if (this.IsTuple)
+        if (!this.IsTuple)
         {
             vc.IncrementVisitorCounter();
 

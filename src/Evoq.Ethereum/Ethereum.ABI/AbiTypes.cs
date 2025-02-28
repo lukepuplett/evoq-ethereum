@@ -504,7 +504,7 @@ public static class AbiTypes
     /// <param name="type">The type to get the length for.</param>
     /// <param name="length">The length if successful.</param>
     /// <returns>True if the length was successfully parsed, false otherwise.</returns>
-    public static bool TryGetOuterArrayLength(string type, out int length)
+    public static bool TryGetArrayOuterLength(string type, out int length)
     {
         if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
         {

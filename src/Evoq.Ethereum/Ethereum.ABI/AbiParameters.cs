@@ -52,7 +52,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
 
         this.DeepVisit(child =>
         {
-            if (child.IsTuple)
+            if (!child.IsTuple)
             {
                 singles++;
             }
