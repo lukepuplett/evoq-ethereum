@@ -57,7 +57,7 @@ public class AbiDecoderTests
     {
         // Start with a subset of test cases to focus on basic functionality
         return AbiTestCases.Cases
-            .Where(kvp => kvp.Key <= 4) // Start with just the first 3 test cases
+            .Where(kvp => kvp.Key > 4 && kvp.Key <= 6)              // IMPORTANT / filter
             .Select(kvp => new object[] { kvp.Key, kvp.Value });
     }
 

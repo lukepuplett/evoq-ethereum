@@ -203,7 +203,7 @@ public class AbiDecoder : IAbiDecoder
             {
                 // inner type is itself an array, so we create an array to hold arrays of that type
 
-                var arrayOfArrays = Array.CreateInstance(clrType, length);
+                var arrayOfArrays = Array.CreateInstance(clrType.GetElementType(), length);
 
                 for (int i = 0; i < length; i++)
                 {
