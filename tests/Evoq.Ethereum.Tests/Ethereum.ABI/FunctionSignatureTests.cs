@@ -23,7 +23,7 @@ public class FunctionSignatureTests
     public void Constructor_NormalizesTypes()
     {
         var signature = new FunctionSignature("example", "uint foo, int bar, byte[] data");
-        Assert.AreEqual("example(uint,int,byte[])", signature.GetCanonicalSignature());
+        Assert.AreEqual("example(uint256,int256,bytes1[])", signature.GetCanonicalSignature());
     }
 
     [TestMethod]

@@ -99,26 +99,19 @@ public static class AbiTypes
                 return false;
             }
 
-            if (!TryGetCanonicalBaseType(baseType, out var canonicalBase) || canonicalBase == null)
+            if (!TryGetCanonicalType(baseType, out var canonicalBase) || canonicalBase == null)
             {
                 return false;
             }
 
-            if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
-            {
-                return false;
-            }
-
-            var arrayPart = type[type.IndexOf('[')..];
+            string arrayPart = type.Substring(baseType.Length);
 
             canonicalType = canonicalBase + arrayPart;
-
             return true;
         }
         else if (IsTuple(type))
         {
             canonicalType = AbiParameters.Parse(type).GetCanonicalType(includeNames: false, includeSpaces: false);
-
             return true;
         }
 
@@ -488,13 +481,19 @@ public static class AbiTypes
     public static bool TryGetArrayDimensions(string type, out IReadOnlyList<int>? dimensions)
     {
         dimensions = null;
-        var bracketIndex = type.IndexOf('[');
-        if (bracketIndex <= 0)
+        if (string.IsNullOrEmpty(type) || !IsArray(type))
         {
             return false;
         }
 
-        dimensions = SplitArrayDimensions(type[bracketIndex..]);
+        if (!TryGetArrayBaseType(type, out var baseType) || baseType == null)
+        {
+            return false;
+        }
+
+        string arrayPart = type.Substring(baseType.Length);
+
+        dimensions = SplitArrayDimensions(arrayPart);
 
         return dimensions != null;
     }
@@ -566,19 +565,17 @@ public static class AbiTypes
 
         string currentType = type.Trim();
 
-        // If it doesn't end with an array notation, return the whole type
-        if (!currentType.EndsWith("]"))
+        // First check if this is actually an array type
+        if (!IsArray(currentType))
         {
-            baseType = currentType;
-            return true;
+            return false;
         }
 
         // Find the outermost array notations and strip them
         int lastBracketIndex = currentType.LastIndexOf('[');
         if (lastBracketIndex < 0 || currentType.LastIndexOf(']') < lastBracketIndex)
         {
-            baseType = currentType; // No valid array notation to strip
-            return true;
+            return false; // Invalid array notation
         }
 
         // Strip everything from the last '[' to the end if it's an array notation
@@ -686,12 +683,10 @@ public static class AbiTypes
 
     private static bool IsValidArrayType(string type)
     {
-        var bracketIndex = type.IndexOf('[');
-        if (bracketIndex <= 0)
+        if (!TryGetArrayBaseType(type, out var baseType) || baseType == null)
+        {
             return false;
-
-        var baseType = type[..bracketIndex];
-        var arrayPart = type[bracketIndex..];
+        }
 
         if (IsTuple(baseType))
         {
@@ -704,12 +699,12 @@ public static class AbiTypes
                 return false;
         }
 
-        // Split array part into individual dimensions
-        var dimensions = SplitArrayDimensions(arrayPart);
-        if (dimensions == null)
+        // Use TryGetArrayDimensions to validate the array dimensions
+        if (!TryGetArrayDimensions(type, out var dimensions) || dimensions == null)
+        {
             return false;
+        }
 
-        // Validate each dimension
         return dimensions.All(dim => dim > 0 || dim == -1); // Allow positive sizes and dynamic (-1)
     }
 

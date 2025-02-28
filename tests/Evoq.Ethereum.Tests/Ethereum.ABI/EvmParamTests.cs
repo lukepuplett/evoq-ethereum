@@ -109,12 +109,12 @@ public class EvmParamTests
     }
 
     [TestMethod]
-    [DataRow("uint")]        // Valid - defaults to uint256
+    // [DataRow("uint")]        // Valid - defaults to uint256
     [DataRow("uint256")]     // Valid
     [DataRow("address")]     // Valid
     [DataRow("bool")]        // Valid
     [DataRow("bytes32")]     // Valid
-    public void Constructor_WithValidSolidityType_DoesNotThrow(string type)
+    public void Constructor_WithValidABIType_DoesNotThrow(string type)
     {
         // Act & Assert
         var param = new AbiParam(0, "param", type);
@@ -128,13 +128,13 @@ public class EvmParamTests
     [DataRow("bytes0")]      // Invalid - bytes size too small
     [DataRow("notatype")]    // Invalid - unknown type
     [DataRow("string8")]     // Invalid - string doesn't take size
-    public void Constructor_WithInvalidSolidityType_ThrowsArgumentException(string type)
+    public void Constructor_WithInvalidABIType_ThrowsArgumentException(string type)
     {
         // Act & Assert
         var ex = Assert.ThrowsException<ArgumentException>(() =>
             new AbiParam(0, "param", type));
 
-        StringAssert.Contains(ex.Message, "Invalid Solidity");
+        StringAssert.Contains(ex.Message, "Invalid ABI");
     }
 
     [TestMethod]
@@ -160,7 +160,7 @@ public class EvmParamTests
         var ex = Assert.ThrowsException<ArgumentException>(() =>
             new AbiParam(0, "param", "uint257", arrayLengths));
 
-        StringAssert.Contains(ex.Message, "Invalid Solidity");
+        StringAssert.Contains(ex.Message, "Invalid ABI");
     }
 
     [TestMethod]

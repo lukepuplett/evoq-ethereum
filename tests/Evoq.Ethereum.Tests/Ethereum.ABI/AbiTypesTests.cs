@@ -1,7 +1,7 @@
 namespace Evoq.Ethereum.ABI;
 
 [TestClass]
-public class SolidityTypesTests
+public class AbiTypesTests
 {
     [TestMethod]
     [DataRow("uint8")]
@@ -580,19 +580,29 @@ public class SolidityTypesTests
     #region Additional TryGetCanonicalType Tests
 
     [TestMethod]
-    // [DataRow("(uint256,(address,(string,bool)))", "(uint256,(address,(string,bool)))")]
-    // [DataRow("((address,bool)[],string)", "((address,bool)[],string)")]
-    // [DataRow("((address,bool),string)[]", "((address,bool),string)[]")]
     [DataRow("((address,bool)[],string)[]", "((address,bool)[],string)[]")]
-    // [DataRow("(uint256[],((address,bool)[],string)[])", "(uint256[],((address,bool)[],string)[])")]
-    public void TryGetCanonicalType_ComplexNestedTuples_ReturnsCanonicalType(string input, string expected)
+    [DataRow("((address,bool)[2],string)[]", "((address,bool)[2],string)[]")]
+    [DataRow("((address,bool)[],string)[3]", "((address,bool)[],string)[3]")]
+    [DataRow("((address,bool)[2],string)[3]", "((address,bool)[2],string)[3]")]
+    [DataRow("((address,bool)[2][3],string)[5]", "((address,bool)[2][3],string)[5]")]
+    [DataRow("(uint,(address,bool)[3])[2]", "(uint256,(address,bool)[3])[2]")]
+    [DataRow("(uint,(address,bool)[])[2][]", "(uint256,(address,bool)[])[2][]")]
+    [DataRow("uint[2][3]", "uint256[2][3]")]
+    [DataRow("uint[][3]", "uint256[][3]")]
+    [DataRow("uint[2][]", "uint256[2][]")]
+    [DataRow("uint[][]", "uint256[][]")]
+    [DataRow("(uint,bool)[2][3]", "(uint256,bool)[2][3]")]
+    [DataRow("(uint,bool)[][3]", "(uint256,bool)[][3]")]
+    [DataRow("(uint,bool)[2][]", "(uint256,bool)[2][]")]
+    [DataRow("(uint,bool)[][]", "(uint256,bool)[][]")]
+    public void TryGetCanonicalType_ComplexArrayTypes_ReturnsCanonicalType(string input, string expected)
     {
         // Act
         bool success = AbiTypes.TryGetCanonicalType(input, out var canonicalType);
 
         // Assert
-        Assert.IsTrue(success);
-        Assert.AreEqual(expected, canonicalType);
+        Assert.IsTrue(success, $"Failed to get canonical type for {input}");
+        Assert.AreEqual(expected, canonicalType, $"Canonical type for {input} should be {expected}");
     }
 
     #endregion
@@ -696,5 +706,56 @@ public class SolidityTypesTests
         Assert.AreEqual(expectedSuccess, success);
         Assert.AreEqual(expectedBaseType, baseType);
     }
+    #endregion
+
+    #region TryGetArrayDimensions Complex Types Tests
+
+    [TestMethod]
+    [DataRow("((address,bool)[],string)[]", "-1")]
+    [DataRow("((address,bool)[2],string)[]", "-1")]
+    [DataRow("((address,bool)[],string)[3]", "3")]
+    [DataRow("((address,bool)[2],string)[3]", "3")]
+    [DataRow("((address,bool)[2][3],string)[5]", "5")]
+    [DataRow("(uint256,(address,bool)[3])[2]", "2")]
+    [DataRow("(uint256,(address,bool)[])[2][]", "-1,2")]
+    public void TryGetArrayDimensions_ComplexNestedTypes_ReturnsExpectedDimensions(string type, string expectedDimensions)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayDimensions(type, out var dimensions);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get dimensions for {type}");
+        Assert.IsNotNull(dimensions, $"Dimensions should not be null for {type}");
+        Assert.AreEqual(expectedDimensions, string.Join(",", dimensions), $"Dimensions for {type} should be {expectedDimensions}");
+    }
+
+    [TestMethod]
+    [DataRow("uint256[2][3]", "3,2")]
+    [DataRow("uint256[][3]", "3,-1")]
+    [DataRow("uint256[2][]", "-1,2")]
+    [DataRow("uint256[][]", "-1,-1")]
+    [DataRow("(uint256,bool)[2][3]", "3,2")]
+    [DataRow("(uint256,bool)[][3]", "3,-1")]
+    [DataRow("(uint256,bool)[2][]", "-1,2")]
+    [DataRow("(uint256,bool)[][]", "-1,-1")]
+    [DataRow("((uint256,bool)[2],string)[3][4]", "4,3")]
+    [DataRow("((uint256,bool)[],string)[3][4]", "4,3")]
+    [DataRow("((uint256,bool)[2],string)[][4]", "4,-1")]
+    [DataRow("((uint256,bool)[],string)[][4]", "4,-1")]
+    [DataRow("((uint256,bool)[2],string)[3][]", "-1,3")]
+    [DataRow("((uint256,bool)[],string)[3][]", "-1,3")]
+    [DataRow("((uint256,bool)[2],string)[][]", "-1,-1")]
+    [DataRow("((uint256,bool)[],string)[][]", "-1,-1")]
+    public void TryGetArrayDimensions_MultiDimensionalArrays_ReturnsExpectedDimensions(string type, string expectedDimensions)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayDimensions(type, out var dimensions);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get dimensions for {type}");
+        Assert.IsNotNull(dimensions, $"Dimensions should not be null for {type}");
+        Assert.AreEqual(expectedDimensions, string.Join(",", dimensions), $"Dimensions for {type} should be {expectedDimensions}");
+    }
+
     #endregion
 }

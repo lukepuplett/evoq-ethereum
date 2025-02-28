@@ -277,17 +277,12 @@ public record struct AbiParam()
             return "";
         }
 
-        if (type.Contains("[") || type.Contains("]"))
+        if (!AbiTypes.IsValidBaseType(type) || !AbiTypes.TryGetCanonicalType(type, out var canonicalType))
         {
-            throw new ArgumentException("Type must be a single type, not an array.", nameof(type));
+            throw new ArgumentException($"Invalid ABI base type: {type}", nameof(type));
         }
 
-        if (!AbiTypes.IsValidBaseType(type))
-        {
-            throw new ArgumentException($"Invalid Solidity base type: {type}", nameof(type));
-        }
-
-        return $"{type}{FormatArrayLengthsSuffix(arrayLengths)}";
+        return $"{canonicalType}{FormatArrayLengthsSuffix(arrayLengths)}";
     }
 
     /// <summary>
