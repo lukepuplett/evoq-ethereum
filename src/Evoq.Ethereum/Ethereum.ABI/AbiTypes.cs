@@ -550,7 +550,8 @@ public static class AbiTypes
     }
 
     /// <summary>
-    /// Gets the base type of an array type (e.g., "uint256" from "uint256[]" or "uint256[2]").
+    /// Gets the base type by stripping all outer array notations, preserving tuple structures
+    /// (e.g., "(uint8[],uint16,uint32)" from "(uint8[],uint16,uint32)[][]").
     /// </summary>
     /// <param name="type">The type to get the base from.</param>
     /// <param name="baseType">The base type if successful.</param>
@@ -558,11 +559,45 @@ public static class AbiTypes
     public static bool TryGetArrayBaseType(string type, out string? baseType)
     {
         baseType = null;
-        var bracketIndex = type.IndexOf('[');
-        if (bracketIndex <= 0)
+        if (string.IsNullOrEmpty(type))
+        {
             return false;
+        }
 
-        baseType = type[..bracketIndex];
+        string currentType = type.Trim();
+
+        // If it doesn't end with an array notation, return the whole type
+        if (!currentType.EndsWith("]"))
+        {
+            baseType = currentType;
+            return true;
+        }
+
+        // Find the outermost array notations and strip them
+        int lastBracketIndex = currentType.LastIndexOf('[');
+        if (lastBracketIndex < 0 || currentType.LastIndexOf(']') < lastBracketIndex)
+        {
+            baseType = currentType; // No valid array notation to strip
+            return true;
+        }
+
+        // Strip everything from the last '[' to the end if it's an array notation
+        while (lastBracketIndex >= 0 && currentType.EndsWith("]"))
+        {
+            currentType = currentType[..lastBracketIndex].TrimEnd();
+            lastBracketIndex = currentType.LastIndexOf('[');
+            if (lastBracketIndex >= 0 && currentType.LastIndexOf(']') < lastBracketIndex)
+            {
+                break; // No more valid array notations
+            }
+        }
+
+        if (string.IsNullOrEmpty(currentType))
+        {
+            return false;
+        }
+
+        baseType = currentType;
         return true;
     }
 

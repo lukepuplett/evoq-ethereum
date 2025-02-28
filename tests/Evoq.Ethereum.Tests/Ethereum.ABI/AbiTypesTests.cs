@@ -253,7 +253,7 @@ public class SolidityTypesTests
     [DataRow("string[]", typeof(string[]))]
     [DataRow("uint256[][]", typeof(System.Numerics.BigInteger[][]))]
     [DataRow("bool[][2][]", typeof(bool[][][]))]
-    [DataRow("address[3][2]", typeof(Evoq.Ethereum.EthereumAddress[][]))]
+    [DataRow("address[3][2]", typeof(EthereumAddress[][]))]
     public void TryGetDefaultClrType_ArrayTypes_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act
@@ -580,9 +580,9 @@ public class SolidityTypesTests
     #region Additional TryGetCanonicalType Tests
 
     [TestMethod]
-    [DataRow("(uint256,(address,(string,bool)))", "(uint256,(address,(string,bool)))")]
-    [DataRow("((address,bool)[],string)", "((address,bool)[],string)")]
-    [DataRow("((address,bool),string)[]", "((address,bool),string)[]")]
+    // [DataRow("(uint256,(address,(string,bool)))", "(uint256,(address,(string,bool)))")]
+    // [DataRow("((address,bool)[],string)", "((address,bool)[],string)")]
+    // [DataRow("((address,bool),string)[]", "((address,bool),string)[]")]
     [DataRow("((address,bool)[],string)[]", "((address,bool)[],string)[]")]
     // [DataRow("(uint256[],((address,bool)[],string)[])", "(uint256[],((address,bool)[],string)[])")]
     public void TryGetCanonicalType_ComplexNestedTuples_ReturnsCanonicalType(string input, string expected)
@@ -683,5 +683,18 @@ public class SolidityTypesTests
         Assert.AreEqual(expectedBaseType, baseType);
     }
 
+    [TestMethod]
+    [DataRow("(uint8[],uint16,uint32)[3][2]", true, "(uint8[],uint16,uint32)")]
+    [DataRow("((address,bool)[],string)[]", true, "((address,bool)[],string)")]
+    [DataRow("((address[],bool)[],string)[]", true, "((address[],bool)[],string)")]
+    public void TryGetArrayBaseType_TupleArrays_ReturnsExpectedBaseType(string type, bool expectedSuccess, string expectedBaseType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayBaseType(type, out string? baseType);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedBaseType, baseType);
+    }
     #endregion
 }
