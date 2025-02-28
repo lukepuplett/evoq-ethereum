@@ -262,7 +262,7 @@ public class AbiDecoder : IAbiDecoder
             // all into a list
 
             subValues = subSlots
-                .Select(s => this.DecodeStaticSlot(baseType!, parameter.ClrType.GetBaseElementType(), s))
+                .Select(s => this.DecodeStaticSlot(baseType!, parameter.BaseClrType, s))
                 .ToList();
         }
 

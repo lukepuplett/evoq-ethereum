@@ -187,7 +187,8 @@ public static class AbiTypes
             }
 
             // Try fixed bytes types (bytes1 to bytes32)
-            if (abiType.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase) && abiType.Length > AbiTypeNames.Bytes.Length)
+            if (abiType.StartsWith(AbiTypeNames.Bytes, StringComparison.OrdinalIgnoreCase) &&
+                abiType.Length > AbiTypeNames.Bytes.Length)
             {
                 return TypeEncoders.FixedBytesTypeEncoder.TryGetDefaultClrType(abiType, out clrType);
             }

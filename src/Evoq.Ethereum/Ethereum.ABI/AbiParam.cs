@@ -106,7 +106,8 @@ public record struct AbiParam()
         this.ArrayLengths = arrayLengths;
         this.Components = components;
 
-        // pick a default CLR type for the ABI type
+        // set the default CLR type for the ABI type
+        // e.g. uint8[][] -> System.Byte[][] and bytes3[] -> System.Byte[][] (since bytes3 is 3 bytes which needs to be an array, in an array)
 
         if (AbiTypes.TryGetDefaultClrType(this.AbiType, out var clrType))
         {
@@ -115,6 +116,19 @@ public record struct AbiParam()
         else
         {
             this.ClrType = typeof(object);
+        }
+
+        // set the default CLR type for the base type of the ABI type
+        // e.g. uint8[][] -> System.Byte and bytes3[] -> System.Byte[] (since bytes3 is 3 bytes which needs to be an array)
+
+        if (AbiTypes.TryGetArrayBaseType(this.AbiType, out var baseType) &&
+            AbiTypes.TryGetDefaultClrType(baseType!, out var baseClrType))
+        {
+            this.BaseClrType = baseClrType;
+        }
+        else
+        {
+            this.BaseClrType = typeof(object);
         }
     }
 
@@ -190,6 +204,7 @@ public record struct AbiParam()
     //
 
     internal Type ClrType { get; init; } = typeof(object);
+    internal Type BaseClrType { get; init; } = typeof(object);
     internal object? Value { get; set; }
 
     //
