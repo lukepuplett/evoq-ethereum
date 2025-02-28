@@ -294,4 +294,394 @@ public class SolidityTypesTests
         Assert.AreEqual(typeof(object), actualType, "Default type should be object for invalid types");
     }
 
+    #region HasLengthSuffix Tests
+
+    [TestMethod]
+    [DataRow("uint8", true, 1)]
+    [DataRow("uint16", true, 2)]
+    [DataRow("uint256", true, 32)]
+    [DataRow("int8", true, 1)]
+    [DataRow("int256", true, 32)]
+    [DataRow("bytes1", true, 1)]
+    [DataRow("bytes32", true, 32)]
+    [DataRow("uint256[3]", true, 3)]
+    [DataRow("bytes32[5]", true, 5)]
+    [DataRow("address[10]", true, 10)]
+    public void HasLengthSuffix_TypesWithLength_ReturnsTrue(string type, bool expectedResult, int expectedLength)
+    {
+        // Act
+        bool result = AbiTypes.HasLengthSuffix(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedResult, result);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("uint", false, 0)]
+    [DataRow("int", false, 0)]
+    [DataRow("bytes", false, 0)]
+    [DataRow("string", false, 0)]
+    [DataRow("address", false, 0)]
+    [DataRow("bool", false, 0)]
+    [DataRow("uint256[]", false, 0)]
+    [DataRow("bytes32[]", false, 0)]
+    [DataRow("address[]", false, 0)]
+    public void HasLengthSuffix_TypesWithoutLength_ReturnsFalse(string type, bool expectedResult, int expectedLength)
+    {
+        // Act
+        bool result = AbiTypes.HasLengthSuffix(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedResult, result);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    #endregion
+
+    #region TryGetArrayOuterLength Tests
+
+    [TestMethod]
+    [DataRow("uint256[3]", true, 3)]
+    [DataRow("uint256[10]", true, 10)]
+    [DataRow("bytes32[5]", true, 5)]
+    [DataRow("address[7]", true, 7)]
+    [DataRow("bool[1]", true, 1)]
+    [DataRow("uint256[3][5]", true, 5)]
+    [DataRow("uint256[][5]", true, 5)]
+    public void TryGetArrayOuterLength_FixedArrays_ReturnsExpectedLength(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayOuterLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("uint256[]", true, -1)]
+    [DataRow("bytes32[]", true, -1)]
+    [DataRow("address[]", true, -1)]
+    [DataRow("bool[]", true, -1)]
+    [DataRow("uint256[][3]", true, 3)]
+    [DataRow("uint256[3][]", true, -1)]
+    public void TryGetArrayOuterLength_DynamicArrays_ReturnsDynamicLength(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayOuterLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("uint256", false, 0)]
+    [DataRow("bytes32", false, 0)]
+    [DataRow("address", false, 0)]
+    [DataRow("bool", false, 0)]
+    [DataRow("string", false, 0)]
+    [DataRow("bytes", false, 0)]
+    public void TryGetArrayOuterLength_NonArrayTypes_ReturnsFalse(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayOuterLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    #endregion
+
+    #region TryGetArrayMultiLength Tests
+
+    [TestMethod]
+    [DataRow("uint256[2]", true, 2)]
+    [DataRow("uint256[2][3]", true, 6)]
+    [DataRow("uint256[2][3][4]", true, 24)]
+    [DataRow("bytes32[5][2]", true, 10)]
+    [DataRow("address[3][2][1]", true, 6)]
+    public void TryGetArrayMultiLength_FixedArrays_ReturnsExpectedLength(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayMultiLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("uint256[]", true, -1)]
+    [DataRow("uint256[2][]", true, -1)]
+    [DataRow("uint256[][2]", true, -1)]
+    [DataRow("uint256[2][3][]", true, -1)]
+    [DataRow("uint256[][3][4]", true, -1)]
+    public void TryGetArrayMultiLength_DynamicArrays_ReturnsDynamicLength(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayMultiLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("uint256", false, 0)]
+    [DataRow("bytes32", false, 0)]
+    [DataRow("address", false, 0)]
+    [DataRow("bool", false, 0)]
+    [DataRow("string", false, 0)]
+    [DataRow("bytes", false, 0)]
+    public void TryGetArrayMultiLength_NonArrayTypes_ReturnsFalse(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayMultiLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    #endregion
+
+    #region TryGetArrayBaseType Tests
+
+    [TestMethod]
+    [DataRow("uint256[]", true, "uint256")]
+    [DataRow("uint256[3]", true, "uint256")]
+    [DataRow("bytes32[]", true, "bytes32")]
+    [DataRow("address[5]", true, "address")]
+    [DataRow("bool[10]", true, "bool")]
+    [DataRow("string[]", true, "string")]
+    [DataRow("uint256[][3]", true, "uint256")]
+    [DataRow("uint256[2][3]", true, "uint256")]
+    public void TryGetArrayBaseType_ArrayTypes_ReturnsExpectedBaseType(string type, bool expectedSuccess, string expectedBaseType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayBaseType(type, out string? baseType);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedBaseType, baseType);
+    }
+
+    [TestMethod]
+    [DataRow("uint256", false, null)]
+    [DataRow("bytes32", false, null)]
+    [DataRow("address", false, null)]
+    [DataRow("bool", false, null)]
+    [DataRow("string", false, null)]
+    [DataRow("bytes", false, null)]
+    public void TryGetArrayBaseType_NonArrayTypes_ReturnsFalse(string type, bool expectedSuccess, string? expectedBaseType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayBaseType(type, out string? baseType);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedBaseType, baseType);
+    }
+
+    #endregion
+
+    #region IsValidBaseType Tests
+
+    [TestMethod]
+    [DataRow("uint8")]
+    [DataRow("uint16")]
+    [DataRow("uint256")]
+    [DataRow("int8")]
+    [DataRow("int256")]
+    [DataRow("bytes1")]
+    [DataRow("bytes32")]
+    [DataRow("uint")]
+    [DataRow("int")]
+    [DataRow("bytes")]
+    [DataRow("string")]
+    [DataRow("address")]
+    [DataRow("bool")]
+    [DataRow("byte")]
+    public void IsValidBaseType_ValidBaseTypes_ReturnsTrue(string type)
+    {
+        // Act
+        bool result = AbiTypes.IsValidBaseType(type);
+
+        // Assert
+        Assert.IsTrue(result, $"Type '{type}' should be a valid base type");
+    }
+
+    [TestMethod]
+    [DataRow("uint0")]
+    [DataRow("uint7")]
+    [DataRow("uint264")]
+    [DataRow("int0")]
+    [DataRow("int7")]
+    [DataRow("int264")]
+    [DataRow("bytes0")]
+    [DataRow("bytes33")]
+    [DataRow("notAType")]
+    [DataRow("uint256[]")]
+    [DataRow("bytes32[5]")]
+    [DataRow("address[10]")]
+    [DataRow("(uint256,bool)")]
+    public void IsValidBaseType_InvalidBaseTypes_ReturnsFalse(string type)
+    {
+        // Act
+        bool result = AbiTypes.IsValidBaseType(type);
+
+        // Assert
+        Assert.IsFalse(result, $"Type '{type}' should not be a valid base type");
+    }
+
+    #endregion
+
+    #region IsTuple Tests
+
+    [TestMethod]
+    [DataRow("(uint256,bool)")]
+    [DataRow("(uint8,string,address)")]
+    [DataRow("(uint256,bytes32,bool[])")]
+    [DataRow("(uint256,(string,bool))")]
+    [DataRow("(uint256,uint256[])")]
+    public void IsTuple_ValidTupleTypes_ReturnsTrue(string type)
+    {
+        // Act
+        bool result = AbiTypes.IsTuple(type);
+
+        // Assert
+        Assert.IsTrue(result, $"Type '{type}' should be recognized as a tuple");
+    }
+
+    [TestMethod]
+    [DataRow("uint256")]
+    [DataRow("bytes32")]
+    [DataRow("address")]
+    [DataRow("bool")]
+    [DataRow("string")]
+    [DataRow("bytes")]
+    [DataRow("uint256[]")]
+    [DataRow("(uint256,bool")]
+    [DataRow("uint256,bool)")]
+    public void IsTuple_NonTupleTypes_ReturnsFalse(string type)
+    {
+        // Act
+        bool result = AbiTypes.IsTuple(type);
+
+        // Assert
+        Assert.IsFalse(result, $"Type '{type}' should not be recognized as a tuple");
+    }
+
+    #endregion
+
+    #region Additional TryGetCanonicalType Tests
+
+    [TestMethod]
+    [DataRow("(uint256,(address,(string,bool)))", "(uint256,(address,(string,bool)))")]
+    [DataRow("((address,bool)[],string)", "((address,bool)[],string)")]
+    [DataRow("((address,bool),string)[]", "((address,bool),string)[]")]
+    [DataRow("((address,bool)[],string)[]", "((address,bool)[],string)[]")]
+    // [DataRow("(uint256[],((address,bool)[],string)[])", "(uint256[],((address,bool)[],string)[])")]
+    public void TryGetCanonicalType_ComplexNestedTuples_ReturnsCanonicalType(string input, string expected)
+    {
+        // Act
+        bool success = AbiTypes.TryGetCanonicalType(input, out var canonicalType);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.AreEqual(expected, canonicalType);
+    }
+
+    #endregion
+
+    #region Simple Tuple Arrays Tests
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]")]
+    [DataRow("(address,uint256)[5]")]
+    [DataRow("(string,bytes32)[][]")]
+    [DataRow("(uint8,uint16,uint32)[3][2]")]
+    public void IsValidType_SimpleTupleArrays_ReturnsTrue(string type)
+    {
+        Assert.IsTrue(AbiTypes.IsValidType(type), $"Type '{type}' should be valid");
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]", "(uint256,bool)[]")]
+    [DataRow("(address,uint256)[5]", "(address,uint256)[5]")]
+    [DataRow("(string,bytes32)[][]", "(string,bytes32)[][]")]
+    [DataRow("(uint8,uint16,uint32)[3][2]", "(uint8,uint16,uint32)[3][2]")]
+    public void TryGetCanonicalType_SimpleTupleArrays_ReturnsCanonicalType(string input, string expected)
+    {
+        // Act
+        bool success = AbiTypes.TryGetCanonicalType(input, out var canonicalType);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.AreEqual(expected, canonicalType);
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]", typeof(List<object?>[]))]
+    [DataRow("(address,uint256)[5]", typeof(List<object?>[]))]
+    [DataRow("(string,bytes32)[][]", typeof(List<object?>[][]))]
+    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(List<object?>[][]))]
+    public void TryGetDefaultClrType_SimpleTupleArrays_ReturnsExpectedType(string abiType, Type expectedType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetDefaultClrType(abiType, out Type actualType);
+
+        // Assert
+        Assert.IsTrue(success, $"Failed to get CLR type for {abiType}");
+        Assert.AreEqual(expectedType, actualType, $"CLR type for {abiType} should be {expectedType.FullName}");
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]", true)]
+    [DataRow("(address,uint256)[5]", false)]
+    [DataRow("(string,bytes32)[][]", true)]
+    [DataRow("(uint8,uint16,uint32)[3][2]", false)]
+    public void IsDynamic_SimpleTupleArrays_ReturnsExpectedResult(string type, bool expected)
+    {
+        // Act
+        bool result = AbiTypes.IsDynamic(type);
+
+        // Assert
+        Assert.AreEqual(expected, result, $"IsDynamic for '{type}' should return {expected}");
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]", true, -1)]
+    [DataRow("(address,uint256)[5]", true, 5)]
+    [DataRow("(string,bytes32)[][]", true, -1)]
+    [DataRow("(uint8,uint16,uint32)[3][2]", true, 2)]
+    public void TryGetArrayOuterLength_SimpleTupleArrays_ReturnsExpectedLength(string type, bool expectedSuccess, int expectedLength)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayOuterLength(type, out int length);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedLength, length);
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]", true, "(uint256,bool)")]
+    [DataRow("(address,uint256)[5]", true, "(address,uint256)")]
+    [DataRow("(string,bytes32)[][]", true, "(string,bytes32)")]
+    [DataRow("(uint8,uint16,uint32)[3][2]", true, "(uint8,uint16,uint32)")]
+    public void TryGetArrayBaseType_SimpleTupleArrays_ReturnsExpectedBaseType(string type, bool expectedSuccess, string expectedBaseType)
+    {
+        // Act
+        bool success = AbiTypes.TryGetArrayBaseType(type, out string? baseType);
+
+        // Assert
+        Assert.AreEqual(expectedSuccess, success);
+        Assert.AreEqual(expectedBaseType, baseType);
+    }
+
+    #endregion
 }

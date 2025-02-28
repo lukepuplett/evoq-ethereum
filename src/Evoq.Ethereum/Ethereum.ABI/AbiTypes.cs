@@ -71,7 +71,7 @@ public static class AbiTypes
 
         if (IsTuple(type))
         {
-            return AbiParameters.Parse(type).All(p => IsValidType(p.ToString()));
+            return IsValidTuple(type);
         }
 
         return IsValidBaseType(type);
@@ -644,6 +644,11 @@ public static class AbiTypes
                size <= BytesSizeRange.End.Value;
     }
 
+    private static bool IsValidTuple(string type)
+    {
+        return AbiParameters.Parse(type).All(p => IsValidType(p.ToString()));
+    }
+
     private static bool IsValidArrayType(string type)
     {
         var bracketIndex = type.IndexOf('[');
@@ -653,9 +658,16 @@ public static class AbiTypes
         var baseType = type[..bracketIndex];
         var arrayPart = type[bracketIndex..];
 
-        // Validate base type first
-        if (!IsValidBaseType(baseType))
-            return false;
+        if (IsTuple(baseType))
+        {
+            if (!IsValidTuple(baseType))
+                return false;
+        }
+        else
+        {
+            if (!IsValidBaseType(baseType))
+                return false;
+        }
 
         // Split array part into individual dimensions
         var dimensions = SplitArrayDimensions(arrayPart);
