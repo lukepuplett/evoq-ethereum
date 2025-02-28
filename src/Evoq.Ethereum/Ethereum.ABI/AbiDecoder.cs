@@ -171,6 +171,11 @@ public class AbiDecoder : IAbiDecoder
             throw new InvalidOperationException($"Failed to get dimensions for {parameter.AbiType}");
         }
 
+        if (!AbiTypes.TryGetArrayBaseType(parameter.AbiType, out var baseType))
+        {
+            throw new InvalidOperationException($"Failed to get base type for {parameter.AbiType}");
+        }
+
         if (!AbiTypes.TryGetArrayMultiLength(parameter.AbiType, out var multiLength))
         {
             throw new InvalidOperationException($"Failed to get length for {parameter.AbiType}");
@@ -196,9 +201,9 @@ public class AbiDecoder : IAbiDecoder
             if (AbiTypes.TryGetArrayInnerType(abiType, out var innerType) &&
                 AbiTypes.IsArray(innerType!))
             {
-                // inner type is itself an array, so we create an array of that type
+                // inner type is itself an array, so we create an array to hold arrays of that type
 
-                var array = Array.CreateInstance(clrType.GetElementType(), length);
+                var arrayOfArrays = Array.CreateInstance(clrType, length);
 
                 for (int i = 0; i < length; i++)
                 {
@@ -206,17 +211,21 @@ public class AbiDecoder : IAbiDecoder
 
                     skip = inner.Skip;
 
-                    array.SetValue(inner.Array, i);
+                    arrayOfArrays.SetValue(inner.Array, i);
                 }
 
-                return (array, skip);
+                return (arrayOfArrays, skip);
+            }
+            else if (AbiTypes.IsTuple(innerType!))
+            {
+                throw new NotImplementedException("Static array of tuples not implemented");
             }
             else
             {
                 // inner type is a non-array type, so we create an array of that type
                 // and fill it with the non-array values
 
-                var array = Array.CreateInstance(clrType, length);
+                var array = Array.CreateInstance(clrType.GetElementType(), length);
 
                 // fill the array
 
@@ -233,10 +242,28 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        // the first slot should be the first element
+        // the first slot should be the first element and all the values are contiguous
 
         var subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList();
-        var subValues = subSlots.Select(s => this.DecodeStaticSlot(parameter.AbiType, parameter.ClrType.GetBaseElementType(), s)).ToList();
+        List<object?> subValues;
+
+        if (parameter.IsTuple)
+        {
+            // array of static tuples, these are also laid out in contiguous slots
+
+            subValues = new();
+
+            throw new NotImplementedException("Static array of tuples not implemented");
+        }
+        else
+        {
+            // array of single slot values, laid out contiguously, so we can just decode them
+            // all into a list
+
+            subValues = subSlots
+                .Select(s => this.DecodeStaticSlot(baseType!, parameter.ClrType.GetBaseElementType(), s))
+                .ToList();
+        }
 
         var (array, _) = getArray(parameter.AbiType, parameter.ClrType, 0, subValues);
 
@@ -497,7 +524,7 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        throw new InvalidOperationException($"Failed to decode {abiType} -> CLR type {clrType}");
+        throw new InvalidOperationException($"No decoder found for ABI type {abiType} -> CLR type {clrType}");
     }
 
     private object? DecodeStaticSlot(string abiType, Type clrType, Slot slot)
@@ -524,7 +551,7 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        throw new InvalidOperationException($"Failed to decode ABI type {abiType} -> CLR type {clrType}");
+        throw new InvalidOperationException($"No decoder found for ABI type {abiType} -> CLR type {clrType}");
     }
 
     private object? DecodeDynamicSlot(string abiType, Type clrType, Slot pointer, SlotCollection allSlots)
