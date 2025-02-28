@@ -358,7 +358,7 @@ public class AbiDecoder : IAbiDecoder
 
         var isDynamicLength = length == -1;
         var isDynamicBase = AbiTypes.IsDynamic(baseType!);
-        var baseClrType = parameter.ClrType.GetBaseElementType();
+        var baseClrType = parameter.BaseClrType;
 
         var subSlots = allSlots.SkipToPoint(pointer);
         SlotCollection dataSlots = subSlots;
