@@ -51,12 +51,51 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
     }
 
     /// <summary>
+    /// Skips past the slot pointed to by the pointer and returns a new collection of the remaining slots.
+    /// </summary>
+    /// <param name="pointer">The pointer to skip.</param>
+    /// <returns>A new collection of the remaining slots.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the pointer is not found in the collection.</exception>
+    public SlotCollection SkipToPoint(Slot pointer)
+    {
+        if (pointer.IsPointer)
+        {
+            return this.SkipPast(pointer.PointsTo!);
+        }
+
+        throw new ArgumentException("Slot passed in is not a pointer", nameof(pointer));
+    }
+
+    /// <summary>
+    /// Skips to the slot and returns a new collection including the slot and the following slots.
+    /// </summary>
+    /// <param name="slot">The slot to skip to.</param>
+    /// <returns>A new collection of the slot and the following slots.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the slot is not found in the collection.</exception>
+    public SlotCollection SkipTo(Slot slot)
+    {
+        var index = this.IndexOf(slot);
+
+        if (index < 0)
+        {
+            throw new InvalidOperationException("Slot not found in collection");
+        }
+
+        if (index == 0)
+        {
+            return new SlotCollection(this);
+        }
+
+        return new SlotCollection(this.Skip(index - 1).ToList());
+    }
+
+    /// <summary>
     /// Skips the slot and returns a new collection of the remaining slots.
     /// </summary>
     /// <param name="slot">The slot to skip.</param>
     /// <returns>A new collection of the remaining slots.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the slot is not found in the collection.</exception>
-    public SlotCollection Skip(Slot slot)
+    public SlotCollection SkipPast(Slot slot)
     {
         var index = this.IndexOf(slot);
 
