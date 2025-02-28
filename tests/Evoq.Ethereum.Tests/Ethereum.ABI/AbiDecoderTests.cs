@@ -46,10 +46,10 @@ public class AbiDecoderTests
             // In the future, we would validate the decoded values against the original values
             // ValidateDecodedValues(testCase.Values, result.Parameters, caseNumber, testCase.Name);
         }
-        catch (NotImplementedException)
+        catch (NotImplementedException notYet)
         {
             // This is expected for now, as the decoder is not fully implemented
-            Assert.Inconclusive($"Test case {caseNumber}: {testCase.Name} - Decoder not fully implemented yet.");
+            Assert.Inconclusive($"Test case {caseNumber}: {testCase.Name} - Decoder not fully implemented yet: " + notYet.Message);
         }
     }
 
@@ -57,8 +57,8 @@ public class AbiDecoderTests
     {
         // Start with a subset of test cases to focus on basic functionality
         return AbiTestCases.Cases
-            // .Where(kvp => kvp.Key > 9 && kvp.Key <= 11)              // IMPORTANT / filter
-            .Where(kvp => kvp.Key == 12)              // IMPORTANT / filter
+.Where(kvp => kvp.Key > 0 && kvp.Key <= 13)              // IMPORTANT / filter
+                                                         // .Where(kvp => kvp.Key == 13)              // IMPORTANT / filter
             .Select(kvp => new object[] { kvp.Key, kvp.Value });
     }
 

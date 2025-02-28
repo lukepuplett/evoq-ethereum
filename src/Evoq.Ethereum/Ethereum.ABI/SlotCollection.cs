@@ -60,7 +60,7 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
     {
         if (pointer.IsPointer)
         {
-            return this.SkipPast(pointer.PointsTo!);
+            return this.SkipTo(pointer.PointsTo!);
         }
 
         throw new ArgumentException("Slot passed in is not a pointer", nameof(pointer));
@@ -86,7 +86,7 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
             return new SlotCollection(this);
         }
 
-        return new SlotCollection(this.Skip(index - 1).ToList());
+        return new SlotCollection(this.Skip(index).ToList());
     }
 
     /// <summary>
@@ -104,7 +104,38 @@ public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
             throw new InvalidOperationException("Slot not found in collection");
         }
 
-        return new SlotCollection(this.Skip(index).ToList());
+        if (index + 1 == this.Count)
+        {
+            throw new InvalidOperationException("Cannot skip past the last element");
+        }
+
+        return new SlotCollection(this.Skip(index + 1).ToList());
+    }
+
+    /// <summary>
+    /// Skips past the slot and returns a new collection of the remaining slots.
+    /// </summary>
+    /// <param name="slot">The slot to skip past.</param>
+    /// <param name="slots">The new collection of the remaining slots.</param>
+    /// <returns>True if the slot was found and skipped past; otherwise, false.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the slot is not found in the collection.</exception>
+    public bool TrySkipPast(Slot slot, out SlotCollection? slots)
+    {
+        var index = this.IndexOf(slot);
+
+        if (index == -1)
+        {
+            throw new InvalidOperationException("Slot not found in collection");
+        }
+
+        if (index + 1 == this.Count)
+        {
+            slots = default;
+            return false;
+        }
+
+        slots = new SlotCollection(this.Skip(index + 1).ToList());
+        return true;
     }
 
     //

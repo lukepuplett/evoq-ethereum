@@ -283,8 +283,6 @@ public class AbiDecoder : IAbiDecoder
         var valueSlot = firstValueSlot;
         parameter.DeepVisit((param) =>
         {
-            valueSlot = allSlots.SkipPast(valueSlot).First(); // next slot
-
             if (skip == 0) // when this is positive, we are skipping over an array
             {
                 if (param.IsArray)
@@ -312,6 +310,13 @@ public class AbiDecoder : IAbiDecoder
             else
             {
                 skip--;
+            }
+
+            // try to advance to the next slot
+
+            if (allSlots.TrySkipPast(valueSlot, out var beyond))
+            {
+                valueSlot = beyond.First();
             }
         });
 
@@ -346,6 +351,11 @@ public class AbiDecoder : IAbiDecoder
             throw new InvalidOperationException($"Failed to get base type for {parameter.AbiType}");
         }
 
+        if (!AbiTypes.TryGetArrayInnerType(parameter.AbiType, out var innerType))
+        {
+            throw new InvalidOperationException($"Failed to get inner type for {parameter.AbiType}");
+        }
+
         var isDynamicLength = length == -1;
         var isDynamicBase = AbiTypes.IsDynamic(baseType!);
         var baseClrType = parameter.ClrType.GetBaseElementType();
@@ -377,36 +387,37 @@ public class AbiDecoder : IAbiDecoder
             // outer array, so create an array, then fill it with its decoded (array) elements
 
             var array = Array.CreateInstance(parameter.ClrType.GetElementType(), length);
-            var data = dataSlots.GetEnumerator();
+            // var data = dataSlots.GetEnumerator();
 
             for (int i = 0; i < length; i++)
             {
-                if (data.MoveNext())
+                // var s = data.Current;
+                var s = dataSlots[i];
+
+                if (isDynamicBase || isDynamicLength)
                 {
-                    var s = data.Current;
+                    s.DecodePointer(allSlots);
 
-                    if (isDynamicBase || isDynamicLength)
-                    {
-                        s.DecodePointer(allSlots);
+                    var p = new AbiParam(0, $"{parameter.Name}.stunt", innerType!, components: parameter.Components);
+                    this.DecodeDynamicArray(p, s, allSlots); // recurse
 
-                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                        this.DecodeDynamicArray(p, s, allSlots); // recurse
-
-                        array.SetValue(p.Value, i); // stick the value from our stunt parameter into the array
-                    }
-                    else
-                    {
-                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                        this.DecodeStaticArray(p, s, allSlots); // recurse
-
-                        array.SetValue(p.Value, i);
-                    }
+                    array.SetValue(p.Value, i); // stick the value from our stunt parameter into the array
                 }
                 else
                 {
-                    throw new ArgumentException("Unexpected end of data", nameof(allSlots));
+                    var p = new AbiParam(0, $"{parameter.Name}.stunt", innerType!, components: parameter.Components);
+                    this.DecodeStaticArray(p, s, allSlots); // recurse
+
+                    array.SetValue(p.Value, i);
                 }
+
+                // if (!data.MoveNext())
+                // {
+                //     throw new ArgumentException("Unexpected end of data", nameof(allSlots));
+                // }
             }
+
+            parameter.Value = array;
         }
         else
         {
@@ -415,63 +426,60 @@ public class AbiDecoder : IAbiDecoder
             // innermost array, so create the array and fill it with its decoded elements
 
             var array = Array.CreateInstance(baseClrType, length);
-            var data = dataSlots.GetEnumerator();
+            // var data = dataSlots.GetEnumerator();
 
             for (int i = 0; i < length; i++)
             {
                 // decode the elements into the array
 
-                if (data.MoveNext())
+                // var s = data.Current;
+                var s = dataSlots[i];
+
+                if (isDynamicBase)
                 {
-                    var s = data.Current;
+                    s.DecodePointer(allSlots);
 
-                    if (isDynamicBase)
+                    if (parameter.IsTuple)
                     {
-                        s.DecodePointer(allSlots);
+                        // make a stunt parameter for the tuple and decode into it
 
-                        if (parameter.IsTuple)
-                        {
-                            // make a stunt parameter for the tuple and decode into it
+                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
+                        this.DecodeDynamicTuple(p, s, allSlots);
 
-                            var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                            this.DecodeDynamicTuple(p, s, allSlots);
-
-                            array.SetValue(p.Value, i);
-                        }
-                        else
-                        {
-                            var obj = this.DecodeDynamicSlot(baseType!, baseClrType, s, allSlots);
-                            array.SetValue(obj, i);
-                        }
+                        array.SetValue(p.Value, i);
                     }
                     else
                     {
-                        if (parameter.IsTuple)
-                        {
-                            // make a stunt parameter for the tuple and decode into it
-
-                            var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                            this.DecodeStaticTuple(p, s, allSlots);
-
-                            array.SetValue(p.Value, i);
-                        }
-                        else
-                        {
-                            var obj = this.DecodeStaticSlot(baseType!, baseClrType, s);
-                            array.SetValue(obj, i);
-                        }
+                        var obj = this.DecodeDynamicSlot(baseType!, baseClrType, s, allSlots);
+                        array.SetValue(obj, i);
                     }
                 }
                 else
                 {
-                    throw new ArgumentException("Unexpected end of data", nameof(allSlots));
+                    if (parameter.IsTuple)
+                    {
+                        // make a stunt parameter for the tuple and decode into it
+
+                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
+                        this.DecodeStaticTuple(p, s, allSlots);
+
+                        array.SetValue(p.Value, i);
+                    }
+                    else
+                    {
+                        var obj = this.DecodeStaticSlot(baseType!, baseClrType, s);
+                        array.SetValue(obj, i);
+                    }
                 }
+
+                // if (data.MoveNext())
+                // {
+                //     throw new ArgumentException("Unexpected end of data", nameof(allSlots));
+                // }
             }
+
+            parameter.Value = array;
         }
-
-
-
-        throw new NotImplementedException();
     }
 
     private void DecodeDynamicTuple(AbiParam parameter, Slot pointer, SlotCollection allSlots)
