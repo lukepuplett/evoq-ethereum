@@ -396,7 +396,7 @@ public class AbiDecoder : IAbiDecoder
 
                 if (isDynamicBase || isDynamicLength)
                 {
-                    s.DecodePointer(allSlots);
+                    s.DecodePointer(dataSlots);
 
                     var p = new AbiParam(0, $"{parameter.Name}.stunt", innerType!, components: parameter.Components);
                     this.DecodeDynamicArray(p, s, allSlots); // recurse
@@ -437,7 +437,7 @@ public class AbiDecoder : IAbiDecoder
 
                 if (isDynamicBase)
                 {
-                    s.DecodePointer(allSlots);
+                    s.DecodePointer(dataSlots);
 
                     if (parameter.IsTuple)
                     {
