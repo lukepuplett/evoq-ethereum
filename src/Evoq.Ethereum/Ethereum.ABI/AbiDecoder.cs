@@ -356,7 +356,7 @@ public class AbiDecoder : IAbiDecoder
         if (isDynamicLength)
         {
             var lengthSlot = subSlots[0];
-            length = (int)this.DecodeStaticSlot(AbiTypeNames.IntegerTypes.Uint, typeof(int), lengthSlot)!;
+            length = this.DecodeLength(lengthSlot);
 
             dataSlots = subSlots.SkipPast(lengthSlot);
         }
@@ -574,8 +574,7 @@ public class AbiDecoder : IAbiDecoder
 
         var subSlots = allSlots.SkipToPoint(pointer);
         var lengthSlot = subSlots[0];
-        var bigLength = (BigInteger)this.DecodeStaticSlot(AbiTypeNames.IntegerTypes.Uint, typeof(BigInteger), lengthSlot)!;
-        var length = (int)bigLength;
+        int length = this.DecodeLength(lengthSlot);
         var dataSlots = subSlots.Skip(1).Take(length).ToList();
 
         //
@@ -592,6 +591,13 @@ public class AbiDecoder : IAbiDecoder
         {
             throw new InvalidOperationException($"Unsupported dynamic type {abiType}");
         }
+    }
+
+    private int DecodeLength(Slot lengthSlot)
+    {
+        var bigLength = (BigInteger)this.DecodeStaticSlot(AbiTypeNames.IntegerTypes.Uint, typeof(BigInteger), lengthSlot)!;
+        var length = (int)bigLength;
+        return length;
     }
 
     private static byte[] SlotsToBytes(IList<Slot> slots, int length)
