@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
@@ -299,6 +300,10 @@ public class AbiDecoder : IAbiDecoder
 
                     skip = multiLength;
                 }
+                else if (param.IsTuple)
+                {
+                    // ignore the outer tuple param; its inner params will come around next time
+                }
                 else
                 {
                     param.Value = this.DecodeStaticSlot(param.AbiType, param.ClrType, valueSlot);
@@ -516,9 +521,18 @@ public class AbiDecoder : IAbiDecoder
 
         var bytes = SlotsToBytes(slots, length);
 
+        // get the canonical type
+
+        if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
+        {
+            // canonical type not found; this should never happen
+
+            throw new InvalidOperationException($"Canonical type not found for {abiType}");
+        }
+
         foreach (var decoder in this.dynamicTypeDecoders)
         {
-            if (decoder.TryDecode(abiType, bytes, clrType, out var value))
+            if (decoder.TryDecode(canonicalType, bytes, clrType, out var value))
             {
                 return value;
             }
@@ -558,9 +572,10 @@ public class AbiDecoder : IAbiDecoder
     {
         // a dynamic value has its pointer and then the length and then the data slots, e.g. string, bytes, etc.
 
-        var subSlots = allSlots.SkipToPoint(pointer).ToList();
+        var subSlots = allSlots.SkipToPoint(pointer);
         var lengthSlot = subSlots[0];
-        var length = (int)this.DecodeStaticSlot(AbiTypeNames.IntegerTypes.Uint, typeof(int), lengthSlot)!;
+        var bigLength = (BigInteger)this.DecodeStaticSlot(AbiTypeNames.IntegerTypes.Uint, typeof(BigInteger), lengthSlot)!;
+        var length = (int)bigLength;
         var dataSlots = subSlots.Skip(1).Take(length).ToList();
 
         //
