@@ -146,9 +146,9 @@ public class RlpEncoder
             throw new ArgumentException("RLP encoding doesn't support negative numbers");
         }
 
-        if (value == 0)
+        if (value.IsZero) // Check if the value is zero
         {
-            return new byte[] { 0 };  // Single byte 0 should be encoded as-is
+            return new byte[] { 0x80 };  // Return [0x80] for zero
         }
 
         byte[] bytes = value.ToByteArray();

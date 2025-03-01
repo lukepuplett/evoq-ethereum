@@ -171,12 +171,12 @@ public class RlpEncoderTests
     [TestMethod]
     public void Encode_BigInteger_ReturnsCorrectEncoding()
     {
-        // BigInteger 0 = [ 0x00 ]
+        // BigInteger 0 = [ 0x80 ]
         // Single byte values in [0x00, 0x7f] are encoded as themselves
         BigInteger input = BigInteger.Zero;
         byte[] actual = _encoder.Encode(input);
         Console.WriteLine($"Actual bytes for BigInteger 0: {BitConverter.ToString(actual)}");
-        byte[] expected = new byte[] { 0x00 };
+        byte[] expected = new byte[] { 0x80 };
         CollectionAssert.AreEqual(expected, actual);
 
         // BigInteger 15 = [ 0x0F ]
