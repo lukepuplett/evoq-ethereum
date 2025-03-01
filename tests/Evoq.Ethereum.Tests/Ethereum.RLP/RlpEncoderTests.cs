@@ -268,12 +268,21 @@ public class RlpEncoderTests
     {
         // Test encoding a very large string (e.g., 1000 'a's)
         string longString = new string('a', 1000);
-        byte[] expected = new byte[1002];
-        expected[0] = 0xB8; // prefix for length > 55
-        expected[1] = 0xE8; // length = 1000
-        Array.Fill<byte>(expected, 0x61, 2, 1000); // fill with 'a'
+
+        // The RLP encoding for a 1000-byte string is:
+        // - 0xB9: prefix for a string with length > 55, where the length needs 2 bytes (0xB7 + 2 = 0xB9)
+        // - 0x03, 0xE8: the length 1000 in big-endian format (0x03E8 = 1000)
+        // - followed by 1000 bytes of 'a' (0x61)
+        byte[] expected = new byte[1003];
+        expected[0] = 0xB9; // prefix for length that needs 2 bytes
+        expected[1] = 0x03; // first byte of length (1000 = 0x03E8)
+        expected[2] = 0xE8; // second byte of length
+        Array.Fill<byte>(expected, 0x61, 3, 1000); // fill with 'a'
 
         byte[] actual = _encoder.Encode(longString);
+        Console.WriteLine($"Expected length: {expected.Length}, Actual length: {actual.Length}");
+        Console.WriteLine($"Expected first bytes: {expected[0]:X2} {expected[1]:X2} {expected[2]:X2}, Actual first bytes: {actual[0]:X2} {actual[1]:X2} {actual[2]:X2}");
+
         CollectionAssert.AreEqual(expected, actual);
     }
 
