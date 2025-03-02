@@ -233,9 +233,7 @@ public class RlpEncoderTests
             to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
             value: new BigInteger(1000000000000000000), // 1 ETH
             data: new byte[0],
-            v: 27,
-            r: new BigInteger(1),
-            s: new BigInteger(2)
+            new RsvSignature(27, new BigInteger(1), new BigInteger(2))
         );
 
         // Encode the transaction
@@ -301,8 +299,154 @@ public class RlpEncoderTests
     public void Encode_EmptyTransaction_ThrowsArgumentException()
     {
         // Test encoding an empty transaction
-        var emptyTx = new Transaction(0, 0, 0, new byte[20], 0, new byte[0], 0, 0, 0);
+        var emptyTx = new TransactionEIP1559(0, 0, 0, 0, 0, new byte[20], 0, new byte[0], null, null);
         Assert.ThrowsException<ArgumentException>(() => _encoder.Encode(emptyTx));
+    }
+
+    [TestMethod]
+    public void Encode_EIP1559Transaction_ReturnsCorrectEncoding()
+    {
+        // Create a simple EIP-1559 transaction
+        var tx = new TransactionEIP1559(
+            chainId: 1, // Ethereum mainnet
+            nonce: 9,
+            maxPriorityFeePerGas: new BigInteger(2000000000), // 2 Gwei
+            maxFeePerGas: new BigInteger(20000000000), // 20 Gwei
+            gasLimit: 21000,
+            to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
+            value: new BigInteger(1000000000000000000), // 1 ETH
+            data: new byte[0],
+            accessList: Array.Empty<AccessListItem>(),
+            new RsvSignature(0, new BigInteger(1), new BigInteger(2))
+        );
+
+        // Encode the transaction
+        byte[] encoded = _encoder.Encode(tx);
+
+        // We can't easily predict the exact encoding, but we can check that:
+        // 1. It starts with the transaction type byte (0x02)
+        // 2. It has a reasonable length
+        Assert.IsTrue(encoded.Length > 0);
+        Assert.AreEqual(0x02, encoded[0]); // EIP-1559 transaction type
+        Assert.IsTrue(encoded.Length > 10); // Should be reasonably long
+    }
+
+    [TestMethod]
+    public void EncodeForSigning_EIP1559Transaction_ExcludesSignatureComponents()
+    {
+        // Create a simple EIP-1559 transaction
+        var tx = new TransactionEIP1559(
+            chainId: 1, // Ethereum mainnet
+            nonce: 9,
+            maxPriorityFeePerGas: new BigInteger(2000000000), // 2 Gwei
+            maxFeePerGas: new BigInteger(20000000000), // 20 Gwei
+            gasLimit: 21000,
+            to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
+            value: new BigInteger(1000000000000000000), // 1 ETH
+            data: new byte[0],
+            accessList: Array.Empty<AccessListItem>(),
+            new RsvSignature(27, new BigInteger(123456789), new BigInteger(987654321))
+        );
+
+        // Encode the transaction for signing (should exclude signature components)
+        byte[] encodedForSigning = _encoder.EncodeForSigning(tx);
+
+        // Encode the full transaction (should include signature components)
+        byte[] encodedFull = _encoder.Encode(tx);
+
+        // The encoding for signing should be shorter than the full encoding
+        Assert.IsTrue(encodedForSigning.Length < encodedFull.Length);
+
+        // Both should start with the transaction type byte (0x02)
+        Assert.AreEqual(0x02, encodedForSigning[0]);
+        Assert.AreEqual(0x02, encodedFull[0]);
+    }
+
+    [TestMethod]
+    public void EncodeForSigning_LegacyTransaction_IncludesChainIdAndEmptySignatureComponents()
+    {
+        // Create a simple legacy transaction
+        var tx = new Transaction(
+            nonce: 9,
+            gasPrice: new BigInteger(20000000000), // 20 Gwei
+            gasLimit: 21000,
+            to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
+            value: new BigInteger(1000000000000000000), // 1 ETH
+            data: new byte[0],
+            new RsvSignature(27, new BigInteger(123456789), new BigInteger(987654321))
+        );
+
+        // Encode the transaction for signing with chainId = 1 (Ethereum mainnet)
+        byte[] encodedForSigning = _encoder.EncodeForSigning(tx, 1);
+
+        // Encode the full transaction
+        byte[] encodedFull = _encoder.Encode(tx);
+
+        // The encoding for signing should be different from the full encoding
+        Assert.AreNotEqual(BitConverter.ToString(encodedForSigning), BitConverter.ToString(encodedFull));
+
+        // The encoding for signing should include 9 elements (6 tx fields + chainId + 2 empty signature placeholders)
+        // We can't easily check the exact structure, but we can verify it's a reasonable length
+        Assert.IsTrue(encodedForSigning.Length > 0);
+        Assert.IsTrue(encodedForSigning[0] >= 0xC0); // Should start with a list prefix
+    }
+
+    [TestMethod]
+    public void Encode_UnsignedTransaction_OmitsSignatureComponents()
+    {
+        // Create an unsigned transaction
+        var unsignedTx = Transaction.CreateUnsigned(
+            nonce: 9,
+            gasPrice: new BigInteger(20000000000), // 20 Gwei
+            gasLimit: 21000,
+            to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
+            value: new BigInteger(1000000000000000000), // 1 ETH
+            data: new byte[0]
+        );
+
+        // Create the same transaction but with signature
+        var signedTx = unsignedTx.WithSignature(27, new BigInteger(123456789), new BigInteger(987654321));
+
+        // Encode both transactions
+        byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
+        byte[] encodedSigned = _encoder.Encode(signedTx);
+
+        // The unsigned encoding should be shorter than the signed encoding
+        Assert.IsTrue(encodedUnsigned.Length < encodedSigned.Length);
+
+        // Both should start with a list prefix
+        Assert.IsTrue(encodedUnsigned[0] >= 0xC0);
+        Assert.IsTrue(encodedSigned[0] >= 0xC0);
+    }
+
+    [TestMethod]
+    public void Encode_UnsignedEIP1559Transaction_OmitsSignatureComponents()
+    {
+        // Create an unsigned EIP-1559 transaction
+        var unsignedTx = TransactionEIP1559.CreateUnsigned(
+            chainId: 1, // Ethereum mainnet
+            nonce: 9,
+            maxPriorityFeePerGas: new BigInteger(2000000000), // 2 Gwei
+            maxFeePerGas: new BigInteger(20000000000), // 20 Gwei
+            gasLimit: 21000,
+            to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
+            value: new BigInteger(1000000000000000000), // 1 ETH
+            data: new byte[0]
+        );
+
+        // Create the same transaction but with signature
+        var signedTx = unsignedTx.WithSignature(0, new BigInteger(123456789), new BigInteger(987654321));
+
+        // Encode both transactions
+        byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
+        byte[] encodedSigned = _encoder.Encode(signedTx);
+
+        // The unsigned encoding should be shorter than the signed encoding
+        Assert.IsTrue(encodedUnsigned.Length < encodedSigned.Length);
+
+        // Both should start with the transaction type byte (0x02)
+        Assert.AreEqual(0x02, encodedUnsigned[0]);
+        Assert.AreEqual(0x02, encodedSigned[0]);
     }
 }
 

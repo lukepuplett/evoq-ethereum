@@ -12,11 +12,67 @@ namespace Evoq.Ethereum.RLP;
 public class RlpEncoder
 {
     /// <summary>
-    /// Encodes a transaction into RLP format.
+    /// Encodes an EIP-1559 transaction into RLP format.
     /// </summary>
     /// <param name="tx">The transaction to encode.</param>
     /// <returns>The RLP encoded transaction.</returns>
-    public byte[] Encode(Transaction tx)
+    public byte[] Encode(TransactionEIP1559 tx)
+    {
+        // Check if To is null or an array of all zeros
+        bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
+
+        if (
+            tx.ChainId == 0 ||
+            (tx.MaxPriorityFeePerGas == 0 && tx.MaxFeePerGas == 0) ||
+            tx.GasLimit == 0)
+        {
+            throw new ArgumentException("Transaction cannot be empty or invalid.");
+        }
+
+        // For EIP-1559 transactions, we need to:
+        // 1. Start with the transaction type byte (0x02)
+        // 2. RLP encode the transaction fields as a list
+
+        // Create the list of fields to encode
+        var fields = new List<object>
+        {
+            tx.ChainId,
+            tx.Nonce,
+            tx.MaxPriorityFeePerGas,
+            tx.MaxFeePerGas,
+            tx.GasLimit,
+            tx.To!,
+            tx.Value,
+            tx.Data,
+            EncodeAccessList(tx.AccessList)
+        };
+
+        // If the transaction is signed, include signature components
+        if (tx.Signature.HasValue)
+        {
+            fields.Add(tx.Signature.Value.V);
+            fields.Add(tx.Signature.Value.R);
+            fields.Add(tx.Signature.Value.S);
+        }
+
+        // RLP encode the fields
+        byte[] rlpEncoded = EncodeList(fields);
+
+        // Prepend the transaction type byte (0x02 for EIP-1559)
+        byte[] result = new byte[rlpEncoded.Length + 1];
+        result[0] = 0x02;
+        Array.Copy(rlpEncoded, 0, result, 1, rlpEncoded.Length);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Encodes a legacy transaction into RLP format.
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <param name="chainId">The chain ID to use for EIP-155 replay protection when signing an unsigned transaction.</param>
+    /// <returns>The RLP encoded transaction.</returns>
+    public byte[] Encode(Transaction tx, ulong chainId = 0)
     {
         // Check if To is null or an array of all zeros
         bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
@@ -27,10 +83,7 @@ public class RlpEncoder
             tx.GasLimit == 0 &&
             toIsEmpty &&
             tx.Value == 0 &&
-            tx.Data.Length == 0 &&
-            tx.V == 0 &&
-            tx.R == 0 &&
-            tx.S == 0)
+            tx.Data.Length == 0)
         {
             throw new ArgumentException("Transaction cannot be empty or invalid.");
         }
@@ -40,14 +93,114 @@ public class RlpEncoder
             tx.Nonce,
             tx.GasPrice,
             tx.GasLimit,
+            tx.To!,
+            tx.Value,
+            tx.Data
+        };
+
+        if (tx.Signature.HasValue)
+        {
+            // For a signed transaction, include the signature components
+            fields.Add(tx.Signature.Value.V);
+            fields.Add(tx.Signature.Value.R);
+            fields.Add(tx.Signature.Value.S);
+        }
+        else if (chainId > 0)
+        {
+            // For an unsigned transaction with EIP-155 replay protection
+            fields.Add(chainId);
+            fields.Add(new byte[0]); // r placeholder as empty byte array
+            fields.Add(new byte[0]); // s placeholder as empty byte array
+        }
+
+        return EncodeList(fields);
+    }
+
+    /// <summary>
+    /// Encodes a transaction for signing.
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <param name="chainId">The chain ID to use for EIP-155 replay protection.</param>
+    /// <returns>The RLP encoded transaction for signing.</returns>
+    public byte[] EncodeForSigning(Transaction tx, ulong chainId = 0)
+    {
+        // Create a copy of the transaction without a signature
+        var unsignedTx = new Transaction(
+            tx.Nonce,
+            tx.GasPrice,
+            tx.GasLimit,
             tx.To,
             tx.Value,
             tx.Data,
-            tx.V,
-            tx.R,
-            tx.S
-        };
-        return Encode(fields); // Calls Encode(List<object>)
+            null // No signature
+        );
+
+        // Encode with chainId for EIP-155 replay protection
+        return Encode(unsignedTx, chainId);
+    }
+
+    /// <summary>
+    /// Encodes a transaction for signing (excludes signature components).
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <returns>The RLP encoded transaction for signing.</returns>
+    public byte[] EncodeForSigning(TransactionEIP1559 tx)
+    {
+        // Create a copy of the transaction without a signature
+        var unsignedTx = new TransactionEIP1559(
+            tx.ChainId,
+            tx.Nonce,
+            tx.MaxPriorityFeePerGas,
+            tx.MaxFeePerGas,
+            tx.GasLimit,
+            tx.To,
+            tx.Value,
+            tx.Data,
+            tx.AccessList,
+            null // No signature
+        );
+
+        return Encode(unsignedTx);
+    }
+
+    /// <summary>
+    /// Encodes an access list into RLP format.
+    /// </summary>
+    /// <param name="accessList">The access list to encode.</param>
+    /// <returns>The RLP encoded access list.</returns>
+    private List<List<object>> EncodeAccessList(AccessListItem[] accessList)
+    {
+        /*
+
+        RLP encoding of an access list:
+
+        [
+            [address1, [storageKey1_1, storageKey1_2, ...]],
+            [address2, [storageKey2_1, storageKey2_2, ...]],
+            ...
+        ]
+
+        */
+
+        var result = new List<List<object>>();
+
+        if (accessList == null || accessList.Length == 0)
+        {
+            return result;
+        }
+
+        foreach (var item in accessList)
+        {
+            var storageKeys = new List<object>();
+            foreach (var key in item.StorageKeys)
+            {
+                storageKeys.Add(key);
+            }
+
+            result.Add(new List<object> { item.Address, storageKeys });
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -172,10 +325,11 @@ public class RlpEncoder
         {
             byte[] byteArray => Encode(byteArray),
             List<object> list => Encode(list),
+            List<List<object>> nestedList => Encode(nestedList.Cast<object>().ToList()),
             byte b => Encode(b),
             ulong ulongValue => Encode(ulongValue),
             BigInteger bigInt => Encode(bigInt),
-            string str => Encode(str), // <-- Add this line to handle strings
+            string str => Encode(str),
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };
     }
