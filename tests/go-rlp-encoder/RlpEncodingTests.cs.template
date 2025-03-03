@@ -1,0 +1,149 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Text;
+using Xunit;
+
+namespace YourNamespace.Tests
+{
+    public class RlpEncodingTests
+    {
+        // RLP Encoding Test Cases
+        // Generated using go-ethereum's RLP implementation
+
+        // Test Case 1
+        // Empty string - tests the RLP encoding of an empty string
+        private const string TestCase1Output = "0x80";
+
+        // Test Case 2
+        // Single byte (< 0x80) - tests the RLP encoding of a single byte in the [0x00, 0x7f] range
+        private const string TestCase2Output = "0x7f";
+
+        // Test Case 3
+        // Short string (< 56 bytes) - tests the RLP encoding of a short string
+        private const string TestCase3Output = "0x8b68656c6c6f20776f726c64";
+
+        // Test Case 4
+        // Long string (>= 56 bytes) - tests the RLP encoding of a long string
+        private const string TestCase4Output = "0xb864000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263";
+
+        // Test Case 5
+        // Zero - tests the RLP encoding of zero
+        private const string TestCase5Output = "0x80";
+
+        // Test Case 6
+        // Small integer - tests the RLP encoding of a small integer
+        private const string TestCase6Output = "0x2a";
+
+        // Test Case 7
+        // Medium integer - tests the RLP encoding of a medium-sized integer
+        private const string TestCase7Output = "0x820400";
+
+        // Test Case 8
+        // Large integer - tests the RLP encoding of a large integer using big.Int
+        private const string TestCase8Output = "0x87038d7ea4c68000";
+
+        // Test Case 9
+        // Negative integer - RLP cannot encode negative integers directly
+        private const string TestCase9Output = "0x830f4240";
+
+        // Test Case 10
+        // Empty list - tests the RLP encoding of an empty list
+        private const string TestCase10Output = "0xc0";
+
+        // Test Case 11
+        // List with a single element - tests the RLP encoding of a list with one item
+        private const string TestCase11Output = "0xc101";
+
+        // Test Case 12
+        // List with multiple elements of the same type - tests the RLP encoding of a homogeneous list
+        private const string TestCase12Output = "0xc3010203";
+
+        // Test Case 13
+        // List with mixed types - tests the RLP encoding of a heterogeneous list
+        private const string TestCase13Output = "0xc8018568656c6c6f42";
+
+        // Test Case 14
+        // Nested list - tests the RLP encoding of a list containing another list
+        private const string TestCase14Output = "0xca01c202038568656c6c6f";
+
+        // Test Case 15
+        // Deeply nested list - tests the RLP encoding of a list with multiple levels of nesting
+        private const string TestCase15Output = "0xd201ca02c803866e65737465648568656c6c6f";
+
+        // Test Case 16
+        // Simple struct - tests the RLP encoding of a Go struct
+        private const string TestCase16Output = "0xc785416c6963651e";
+
+        // Test Case 17
+        // Struct with nested struct - tests the RLP encoding of a struct containing another struct
+        private const string TestCase17Output = "0xdd83426f6219d78b313233204d61696e20537487416e79746f776e823039";
+
+        // Test Case 18
+        // Struct with slice - tests the RLP encoding of a struct containing a slice
+        private const string TestCase18Output = "0xda865465616d2041d285416c69636583426f6287436861726c6965";
+
+        // Test Case 19
+        // Byte arrays of different sizes - tests the RLP encoding of fixed-size byte arrays
+        private const string TestCase19Output = "0xcd0182020383040506840708090a";
+
+        // Test Case 20
+        // Complex nested structure with various types - simulates an Ethereum transaction
+        private const string TestCase20Output = "0xf83c940102030405060708090a0b0c0d0e0f10111213149414131211100f0e0d0c0b0a090807060504030201880de0b6b3a764000084010203042a825208";
+
+        [Fact]
+        public void TestEmptyString()
+        {
+            // Arrange
+            var input = string.Empty;
+            
+            // Act
+            var result = YourRlpEncoder.Encode(input);
+            
+            // Assert
+            Assert.Equal(HexToBytes(TestCase1Output), result);
+        }
+
+        [Fact]
+        public void TestSingleByte()
+        {
+            // Arrange
+            var input = new byte[] { 0x7f };
+            
+            // Act
+            var result = YourRlpEncoder.Encode(input);
+            
+            // Assert
+            Assert.Equal(HexToBytes(TestCase2Output), result);
+        }
+
+        [Fact]
+        public void TestShortString()
+        {
+            // Arrange
+            var input = "hello world";
+            
+            // Act
+            var result = YourRlpEncoder.Encode(input);
+            
+            // Assert
+            Assert.Equal(HexToBytes(TestCase3Output), result);
+        }
+
+        // Add more test methods for the remaining test cases...
+
+        // Helper method to convert hex string to byte array
+        private static byte[] HexToBytes(string hex)
+        {
+            hex = hex.StartsWith("0x") ? hex.Substring(2) : hex;
+            
+            var bytes = new byte[hex.Length / 2];
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            }
+            
+            return bytes;
+        }
+    }
+} 
