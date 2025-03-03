@@ -3,6 +3,10 @@ using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI;
 
+public record RlpTestCase(
+    string Name
+);
+
 [TestClass]
 public class AbiEncoderTests
 {

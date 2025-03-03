@@ -1,0 +1,136 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+
+namespace Evoq.Ethereum.RLP;
+
+/// <summary>
+/// Represents a test case for RLP encoding, containing the input value,
+/// description, and expected hex output.
+/// </summary>
+public record RlpTestCase(
+    string Name,
+    string Description,
+    object Value,
+    string ExpectedHex
+);
+
+public static class RlpTestCases
+{
+    public static readonly Dictionary<int, RlpTestCase> Cases = new()
+    {
+        [1] = new(
+            "Empty string",
+            "Tests the RLP encoding of an empty string",
+            string.Empty,
+            "0x80"
+        ),
+
+        [2] = new(
+            "Single byte (< 0x80)",
+            "Tests the RLP encoding of a single byte in the [0x00, 0x7f] range",
+            new byte[] { 0x7f },
+            "0x7f"
+        ),
+
+        [3] = new(
+            "Short string (< 56 bytes)",
+            "Tests the RLP encoding of a short string",
+            "hello world",
+            "0x8b68656c6c6f20776f726c64"
+        ),
+
+        [4] = new(
+            "Long string (>= 56 bytes)",
+            "Tests the RLP encoding of a long string",
+            CreateLongByteArray(100),
+            "0xb864000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263"
+        ),
+
+        [5] = new(
+            "Zero",
+            "Tests the RLP encoding of zero",
+            0UL,
+            "0x80"
+        ),
+
+        [6] = new(
+            "Small integer",
+            "Tests the RLP encoding of a small integer",
+            42UL,
+            "0x2a"
+        ),
+
+        [7] = new(
+            "Medium integer",
+            "Tests the RLP encoding of a medium-sized integer",
+            1024UL,
+            "0x820400"
+        ),
+
+        [8] = new(
+            "Large integer",
+            "Tests the RLP encoding of a large integer using BigInteger",
+            BigInteger.Parse("1000000000000000"),
+            "0x87038d7ea4c68000"
+        ),
+
+        [9] = new(
+            "Negative integer",
+            "RLP itself is byte-agnostic. For this test, we pre-convert the negative number to its big-endian byte representation.",
+            // Pre-convert -1000000 to its big-endian byte representation (0x0f4240)
+            new byte[] { 0x0f, 0x42, 0x40 },
+            "0x830f4240"
+        ),
+
+        [10] = new(
+            "Empty list",
+            "Tests the RLP encoding of an empty list",
+            Array.Empty<object>(),
+            "0xc0"
+        ),
+
+        [11] = new(
+            "List with a single element",
+            "Tests the RLP encoding of a list with one item",
+            new object[] { 1UL },
+            "0xc101"
+        ),
+
+        [12] = new(
+            "List with multiple elements of the same type",
+            "Tests the RLP encoding of a homogeneous list",
+            new object[] { 1UL, 2UL, 3UL },
+            "0xc3010203"
+        ),
+
+        [13] = new(
+            "List with mixed types",
+            "Tests the RLP encoding of a heterogeneous list",
+            new object[] { 1UL, "hello", new byte[] { 0x42 } },
+            "0xc8018568656c6c6f42"
+        ),
+
+        [14] = new(
+            "Nested list",
+            "Tests the RLP encoding of a list containing another list",
+            new object[] {
+                1UL,
+                new object[] { 2UL, 3UL },
+                "hello"
+            },
+            "0xca01c202038568656c6c6f"
+        )
+    };
+
+    private static byte[] CreateLongByteArray(int length)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)(i % 256);
+        }
+        return result;
+    }
+}

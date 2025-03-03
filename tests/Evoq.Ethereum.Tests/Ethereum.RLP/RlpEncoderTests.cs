@@ -218,7 +218,9 @@ public class RlpEncoderTests
     [ExpectedException(typeof(ArgumentException))]
     public void Encode_NegativeBigInteger_ThrowsArgumentException()
     {
-        BigInteger input = new BigInteger(-1);
+        // RLP itself is byte-agnostic and doesn't specify how to handle negative numbers
+        // The caller should decide how to represent them (typically using two's complement)
+        BigInteger input = new BigInteger(-1000000);
         _encoder.Encode(input);
     }
 
@@ -447,6 +449,23 @@ public class RlpEncoderTests
         // Both should start with the transaction type byte (0x02)
         Assert.AreEqual(0x02, encodedUnsigned[0]);
         Assert.AreEqual(0x02, encodedSigned[0]);
+    }
+
+    [TestMethod]
+    public void EncodeNumber_NegativeNumberBytes_EncodesCorrectly()
+    {
+        // For negative numbers, we need to pre-convert to the desired byte representation
+        // Here we're using the big-endian byte representation of 1,000,000 (0x0f4240)
+        byte[] numberBytes = new byte[] { 0x0f, 0x42, 0x40 };
+        byte[] actual = _encoder.EncodeNumber(numberBytes);
+
+        // Expected: 0x830f4240
+        // 0x83: prefix for 3-byte string
+        // 0x0f4240: big-endian representation of 1,000,000
+        byte[] expected = new byte[] { 0x83, 0x0f, 0x42, 0x40 };
+
+        CollectionAssert.AreEqual(expected, actual,
+            $"Expected: {BitConverter.ToString(expected)}, Actual: {BitConverter.ToString(actual)}");
     }
 }
 

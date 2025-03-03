@@ -7,9 +7,46 @@ using System.Text;
 namespace Evoq.Ethereum.RLP;
 
 /// <summary>
+/// Interface for RLP encoding.
+/// </summary>
+public interface IRlpTransactionEncoder
+{
+    /// <summary>
+    /// Encodes an EIP-1559 transaction into RLP format.    
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <returns>The RLP encoded transaction.</returns>
+    byte[] Encode(TransactionEIP1559 tx);
+
+    /// <summary>
+    /// Encodes a legacy transaction into RLP format.
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <param name="chainId">The chain ID to use for EIP-155 replay protection when signing an unsigned transaction.</param>
+    /// <returns>The RLP encoded transaction.</returns>
+    byte[] Encode(Transaction tx, ulong chainId = 0);
+
+    /// <summary>
+    /// Encodes a transaction for signing.
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <param name="chainId">The chain ID to use for EIP-155 replay protection.</param>
+    /// <returns>The RLP encoded transaction for signing.</returns>
+    byte[] EncodeForSigning(Transaction tx, ulong chainId = 0);
+
+    /// <summary>
+    /// Encodes a transaction for signing (excludes signature components).
+    /// </summary>
+    /// <param name="tx">The transaction to encode.</param>
+    /// <returns>The RLP encoded transaction for signing.</returns>
+    byte[] EncodeForSigning(TransactionEIP1559 tx);
+
+}
+
+/// <summary>
 /// Encodes an object into RLP format.
 /// </summary>
-public class RlpEncoder
+public class RlpEncoder : IRlpTransactionEncoder
 {
     /// <summary>
     /// Encodes an EIP-1559 transaction into RLP format.
@@ -164,46 +201,6 @@ public class RlpEncoder
     }
 
     /// <summary>
-    /// Encodes an access list into RLP format.
-    /// </summary>
-    /// <param name="accessList">The access list to encode.</param>
-    /// <returns>The RLP encoded access list.</returns>
-    private List<List<object>> EncodeAccessList(AccessListItem[] accessList)
-    {
-        /*
-
-        RLP encoding of an access list:
-
-        [
-            [address1, [storageKey1_1, storageKey1_2, ...]],
-            [address2, [storageKey2_1, storageKey2_2, ...]],
-            ...
-        ]
-
-        */
-
-        var result = new List<List<object>>();
-
-        if (accessList == null || accessList.Length == 0)
-        {
-            return result;
-        }
-
-        foreach (var item in accessList)
-        {
-            var storageKeys = new List<object>();
-            foreach (var key in item.StorageKeys)
-            {
-                storageKeys.Add(key);
-            }
-
-            result.Add(new List<object> { item.Address, storageKeys });
-        }
-
-        return result;
-    }
-
-    /// <summary>
     /// Encodes a string into RLP format.
     /// </summary>
     /// <param name="str">The string to encode.</param>
@@ -291,12 +288,23 @@ public class RlpEncoder
     /// </summary>
     /// <param name="value">The BigInteger to encode.</param>
     /// <returns>The RLP encoded BigInteger.</returns>
-    /// <exception cref="ArgumentException">Thrown when the BigInteger is negative.</exception>
+    /// <remarks>
+    /// Note on negative numbers: RLP itself is byte-agnostic and doesn't care about the meaning of the bytes.
+    /// The interpretation of bytes as signed or unsigned integers happens at higher levels in the Ethereum stack.
+    /// 
+    /// This method encodes BigIntegers as their minimal big-endian byte representation:
+    /// - For positive numbers and zero, this is straightforward
+    /// - For negative numbers, we throw an exception by default since RLP itself doesn't specify how to handle them
+    ///   (the caller should decide how to represent negative numbers, typically using two's complement at a higher level)
+    /// </remarks>
     public byte[] Encode(BigInteger value)
     {
+        // RLP itself doesn't specify how to handle negative numbers
+        // The caller should decide how to represent them (typically using two's complement)
         if (value < 0)
         {
-            throw new ArgumentException("RLP encoding doesn't support negative numbers");
+            throw new ArgumentException("RLP encoding doesn't specify how to handle negative numbers. " +
+                "Convert to the desired byte representation (e.g., two's complement) before encoding.");
         }
 
         if (value.IsZero) // Check if the value is zero
@@ -314,6 +322,31 @@ public class RlpEncoder
     }
 
     /// <summary>
+    /// Encodes a byte array representing a number in big-endian format into RLP format.
+    /// This can be used for encoding numbers with custom representations (e.g., negative numbers as two's complement).
+    /// </summary>
+    /// <param name="numberBytes">The byte array representing the number in big-endian format.</param>
+    /// <returns>The RLP encoded number.</returns>
+    public byte[] EncodeNumber(byte[] numberBytes)
+    {
+        if (numberBytes == null)
+        {
+            throw new ArgumentNullException(nameof(numberBytes));
+        }
+
+        // If the number is zero (empty byte array or all zeros), encode as empty string
+        if (numberBytes.Length == 0 || numberBytes.All(b => b == 0))
+        {
+            return new byte[] { 0x80 };
+        }
+
+        // Remove leading zeros
+        numberBytes = numberBytes.SkipWhile((b, i) => b == 0 && i < numberBytes.Length - 1).ToArray();
+
+        return EncodeBytes(numberBytes);
+    }
+
+    /// <summary>
     /// Encodes an object into RLP format.
     /// </summary>
     /// <param name="item">The object to encode.</param>
@@ -325,6 +358,7 @@ public class RlpEncoder
         {
             byte[] byteArray => Encode(byteArray),
             List<object> list => Encode(list),
+            object[] array => Encode(array.ToList()),
             List<List<object>> nestedList => Encode(nestedList.Cast<object>().ToList()),
             byte b => Encode(b),
             ulong ulongValue => Encode(ulongValue),
@@ -333,6 +367,51 @@ public class RlpEncoder
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };
     }
+
+    //
+
+    /// <summary>
+    /// Encodes an access list into RLP format.
+    /// </summary>
+    /// <param name="accessList">The access list to encode.</param>
+    /// <returns>The RLP encoded access list.</returns>
+    private List<List<object>> EncodeAccessList(AccessListItem[] accessList)
+    {
+        /*
+
+        RLP encoding of an access list:
+
+        [
+            [address1, [storageKey1_1, storageKey1_2, ...]],
+            [address2, [storageKey2_1, storageKey2_2, ...]],
+            ...
+        ]
+
+        */
+
+        var result = new List<List<object>>();
+
+        if (accessList == null || accessList.Length == 0)
+        {
+            return result;
+        }
+
+        foreach (var item in accessList)
+        {
+            var storageKeys = new List<object>();
+            foreach (var key in item.StorageKeys)
+            {
+                storageKeys.Add(key);
+            }
+
+            result.Add(new List<object> { item.Address, storageKeys });
+        }
+
+        return result;
+    }
+
+    //
+
 
     //
 

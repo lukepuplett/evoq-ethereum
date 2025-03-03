@@ -68,10 +68,15 @@ func main() {
 
 	case 9:
 		// Negative integer - RLP cannot encode negative integers directly
-		// We encode it as a big.Int's bytes representation (which will only contain the absolute value)
-		// Expected: The bytes of the absolute value
+		// When using big.Int.Bytes(), negative numbers lose their sign:
+		// 1. big.Int stores numbers as sign + magnitude internally
+		// 2. Bytes() only returns the absolute value (magnitude) as a byte slice
+		// 3. The sign information is discarded
+		// 4. This means -1000000 and 1000000 would produce identical byte slices
+		// 5. For proper handling of negatives, applications must track sign separately
 		n := big.NewInt(-1000000)
-		data = n.Bytes()
+		fmt.Printf("// Note: Original value is %v, but Bytes() returns absolute value\n", n)
+		data = n.Bytes() // This will only encode the absolute value (0xF4240)
 
 	case 10:
 		// Empty list - tests the RLP encoding of an empty list
