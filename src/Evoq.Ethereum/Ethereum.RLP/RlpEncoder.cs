@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Text;
+using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;
 
@@ -60,7 +60,7 @@ public class RlpEncoder : IRlpTransactionEncoder
 
         if (
             tx.ChainId == 0 ||
-            (tx.MaxPriorityFeePerGas == 0 && tx.MaxFeePerGas == 0) ||
+            (tx.MaxPriorityFeePerGas.SignValue == 0 && tx.MaxFeePerGas.SignValue == 0) ||
             tx.GasLimit == 0)
         {
             throw new ArgumentException("Transaction cannot be empty or invalid.");
@@ -116,10 +116,10 @@ public class RlpEncoder : IRlpTransactionEncoder
 
         if (
             tx.Nonce == 0 &&
-            tx.GasPrice == 0 &&
+            tx.GasPrice.SignValue == 0 &&
             tx.GasLimit == 0 &&
             toIsEmpty &&
-            tx.Value == 0 &&
+            tx.Value.SignValue == 0 &&
             tx.Data.Length == 0)
         {
             throw new ArgumentException("Transaction cannot be empty or invalid.");
@@ -139,6 +139,8 @@ public class RlpEncoder : IRlpTransactionEncoder
         {
             // For a signed transaction, include the signature components
             fields.Add(tx.Signature.Value.V);
+
+            // Add R and S directly as they are now byte arrays
             fields.Add(tx.Signature.Value.R);
             fields.Add(tx.Signature.Value.S);
         }
@@ -288,35 +290,24 @@ public class RlpEncoder : IRlpTransactionEncoder
     /// </summary>
     /// <param name="value">The BigInteger to encode.</param>
     /// <returns>The RLP encoded BigInteger.</returns>
-    /// <remarks>
-    /// Note on negative numbers: RLP itself is byte-agnostic and doesn't care about the meaning of the bytes.
-    /// The interpretation of bytes as signed or unsigned integers happens at higher levels in the Ethereum stack.
-    /// 
-    /// This method encodes BigIntegers as their minimal big-endian byte representation:
-    /// - For positive numbers and zero, this is straightforward
-    /// - For negative numbers, we throw an exception by default since RLP itself doesn't specify how to handle them
-    ///   (the caller should decide how to represent negative numbers, typically using two's complement at a higher level)
-    /// </remarks>
     public byte[] Encode(BigInteger value)
     {
-        // RLP itself doesn't specify how to handle negative numbers
-        // The caller should decide how to represent them (typically using two's complement)
-        if (value < 0)
-        {
-            throw new ArgumentException("RLP encoding doesn't specify how to handle negative numbers. " +
-                "Convert to the desired byte representation (e.g., two's complement) before encoding.");
-        }
+        // Convert the BigInteger to a byte array
+        byte[] bytes = value.ToByteArray();
 
-        if (value.IsZero) // Check if the value is zero
+        // If the value is zero, return the RLP encoding for zero
+        if (bytes.Length == 0 || (bytes.Length == 1 && bytes[0] == 0))
         {
             return new byte[] { 0x80 };  // Return [0x80] for zero
         }
 
-        byte[] bytes = value.ToByteArray();
-
-        // BigInteger.ToByteArray() returns little-endian with a possible sign byte
-        // Convert to big-endian and remove unnecessary leading zeroes
-        bytes = bytes.Reverse().SkipWhile((b, i) => b == 0 && i < bytes.Length - 1).ToArray();
+        // Bouncy Castle's BigInteger.ToByteArray() returns big-endian format
+        // but may include a leading zero for positive numbers where the high bit is set
+        // We need to remove this leading zero if present
+        if (bytes.Length > 1 && bytes[0] == 0 && (bytes[1] & 0x80) != 0)
+        {
+            bytes = bytes.Skip(1).ToArray();
+        }
 
         return EncodeBytes(bytes);
     }
@@ -364,11 +355,10 @@ public class RlpEncoder : IRlpTransactionEncoder
             ulong ulongValue => Encode(ulongValue),
             BigInteger bigInt => Encode(bigInt),
             string str => Encode(str),
+            Transaction tx => Encode(tx),
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };
     }
-
-    //
 
     /// <summary>
     /// Encodes an access list into RLP format.
@@ -410,11 +400,6 @@ public class RlpEncoder : IRlpTransactionEncoder
         return result;
     }
 
-    //
-
-
-    //
-
     private byte[] EncodeBytes(byte[] data)
     {
         if (data.Length == 1 && data[0] <= 0x7F)
@@ -454,8 +439,12 @@ public class RlpEncoder : IRlpTransactionEncoder
 
     private static byte[] ToBigEndianBytes(int value)
     {
-        var bytes = BitConverter.GetBytes(value).Reverse().ToArray();
-        int leadingZeros = bytes.TakeWhile(b => b == 0).Count();
-        return bytes.Skip(leadingZeros).ToArray(); // Remove leading zeros
+        byte[] bytes = BitConverter.GetBytes(value);
+        if (BitConverter.IsLittleEndian)
+        {
+            Array.Reverse(bytes);
+        }
+        // Remove leading zeros to get the minimum representation
+        return bytes.SkipWhile(b => b == 0).ToArray();
     }
 }

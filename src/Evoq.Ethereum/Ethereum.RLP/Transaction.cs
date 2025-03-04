@@ -1,5 +1,5 @@
 using System;
-using System.Numerics;
+using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;
 
@@ -121,8 +121,8 @@ public struct TransactionEIP1559
         byte[] data,
         AccessListItem[]? accessList,
         byte v,
-        BigInteger r,
-        BigInteger s)
+        byte[] r,
+        byte[] s)
         : this(chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, new RsvSignature(v, r, s))
     {
     }
@@ -193,7 +193,7 @@ public struct TransactionEIP1559
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignature(byte v, BigInteger r, BigInteger s)
+    public TransactionEIP1559 WithSignature(byte v, byte[] r, byte[] s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
@@ -205,7 +205,7 @@ public struct TransactionEIP1559
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignatureFromRecoveryId(byte recoveryId, BigInteger r, BigInteger s)
+    public TransactionEIP1559 WithSignatureFromRecoveryId(byte recoveryId, byte[] r, byte[] s)
     {
         // For EIP-1559, the v value is just the recovery ID (0 or 1)
         return WithSignature(recoveryId, r, s);
@@ -223,14 +223,30 @@ public struct TransactionEIP1559
     public byte V => Signature?.V ?? 0;
 
     /// <summary>
-    /// Gets the R component of the signature, or 0 if the transaction is unsigned.
+    /// Gets the R component of the signature, or empty array if the transaction is unsigned.
     /// </summary>
-    public BigInteger R => Signature?.R ?? BigInteger.Zero;
+    public byte[] R => Signature?.R ?? Array.Empty<byte>();
 
     /// <summary>
-    /// Gets the S component of the signature, or 0 if the transaction is unsigned.
+    /// Gets the S component of the signature, or empty array if the transaction is unsigned.
     /// </summary>
-    public BigInteger S => Signature?.S ?? BigInteger.Zero;
+    public byte[] S => Signature?.S ?? Array.Empty<byte>();
+
+    /// <summary>
+    /// Gets an empty EIP-1559 transaction instance.
+    /// </summary>
+    public static TransactionEIP1559 Empty => new TransactionEIP1559(
+        chainId: 0,
+        nonce: 0,
+        maxPriorityFeePerGas: BigInteger.Zero,
+        maxFeePerGas: BigInteger.Zero,
+        gasLimit: 0,
+        to: new byte[20], // Empty address (all zeros)
+        value: BigInteger.Zero,
+        data: new byte[0],
+        accessList: null,
+        signature: null
+    );
 }
 
 /// <summary>
@@ -348,8 +364,8 @@ public struct Transaction
         BigInteger value,
         byte[] data,
         byte v,
-        BigInteger r,
-        BigInteger s)
+        byte[] r,
+        byte[] s)
         : this(nonce, gasPrice, gasLimit, to, value, data, new RsvSignature(v, r, s))
     {
     }
@@ -408,7 +424,7 @@ public struct Transaction
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(byte v, BigInteger r, BigInteger s)
+    public Transaction WithSignature(byte v, byte[] r, byte[] s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
@@ -421,7 +437,7 @@ public struct Transaction
     /// <param name="s">The S component of the signature.</param>
     /// <param name="chainId">The chain ID for EIP-155 replay protection.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignatureFromRecoveryId(byte recoveryId, BigInteger r, BigInteger s, ulong chainId = 0)
+    public Transaction WithSignatureFromRecoveryId(byte recoveryId, byte[] r, byte[] s, ulong chainId = 0)
     {
         return WithSignature(RsvSignature.FromRecoveryId(recoveryId, r, s, chainId));
     }
@@ -438,12 +454,25 @@ public struct Transaction
     public byte V => Signature?.V ?? 0;
 
     /// <summary>
-    /// Gets the R component of the signature, or 0 if the transaction is unsigned.
+    /// Gets the R component of the signature, or empty array if the transaction is unsigned.
     /// </summary>
-    public BigInteger R => Signature?.R ?? BigInteger.Zero;
+    public byte[] R => Signature?.R ?? Array.Empty<byte>();
 
     /// <summary>
-    /// Gets the S component of the signature, or 0 if the transaction is unsigned.
+    /// Gets the S component of the signature, or empty array if the transaction is unsigned.
     /// </summary>
-    public BigInteger S => Signature?.S ?? BigInteger.Zero;
+    public byte[] S => Signature?.S ?? Array.Empty<byte>();
+
+    /// <summary>
+    /// Gets an empty transaction instance.
+    /// </summary>
+    public static Transaction Empty => new Transaction(
+        nonce: 0,
+        gasPrice: BigInteger.Zero,
+        gasLimit: 0,
+        to: new byte[20], // Empty address (all zeros)
+        value: BigInteger.Zero,
+        data: new byte[0],
+        signature: null
+    );
 }

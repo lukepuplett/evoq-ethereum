@@ -15,6 +15,18 @@ dotnet add package Evoq.Ethereum
 - Type-safe Ethereum data structures
 - Simplified Web3 interactions
 
+## Implementation Notes
+
+### BigInteger Implementations
+
+This library uses two different BigInteger implementations for different encoding schemes:
+
+- **RLP Encoding**: Uses Bouncy Castle's `BigInteger` (`Org.BouncyCastle.Math.BigInteger`) which provides better handling of cryptographic values, particularly for variable-length encoding and handling of sign bits.
+
+- **ABI Encoding**: Uses .NET's `System.Numerics.BigInteger` which works well with ABI's fixed-length 32-byte encoding format.
+
+This design decision was made to optimize each encoding method for its specific requirements. In a future release, the library may be split into separate ABI and RLP components to better manage these dependencies.
+
 ## Target Frameworks
 
 This package targets .NET Standard 2.1 for maximum compatibility across:
@@ -39,11 +51,15 @@ This package targets .NET Standard 2.1 for maximum compatibility across:
 
 ## Building
 
-Testing depends on a Golang executable which is included in the repository along with its source code. The Golang executable is used to generate ABI encoding using go-ethereum and serves to test the .NET ABI encoding against the go-ethereum ABI encoding.
+Testing depends on Golang executables which are included in the repository along with their source code:
 
-The Golang executable is called **gabi** and was compiled for macOS on an M chip. It may need to be recompiled for other platforms.
+1. **gabi** - Used to generate ABI encoding using go-ethereum and serves to test the .NET ABI encoding against the go-ethereum ABI encoding.
 
-**Note** - The tests do not call the gabi executable, instead gabi is used to generate the expected output which is embedded into the test code as the expected output string.
+2. **grlp** - Used to generate RLP encoding using go-ethereum and serves to test the .NET RLP encoding against the go-ethereum RLP encoding.
+
+Both executables were compiled for macOS on an M chip. They may need to be recompiled for other platforms.
+
+**Note** - The tests do not call these executables directly. Instead, they are used to generate the expected output which is embedded into the test code as the expected output string.
 
 From the folder containing the solution file:
 
@@ -51,6 +67,15 @@ From the folder containing the solution file:
 dotnet build
 dotnet test
 ```
+
+### Test Rigs
+
+The repository includes Go-based test rigs that generate reference encodings from the go-ethereum implementation:
+
+- **gabi** - For ABI encoding reference outputs
+- **grlp** - For RLP encoding reference outputs
+
+For detailed information about the grlp test rig, including usage instructions and test cases, see the [Go RLP Encoder Test Rig README](path/to/grlp/README.md).
 
 ## Contributing
 
