@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Numerics;
 using System.Text;
+using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;
 
@@ -74,7 +74,7 @@ public static class RlpTestCases
         [8] = new(
             "Large integer",
             "Tests the RLP encoding of a large integer using BigInteger",
-            BigInteger.Parse("1000000000000000"),
+            new BigInteger("1000000000000000"),
             "0x87038d7ea4c68000"
         ),
 
@@ -182,17 +182,19 @@ public static class RlpTestCases
         [20] = new(
             "Basic Ethereum transaction (legacy format)",
             "Tests the RLP encoding of a legacy Ethereum transaction",
-            new object[] {
-                42UL, // nonce
-                BigInteger.Parse("30000000000"), // gasPrice (30 Gwei)
-                21000UL, // gasLimit
-                CreateAddressBytes(20), // to
-                BigInteger.Parse("1000000000000000000"), // value (1 ETH)
-                Array.Empty<byte>(), // data
-                27UL, // v
-                new byte[] { 0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef }, // r
-                new byte[] { 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10 }  // s
-            },
+            new Transaction(
+                nonce: 42,
+                gasPrice: new BigInteger("30000000000"), // 30 Gwei
+                gasLimit: 21000,
+                to: CreateAddressBytes(20),
+                value: new BigInteger("1000000000000000000"), // 1 ETH
+                data: Array.Empty<byte>(),
+                new RsvSignature(
+                    v: 27,
+                    r: HexToByteArray("1234567890abcdef"),
+                    s: HexToByteArray("fedcba9876543210")
+                )
+            ),
             "0xf83c2a8506fc23ac00825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a7640000801b881234567890abcdef88fedcba9876543210"
         )
     };
@@ -225,5 +227,21 @@ public static class RlpTestCases
             result[i] = (byte)(i + 1);
         }
         return result;
+    }
+
+    private static byte[] HexToByteArray(string hex)
+    {
+        if (hex.StartsWith("0x"))
+            hex = hex.Substring(2);
+
+        int length = hex.Length;
+        byte[] bytes = new byte[length / 2];
+
+        for (int i = 0; i < length; i += 2)
+        {
+            bytes[i / 2] = byte.Parse(hex.Substring(i, 2), NumberStyles.HexNumber);
+        }
+
+        return bytes;
     }
 }
