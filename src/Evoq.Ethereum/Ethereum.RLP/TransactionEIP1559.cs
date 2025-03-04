@@ -4,19 +4,29 @@ using Org.BouncyCastle.Math;
 namespace Evoq.Ethereum.RLP;
 
 /// <summary>
-/// Represents a legacy Ethereum transaction (pre-EIP-1559).
+/// Represents an Ethereum transaction.
 /// </summary>
-public struct Transaction
+public struct TransactionEIP1559
 {
+    /// <summary>
+    /// The chain ID of the network.
+    /// </summary>
+    public ulong ChainId;
+
     /// <summary>
     /// The nonce of the transaction.
     /// </summary>
     public ulong Nonce;
 
     /// <summary>
-    /// The gas price of the transaction.
+    /// The maximum priority fee per gas (tip for miners/validators).
     /// </summary>
-    public BigInteger GasPrice;
+    public BigInteger MaxPriorityFeePerGas;
+
+    /// <summary>
+    /// The maximum fee per gas (total fee cap).
+    /// </summary>
+    public BigInteger MaxFeePerGas;
 
     /// <summary>
     /// The gas limit of the transaction.
@@ -39,89 +49,118 @@ public struct Transaction
     public byte[] Data;
 
     /// <summary>
+    /// The access list for gas optimization.
+    /// </summary>
+    public AccessListItem[] AccessList;
+
+    /// <summary>
     /// The signature of the transaction. Null if the transaction is unsigned.
     /// </summary>
     public RsvSignature? Signature;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Transaction"/> struct.
+    /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct.
     /// </summary>
+    /// <param name="chainId">The chain ID of the network.</param>
     /// <param name="nonce">The nonce of the transaction.</param>
-    /// <param name="gasPrice">The gas price of the transaction.</param>
+    /// <param name="maxPriorityFeePerGas">The maximum priority fee per gas (tip for miners/validators).</param>
+    /// <param name="maxFeePerGas">The maximum fee per gas (total fee cap).</param>
     /// <param name="gasLimit">The gas limit of the transaction.</param>
     /// <param name="to">The to address of the transaction.</param>
     /// <param name="value">The value of the transaction.</param>
     /// <param name="data">The data of the transaction.</param>
+    /// <param name="accessList">The access list for gas optimization.</param>
     /// <param name="signature">The signature of the transaction. Null if the transaction is unsigned.</param>
-    public Transaction(
+    public TransactionEIP1559(
+        ulong chainId,
         ulong nonce,
-        BigInteger gasPrice,
+        BigInteger maxPriorityFeePerGas,
+        BigInteger maxFeePerGas,
         ulong gasLimit,
         byte[] to,
         BigInteger value,
         byte[] data,
+        AccessListItem[]? accessList,
         RsvSignature? signature)
     {
+        ChainId = chainId;
         Nonce = nonce;
-        GasPrice = gasPrice;
+        MaxPriorityFeePerGas = maxPriorityFeePerGas;
+        MaxFeePerGas = maxFeePerGas;
         GasLimit = gasLimit;
         To = to ?? throw new ArgumentNullException(nameof(to));
         Value = value;
         Data = data ?? throw new ArgumentNullException(nameof(data));
+        AccessList = accessList ?? Array.Empty<AccessListItem>();
         Signature = signature;
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Transaction"/> struct with separate signature components.
+    /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct with separate signature components.
     /// </summary>
+    /// <param name="chainId">The chain ID of the network.</param>
     /// <param name="nonce">The nonce of the transaction.</param>
-    /// <param name="gasPrice">The gas price of the transaction.</param>
+    /// <param name="maxPriorityFeePerGas">The maximum priority fee per gas (tip for miners/validators).</param>
+    /// <param name="maxFeePerGas">The maximum fee per gas (total fee cap).</param>
     /// <param name="gasLimit">The gas limit of the transaction.</param>
     /// <param name="to">The to address of the transaction.</param>
     /// <param name="value">The value of the transaction.</param>
     /// <param name="data">The data of the transaction.</param>
+    /// <param name="accessList">The access list for gas optimization.</param>
     /// <param name="v">The V component of the signature.</param>
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
-    public Transaction(
+    public TransactionEIP1559(
+        ulong chainId,
         ulong nonce,
-        BigInteger gasPrice,
+        BigInteger maxPriorityFeePerGas,
+        BigInteger maxFeePerGas,
         ulong gasLimit,
         byte[] to,
         BigInteger value,
         byte[] data,
+        AccessListItem[]? accessList,
         byte v,
         byte[] r,
         byte[] s)
-        : this(nonce, gasPrice, gasLimit, to, value, data, new RsvSignature(v, r, s))
+        : this(chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, new RsvSignature(v, r, s))
     {
     }
 
     /// <summary>
     /// Creates an unsigned transaction.
     /// </summary>
+    /// <param name="chainId">The chain ID of the network.</param>
     /// <param name="nonce">The nonce of the transaction.</param>
-    /// <param name="gasPrice">The gas price of the transaction.</param>
+    /// <param name="maxPriorityFeePerGas">The maximum priority fee per gas (tip for miners/validators).</param>
+    /// <param name="maxFeePerGas">The maximum fee per gas (total fee cap).</param>
     /// <param name="gasLimit">The gas limit of the transaction.</param>
     /// <param name="to">The to address of the transaction.</param>
     /// <param name="value">The value of the transaction.</param>
     /// <param name="data">The data of the transaction.</param>
+    /// <param name="accessList">The access list for gas optimization.</param>
     /// <returns>An unsigned transaction.</returns>
-    public static Transaction CreateUnsigned(
+    public static TransactionEIP1559 CreateUnsigned(
+        ulong chainId,
         ulong nonce,
-        BigInteger gasPrice,
+        BigInteger maxPriorityFeePerGas,
+        BigInteger maxFeePerGas,
         ulong gasLimit,
         byte[] to,
         BigInteger value,
-        byte[] data)
+        byte[] data,
+        AccessListItem[]? accessList = null)
     {
-        return new Transaction(
+        return new TransactionEIP1559(
+            chainId,
             nonce,
-            gasPrice,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
             gasLimit,
             to,
             value,
             data,
+            accessList,
             null // No signature
         );
     }
@@ -131,15 +170,18 @@ public struct Transaction
     /// </summary>
     /// <param name="signature">The signature to add.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(RsvSignature signature)
+    public TransactionEIP1559 WithSignature(RsvSignature signature)
     {
-        return new Transaction(
+        return new TransactionEIP1559(
+            ChainId,
             Nonce,
-            GasPrice,
+            MaxPriorityFeePerGas,
+            MaxFeePerGas,
             GasLimit,
             To,
             Value,
             Data,
+            AccessList,
             signature
         );
     }
@@ -151,22 +193,22 @@ public struct Transaction
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(byte v, byte[] r, byte[] s)
+    public TransactionEIP1559 WithSignature(byte v, byte[] r, byte[] s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
 
     /// <summary>
-    /// Creates a signed transaction by adding a signature created from a recovery ID and chain ID.
+    /// Creates a signed transaction by adding a signature created from a recovery ID.
     /// </summary>
     /// <param name="recoveryId">The recovery ID (0 or 1).</param>
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
-    /// <param name="chainId">The chain ID for EIP-155 replay protection.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignatureFromRecoveryId(byte recoveryId, byte[] r, byte[] s, ulong chainId = 0)
+    public TransactionEIP1559 WithSignatureFromRecoveryId(byte recoveryId, byte[] r, byte[] s)
     {
-        return WithSignature(RsvSignature.FromRecoveryId(recoveryId, r, s, chainId));
+        // For EIP-1559, the v value is just the recovery ID (0 or 1)
+        return WithSignature(recoveryId, r, s);
     }
 
     /// <summary>
@@ -191,15 +233,18 @@ public struct Transaction
     public byte[] S => Signature?.S ?? Array.Empty<byte>();
 
     /// <summary>
-    /// Gets an empty transaction instance.
+    /// Gets an empty EIP-1559 transaction instance.
     /// </summary>
-    public static Transaction Empty => new Transaction(
+    public static TransactionEIP1559 Empty => new TransactionEIP1559(
+        chainId: 0,
         nonce: 0,
-        gasPrice: BigInteger.Zero,
+        maxPriorityFeePerGas: BigInteger.Zero,
+        maxFeePerGas: BigInteger.Zero,
         gasLimit: 0,
         to: new byte[20], // Empty address (all zeros)
         value: BigInteger.Zero,
         data: new byte[0],
+        accessList: null,
         signature: null
     );
 }
