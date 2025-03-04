@@ -302,7 +302,7 @@ public static class RlpTestCases
         [25] = new(
             "Transaction receipt",
             "Tests the RLP encoding of an Ethereum transaction receipt",
-            // Create a list of objects that matches the Receipt structure
+            // Create a list of objects that matches the Receipt structure.
             new List<object>
             {
                 new byte[] { 0x01 }, // postStateOrStatus (success)
