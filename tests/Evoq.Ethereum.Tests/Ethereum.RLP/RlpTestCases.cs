@@ -196,6 +196,42 @@ public static class RlpTestCases
                 )
             ),
             "0xf83c2a8506fc23ac00825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a7640000801b881234567890abcdef88fedcba9876543210"
+        ),
+
+        [21] = new(
+            "EIP-1559 transaction",
+            "Tests the RLP encoding of an EIP-1559 transaction with access list",
+            // Instead of using TransactionEIP1559 directly, create a list of objects
+            // that matches the RLP structure without the transaction type byte
+            // This is because the Go implementation does not include the transaction type byte
+            // in the RLP encoding of the transaction.
+            new List<object>
+            {
+                1UL, // chainId
+                123UL, // nonce
+                new BigInteger("2000000000"),  // maxPriorityFeePerGas (2 Gwei)
+                new BigInteger("50000000000"), // maxFeePerGas (50 Gwei)
+                21000UL, // gasLimit
+                CreateAddressBytes(20), // to
+                new BigInteger("1000000000000000000"), // value (1 ETH)
+                new byte[] { 0xca, 0xfe, 0xba, 0xbe }, // data
+                // Access list as a list of lists
+                new List<object>
+                {
+                    new List<object>
+                    {
+                        HexToByteArray("0102030405060708090a0b0c0d0e0f1011121314"), // address
+                        new List<object>
+                        {
+                            HexToByteArray("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20") // storage key
+                        }
+                    }
+                },
+                1UL, // v
+                HexToByteArray("1234567890abcdef"), // r
+                HexToByteArray("fedcba9876543210")  // s
+            },
+            "0xf880017b8477359400850ba43b7400825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a764000084cafebabef838f7940102030405060708090a0b0c0d0e0f1011121314e1a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2001881234567890abcdef88fedcba9876543210"
         )
     };
 

@@ -458,5 +458,124 @@ public class RlpEncoderTests
         CollectionAssert.AreEqual(expected, actual,
             $"Expected: {BitConverter.ToString(expected)}, Actual: {BitConverter.ToString(actual)}");
     }
+
+    [TestMethod]
+    public void Encode_EIP1559Transaction_VerifyWithAndWithoutTypeByte()
+    {
+        // Arrange
+        var tx = new TransactionEIP1559(
+            chainId: 1, // Ethereum mainnet
+            nonce: 123,
+            maxPriorityFeePerGas: new BigInteger("2000000000"),  // 2 Gwei
+            maxFeePerGas: new BigInteger("50000000000"), // 50 Gwei
+            gasLimit: 21000,
+            to: CreateAddressBytes(20),
+            value: new BigInteger("1000000000000000000"), // 1 ETH
+            data: new byte[] { 0xca, 0xfe, 0xba, 0xbe },
+            accessList: new AccessListItem[]
+            {
+                new AccessListItem(
+                    address: HexToByteArray("0102030405060708090a0b0c0d0e0f1011121314"),
+                    storageKeys: new byte[][]
+                    {
+                        HexToByteArray("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20")
+                    }
+                )
+            },
+            signature: new RsvSignature(
+                v: 1,
+                r: HexToByteArray("1234567890abcdef"),
+                s: HexToByteArray("fedcba9876543210")
+            )
+        );
+
+        // The expected RLP encoding without the transaction type byte
+        string expectedRlpHex = "0xf880017b8477359400850ba43b7400825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a764000084cafebabef838f7940102030405060708090a0b0c0d0e0f1011121314e1a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2001881234567890abcdef88fedcba9876543210";
+        byte[] expectedRlpBytes = HexToByteArray(expectedRlpHex);
+
+        // The expected full encoding with the transaction type byte (0x02)
+        string expectedFullHex = "0x02" + expectedRlpHex.Substring(2); // Add 0x02 after the 0x prefix
+        byte[] expectedFullBytes = HexToByteArray(expectedFullHex);
+
+        // Act
+        byte[] actualFullBytes = _encoder.Encode(tx);
+
+        // Create the same transaction as a list of objects (without using TransactionEIP1559)
+        var txAsList = new List<object>
+        {
+            1UL, // chainId
+            123UL, // nonce
+            new BigInteger("2000000000"),  // maxPriorityFeePerGas
+            new BigInteger("50000000000"), // maxFeePerGas
+            21000UL, // gasLimit
+            CreateAddressBytes(20), // to
+            new BigInteger("1000000000000000000"), // value
+            new byte[] { 0xca, 0xfe, 0xba, 0xbe }, // data
+            // Access list as a list of lists
+            new List<object>
+            {
+                new List<object>
+                {
+                    HexToByteArray("0102030405060708090a0b0c0d0e0f1011121314"), // address
+                    new List<object>
+                    {
+                        HexToByteArray("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20") // storage key
+                    }
+                }
+            },
+            1UL, // v
+            HexToByteArray("1234567890abcdef"), // r
+            HexToByteArray("fedcba9876543210")  // s
+        };
+        byte[] actualRlpBytes = _encoder.Encode(txAsList);
+
+        // Assert
+        Console.WriteLine($"Expected RLP (no type byte): {BitConverter.ToString(expectedRlpBytes)}");
+        Console.WriteLine($"Actual RLP (list): {BitConverter.ToString(actualRlpBytes)}");
+        Console.WriteLine($"Expected full (with type byte): {BitConverter.ToString(expectedFullBytes)}");
+        Console.WriteLine($"Actual full (TransactionEIP1559): {BitConverter.ToString(actualFullBytes)}");
+
+        // Verify the raw RLP encoding (without type byte)
+        CollectionAssert.AreEqual(expectedRlpBytes, actualRlpBytes,
+            "The raw RLP encoding (without type byte) does not match the expected value");
+
+        // Verify the full encoding (with type byte)
+        CollectionAssert.AreEqual(expectedFullBytes, actualFullBytes,
+            "The full encoding (with type byte) does not match the expected value");
+
+        // Verify that the full encoding starts with 0x02 and then contains the raw RLP
+        Assert.AreEqual(0x02, actualFullBytes[0], "The first byte should be 0x02 (transaction type)");
+
+        byte[] actualWithoutType = new byte[actualFullBytes.Length - 1];
+        Array.Copy(actualFullBytes, 1, actualWithoutType, 0, actualWithoutType.Length);
+        CollectionAssert.AreEqual(actualRlpBytes, actualWithoutType,
+            "The full encoding without the type byte should match the raw RLP encoding");
+    }
+
+    private static byte[] CreateAddressBytes(int length)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)(i + 1);
+        }
+        return result;
+    }
+
+    private static byte[] HexToByteArray(string hex)
+    {
+        if (hex.StartsWith("0x"))
+            hex = hex.Substring(2);
+
+        int length = hex.Length;
+        byte[] bytes = new byte[length / 2];
+
+        for (int i = 0; i < length; i += 2)
+        {
+            bytes[i / 2] = byte.Parse(hex.Substring(i, 2), System.Globalization.NumberStyles.HexNumber);
+        }
+
+        return bytes;
+    }
 }
 

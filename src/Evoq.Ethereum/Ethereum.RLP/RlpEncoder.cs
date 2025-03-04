@@ -356,6 +356,7 @@ public class RlpEncoder : IRlpTransactionEncoder
             BigInteger bigInt => Encode(bigInt),
             string str => Encode(str),
             Transaction tx => Encode(tx),
+            TransactionEIP1559 tx1559 => Encode(tx1559),
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };
     }
