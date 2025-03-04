@@ -18,7 +18,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// - eth_call: Execute a read-only call to a contract
 /// - eth_sendTransaction: Send a transaction (node signs it with an unlocked account)
 /// </remarks>
-public class TransactionParams
+public class TransactionParamsDto
 {
     /// <summary>
     /// The address the transaction is sent from.
@@ -81,6 +81,8 @@ public class TransactionParams
     [JsonPropertyName("chainId")]
     public string? ChainId { get; set; }
 
+    //
+
     /// <summary>
     /// Creates a TransactionParams object for a legacy transaction.
     /// </summary>
@@ -92,7 +94,7 @@ public class TransactionParams
     /// <param name="value">The transaction value (hex format with 0x prefix).</param>
     /// <param name="nonce">The transaction nonce (hex format with 0x prefix).</param>
     /// <returns>A TransactionParams object for a legacy transaction.</returns>
-    public static TransactionParams CreateLegacy(
+    public static TransactionParamsDto CreateLegacy(
         string from,
         string? to = null,
         string? data = null,
@@ -101,7 +103,7 @@ public class TransactionParams
         string? value = null,
         string? nonce = null)
     {
-        return new TransactionParams
+        return new TransactionParamsDto
         {
             From = from,
             To = to,
@@ -126,7 +128,7 @@ public class TransactionParams
     /// <param name="nonce">The transaction nonce (hex format with 0x prefix).</param>
     /// <param name="chainId">The chain ID (hex format with 0x prefix).</param>
     /// <returns>A TransactionParams object for an EIP-1559 transaction.</returns>
-    public static TransactionParams CreateEIP1559(
+    public static TransactionParamsDto CreateEIP1559(
         string from,
         string? to = null,
         string? data = null,
@@ -137,7 +139,7 @@ public class TransactionParams
         string? nonce = null,
         string? chainId = null)
     {
-        return new TransactionParams
+        return new TransactionParamsDto
         {
             From = from,
             To = to,
@@ -159,13 +161,13 @@ public class TransactionParams
     /// <param name="data">The transaction data (hex format with 0x prefix).</param>
     /// <param name="value">The transaction value (hex format with 0x prefix).</param>
     /// <returns>A TransactionParams object for estimating gas.</returns>
-    public static TransactionParams CreateForGasEstimation(
+    public static TransactionParamsDto CreateForGasEstimation(
         string from,
         string? to = null,
         string? data = null,
         string? value = null)
     {
-        return new TransactionParams
+        return new TransactionParamsDto
         {
             From = from,
             To = to,

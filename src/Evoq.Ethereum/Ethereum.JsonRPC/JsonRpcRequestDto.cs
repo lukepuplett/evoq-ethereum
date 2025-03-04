@@ -6,7 +6,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// Represents a generic JSON-RPC request that can be used for any Ethereum API method.
 /// </summary>
 /// <typeparam name="TParams">The type of the parameters for the request.</typeparam>
-public class JsonRpcRequest<TParams>
+public class JsonRpcRequestDto<TParams>
 {
     /// <summary>
     /// The JSON-RPC version.
@@ -33,19 +33,19 @@ public class JsonRpcRequest<TParams>
     public int Id { get; set; }
 
     /// <summary>
-    /// Creates a new instance of the <see cref="JsonRpcRequest{TParams}"/> class.
+    /// Creates a new instance of the <see cref="JsonRpcRequestDto{TParams}"/> class.
     /// </summary>
-    public JsonRpcRequest()
+    public JsonRpcRequestDto()
     {
     }
 
     /// <summary>
-    /// Creates a new instance of the <see cref="JsonRpcRequest{TParams}"/> class with the specified parameters.
+    /// Creates a new instance of the <see cref="JsonRpcRequestDto{TParams}"/> class with the specified parameters.
     /// </summary>
     /// <param name="method">The JSON-RPC method name.</param>
     /// <param name="params">The parameters for the request.</param>
     /// <param name="id">The request identifier.</param>
-    public JsonRpcRequest(string method, TParams @params, int id = 1)
+    public JsonRpcRequestDto(string method, TParams @params, int id = 1)
     {
         Method = method;
         Params = @params;

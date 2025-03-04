@@ -6,7 +6,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// Represents a generic JSON-RPC response from an Ethereum API.
 /// </summary>
 /// <typeparam name="TResult">The type of the result returned by the API.</typeparam>
-public class JsonRpcResponse<TResult>
+public class JsonRpcResponseDto<TResult>
 {
     /// <summary>
     /// The JSON-RPC version.
