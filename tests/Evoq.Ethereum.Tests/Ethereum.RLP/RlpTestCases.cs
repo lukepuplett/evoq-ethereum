@@ -232,6 +232,22 @@ public static class RlpTestCases
                 HexToByteArray("fedcba9876543210")  // s
             },
             "0xf880017b8477359400850ba43b7400825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a764000084cafebabef838f7940102030405060708090a0b0c0d0e0f1011121314e1a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2001881234567890abcdef88fedcba9876543210"
+        ),
+
+        [22] = new(
+            "Simple Ethereum transaction",
+            "Tests the RLP encoding of a simple Ethereum transaction with just the core fields",
+            // Create a list of objects that matches the SimpleTransaction structure
+            new List<object>
+            {
+                1UL, // nonce
+                new BigInteger("20000000000"), // gasPrice (20 Gwei)
+                21000UL, // gasLimit
+                CreateSimpleAddressBytes(20), // to (bytes 0-19)
+                new BigInteger("500000000000000000"), // value (0.5 ETH)
+                Array.Empty<byte>() // data (empty)
+            },
+            "0xe9018504a817c80082520894000102030405060708090a0b0c0d0e0f101112138806f05b59d3b2000080"
         )
     };
 
@@ -261,6 +277,16 @@ public static class RlpTestCases
         for (int i = 0; i < length; i++)
         {
             result[i] = (byte)(i + 1);
+        }
+        return result;
+    }
+
+    private static byte[] CreateSimpleAddressBytes(int length)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)i;
         }
         return result;
     }
