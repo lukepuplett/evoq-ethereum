@@ -121,6 +121,60 @@ public static class RlpTestCases
                 "hello"
             },
             "0xca01c202038568656c6c6f"
+        ),
+
+        [15] = new(
+            "Deeply nested list",
+            "Tests the RLP encoding of a list with multiple levels of nesting",
+            new object[] {
+                1UL,
+                new object[] {
+                    2UL,
+                    new object[] { 3UL, "nested" }
+                },
+                "hello"
+            },
+            "0xd201ca02c803866e65737465648568656c6c6f"
+        ),
+
+        [16] = new(
+            "Simple struct",
+            "Tests the RLP encoding of a struct (represented as a list in C#)",
+            new object[] { "Alice", 30UL },
+            "0xc785416c6963651e"
+        ),
+
+        [17] = new(
+            "Struct with nested struct",
+            "Tests the RLP encoding of a struct containing another struct (represented as nested lists in C#)",
+            new object[] {
+                "Bob",
+                25UL,
+                new object[] { "123 Main St", "Anytown", "09" } // ZipCode simplified to string for this test
+            },
+            "0xdd83426f6219d78b313233204d61696e20537487416e79746f776e823039"
+        ),
+
+        [18] = new(
+            "Struct with slice",
+            "Tests the RLP encoding of a struct containing a slice (represented as a list in C#)",
+            new object[] {
+                "Team A",
+                new object[] { "Alice", "Bob", "Charlie" }
+            },
+            "0xda865465616d2041d285416c69636583426f6287436861726c6965"
+        ),
+
+        [19] = new(
+            "Byte arrays of different sizes",
+            "Tests the RLP encoding of fixed-size byte arrays",
+            new object[] {
+                new byte[] { 0x01 },
+                new byte[] { 0x02, 0x03 },
+                new byte[] { 0x04, 0x05, 0x06 },
+                new byte[] { 0x07, 0x08, 0x09, 0x0a }
+            },
+            "0xcd0182020383040506840708090a"
         )
     };
 
