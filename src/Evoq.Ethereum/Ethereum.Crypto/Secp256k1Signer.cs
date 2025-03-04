@@ -8,10 +8,17 @@ using Org.BouncyCastle.Math.EC;
 
 namespace Evoq.Ethereum.Crypto;
 
+public class SigningPayload
+{
+    public bool IsEIP155 { get; set; } = true;
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public long? ChainId { get; set; }
+}
+
 /// <summary>
-/// Default implementation of ISignBytes that uses the secp256k1 curve.
+/// Default implementation of the secp256k1 curve.
 /// </summary>
-public class Secp256k1Signer : ISignBytes
+public class Secp256k1Signer
 {
     private readonly byte[] _privateKey;
     private static readonly BigInteger ONE = BigInteger.ValueOf(1);
@@ -34,30 +41,42 @@ public class Secp256k1Signer : ISignBytes
     }
 
     /// <summary>
-    /// Signs the given byte array using ECDSA with the secp256k1 curve.
+    /// Signs the given payload using ECDSA with the secp256k1 curve.
     /// </summary>
-    /// <param name="data">The data to sign (expected to be pre-hashed).</param>
+    /// <param name="payload">The payload to sign.</param>
     /// <returns>The signature in RSV format.</returns>
-    public RsvSignature Sign(byte[] data)
+    /// <exception cref="ArgumentException">Thrown when a chain ID is required for EIP-155 signatures but is not provided.</exception>
+    public RsvSignature Sign(SigningPayload payload)
     {
-        var (r, s, v) = SignImpl(data, chainId: null); // Default to legacy (no chain ID)
+        if (payload.IsEIP155 && payload.ChainId == null)
+        {
+            throw new ArgumentException("Chain ID is required for EIP-155 signatures", nameof(payload));
+        }
+
+        var (r, s, v) = SignImpl(payload);
+
         return new RsvSignature(v, r, s);
     }
 
-    /// <summary>
-    /// Signs the given byte array with EIP-155 chain ID support.
-    /// </summary>
-    /// <param name="data">The data to sign (expected to be pre-hashed).</param>
-    /// <param name="chainId">The chain ID for EIP-155 compatibility.</param>
-    /// <returns>The signature in RSV format.</returns>
-    public RsvSignature Sign(byte[] data, long chainId)
+    public ECPoint RecoverPublicKey(byte[] hash, byte[] r, byte[] s, byte v, long? chainId)
     {
-        var (r, s, v) = SignImpl(data, chainId);
-        return new RsvSignature(v, r, s);
+        var curve = SecNamedCurves.GetByName("secp256k1");
+        var domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
+        int recoveryId = chainId.HasValue ? v - (int)(chainId.Value * 2 + 35) : v - 27;
+        if (recoveryId < 0 || recoveryId > 1)
+        {
+            throw new ArgumentException("Invalid recovery ID");
+        }
+
+        return RecoverPublicKey(new BigInteger(1, r), new BigInteger(1, s), hash, recoveryId, domain);
     }
 
-    private (byte[] R, byte[] S, byte V) SignImpl(byte[] bytes, long? chainId)
+    //
+
+    private (byte[] R, byte[] S, byte V) SignImpl(SigningPayload payload)
     {
+        var bytes = payload.Data;
+
         var curve = SecNamedCurves.GetByName("secp256k1");
         var domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
         var d = new BigInteger(1, _privateKey);
@@ -94,9 +113,9 @@ public class Secp256k1Signer : ISignBytes
             throw new InvalidOperationException("Could not determine recovery ID.");
         }
 
-        byte v = chainId.HasValue
-            ? (byte)(35 + 2 * chainId.Value + recoveryId) // EIP-155
-            : (byte)(27 + recoveryId);                    // Legacy
+        byte v = payload.IsEIP155
+            ? (byte)(35 + 2 * payload.ChainId! + recoveryId)    // EIP-155
+            : (byte)(27 + recoveryId);                          // Legacy
 
         var rBytes = To32ByteArray(r);
         var sBytes = To32ByteArray(s);
@@ -104,9 +123,6 @@ public class Secp256k1Signer : ISignBytes
         return (rBytes, sBytes, v);
     }
 
-    /// <summary>
-    /// Converts a BigInteger to a 32-byte big-endian array, padding with zeros on the left if necessary.
-    /// </summary>
     private static byte[] To32ByteArray(BigInteger bi)
     {
         var bytes = bi.ToByteArrayUnsigned();

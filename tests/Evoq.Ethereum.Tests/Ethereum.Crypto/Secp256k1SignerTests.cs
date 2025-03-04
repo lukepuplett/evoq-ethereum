@@ -9,19 +9,30 @@ namespace Evoq.Ethereum.Tests.Crypto;
 public class Secp256k1SignerTests
 {
     [TestMethod]
-    public void Sign_SimplePrivateKey_ReturnsCorrectSignature()
+    public void Sign_EIP155Test_ReturnsCorrectSignature()
     {
         // Arrange
-        // Simple private key: 0x1 (padded to 32 bytes)
-        var privateKey = Hex.Parse("0000000000000000000000000000000000000000000000000000000000000001");
+        var privateKey = Hex.Parse("0x4646464646464646464646464646464646464646464646464646464646464646");
 
-        // Message Hash: SHA-256("test")
+        // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+        //
+        // Transaction:
+        // nonce = 9, gasprice = 20 * 10**9, startgas = 21000, to = 0x3535353535353535353535353535353535353535, value = 10**18, data=''
+        //
+        // Message Hash:
+        // 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+        //
         var messageHash = Hex.Parse("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
 
         // Expected values (deterministic per RFC 6979)
-        var expectedR = Hex.Parse("4e45e16932b8af514961a1d3a1a25fdf3f4f7732e9d624c6c61548ab5fb8cd41");
-        var expectedS = Hex.Parse("18160ddd7bcdc9e57f9f6c7f1f2e06e3feda2a2a6e8f8f9c087db1c1e558c4f2");
-        var expectedV = 27; // This may be 27 or 28 depending on implementation
+        //
+        // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+        //
+        // (37, 18515461264373351373200002665853028612451056578545711640558177340181847433846, 46948507304638947509940763649030358759909902576025900602547168820602576006531)
+        //
+        var expectedR = Hex.Parse("18515461264373351373200002665853028612451056578545711640558177340181847433846");
+        var expectedS = Hex.Parse("46948507304638947509940763649030358759909902576025900602547168820602576006531");
+        var expectedV = 37;
 
         // Create signer and sign
         var signer = new Secp256k1Signer(privateKey.ToByteArray());
