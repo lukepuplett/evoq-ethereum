@@ -1,4 +1,5 @@
 using System;
+using Evoq.Blockchain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using BCMath = Org.BouncyCastle.Math;
 using NMath = System.Numerics;
@@ -350,6 +351,103 @@ public class ExtensionsTests
 
         // Assert
         Assert.AreEqual(original, roundTrip);
+    }
+
+    /// <summary>
+    /// Tests that converting from BouncyCastle BigInteger to Hex and then to .NET BigInteger works correctly.
+    /// This test verifies that the conversion path from BouncyCastle to .NET via Hex preserves the value.
+    /// </summary>
+    [TestMethod]
+    public void RoundTrip_BouncyToHexToNumerics_PreservesValue()
+    {
+        // Arrange
+        var bouncyOriginal = new BCMath.BigInteger("12345678901234567890123456789012345678901234567890");
+        var expectedNumerics = NMath.BigInteger.Parse("12345678901234567890123456789012345678901234567890");
+
+        // Act
+        var hex = bouncyOriginal.ToHex();
+        var numericsResult = hex.ToBigInteger();
+
+        // Assert
+        Assert.AreEqual(expectedNumerics, numericsResult);
+    }
+
+    /// <summary>
+    /// Tests that converting from a negative BouncyCastle BigInteger to Hex and then to .NET BigInteger works correctly.
+    /// This test verifies that the conversion path from BouncyCastle to .NET via Hex preserves the sign and value.
+    /// </summary>
+    [TestMethod]
+    public void RoundTrip_NegativeBouncyToHexToNumerics_PreservesValue()
+    {
+        // Arrange
+        var bouncyOriginal = new BCMath.BigInteger("-12345678901234567890123456789012345678901234567890");
+        var expectedNumerics = NMath.BigInteger.Parse("-12345678901234567890123456789012345678901234567890");
+
+        // Act
+        var hex = bouncyOriginal.ToHex();
+        // Specify Signed to correctly interpret the high bit as a sign bit
+        var numericsResult = hex.ToBigInteger(HexSignedness.Signed, HexEndianness.BigEndian);
+
+        // Assert
+        Assert.AreEqual(expectedNumerics, numericsResult);
+    }
+
+    /// <summary>
+    /// Tests that converting from .NET BigInteger to BouncyCastle BigInteger to Hex and back to .NET BigInteger preserves the original value.
+    /// This test verifies the full roundtrip conversion works correctly.
+    /// </summary>
+    [TestMethod]
+    public void RoundTrip_NumericsToBouncyToHexToNumerics_PreservesValue()
+    {
+        // Arrange
+        var numericsOriginal = NMath.BigInteger.Parse("12345678901234567890123456789012345678901234567890");
+
+        // Act
+        var bouncy = numericsOriginal.ToBigBouncy();
+        var hex = bouncy.ToHex();
+        var numericsResult = hex.ToBigInteger();
+
+        // Assert
+        Assert.AreEqual(numericsOriginal, numericsResult);
+    }
+
+    /// <summary>
+    /// Tests that converting from a negative .NET BigInteger to BouncyCastle BigInteger to Hex and back to .NET BigInteger preserves the original value.
+    /// This test verifies the full roundtrip conversion works correctly for negative numbers.
+    /// </summary>
+    [TestMethod]
+    public void RoundTrip_NegativeNumericsToBouncyToHexToNumerics_PreservesValue()
+    {
+        // Arrange
+        var numericsOriginal = NMath.BigInteger.Parse("-12345678901234567890123456789012345678901234567890");
+
+        // Act
+        var bouncy = numericsOriginal.ToBigBouncy();
+        var hex = bouncy.ToHex();
+        // Specify Signed to correctly interpret the high bit as a sign bit
+        var numericsResult = hex.ToBigInteger(HexSignedness.Signed, HexEndianness.BigEndian);
+
+        // Assert
+        Assert.AreEqual(numericsOriginal, numericsResult);
+    }
+
+    /// <summary>
+    /// Tests that converting from .NET BigInteger to Hex (via BouncyCastle) and back to .NET BigInteger works correctly with numbers that have the high bit set.
+    /// This test verifies the conversion handles large numbers correctly.
+    /// </summary>
+    [TestMethod]
+    public void RoundTrip_NumericsWithHighBitToHexAndBack_PreservesValue()
+    {
+        // Arrange - 2^200 + 1, which has the high bit set
+        var numericsOriginal = NMath.BigInteger.Parse("1606938044258990275541962092341162602522202993782792835301376");
+
+        // Act
+        var bouncy = numericsOriginal.ToBigBouncy();
+        var hex = bouncy.ToHex();
+        var numericsResult = hex.ToBigInteger();
+
+        // Assert
+        Assert.AreEqual(numericsOriginal, numericsResult);
     }
 
 }
