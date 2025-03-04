@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace Evoq.Ethereum.RLP;
 
@@ -175,6 +177,23 @@ public static class RlpTestCases
                 new byte[] { 0x07, 0x08, 0x09, 0x0a }
             },
             "0xcd0182020383040506840708090a"
+        ),
+
+        [20] = new(
+            "Basic Ethereum transaction (legacy format)",
+            "Tests the RLP encoding of a legacy Ethereum transaction",
+            new object[] {
+                42UL, // nonce
+                BigInteger.Parse("30000000000"), // gasPrice (30 Gwei)
+                21000UL, // gasLimit
+                CreateAddressBytes(20), // to
+                BigInteger.Parse("1000000000000000000"), // value (1 ETH)
+                Array.Empty<byte>(), // data
+                27UL, // v
+                new byte[] { 0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef }, // r
+                new byte[] { 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10 }  // s
+            },
+            "0xf83c2a8506fc23ac00825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a7640000801b881234567890abcdef88fedcba9876543210"
         )
     };
 
@@ -184,6 +203,26 @@ public static class RlpTestCases
         for (int i = 0; i < length; i++)
         {
             result[i] = (byte)(i % 256);
+        }
+        return result;
+    }
+
+    private static byte[] CreateBytes(int length, byte startValue)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)((i + startValue) % 256);
+        }
+        return result;
+    }
+
+    private static byte[] CreateAddressBytes(int length)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)(i + 1);
         }
         return result;
     }
