@@ -1,8 +1,19 @@
 # Go RLP Encoder Test Rig
 
-This is a simple CLI tool that produces sample RLP encoding outputs using the go-ethereum implementation. It's designed to generate reference outputs for testing RLP encoder implementations in other languages.
+This is a simple tool that produces sample RLP encoding outputs using the go-ethereum implementation. It's designed to generate reference outputs for testing RLP encoder implementations in other languages.
+
+## Building the Binary
+
+You'll need Go installed to build the binary, but once built, the binary can be distributed and used without Go:
+
+```bash
+# Build the binary
+go build -o grlp main.go
+```
 
 ## Installation
+
+To build the binary, you need the go-ethereum dependency:
 
 ```bash
 go get github.com/ethereum/go-ethereum
@@ -10,7 +21,23 @@ go get github.com/ethereum/go-ethereum
 
 ## Usage
 
-Run the tool with a test case number:
+### Using the Binary
+
+Once built, you can use the binary directly:
+
+```bash
+./grlp --test <number>
+```
+
+Or run the test script to generate all test cases:
+
+```bash
+./run_all_tests.sh
+```
+
+### Using Go Directly (Development)
+
+During development, you can also run without building:
 
 ```bash
 go run main.go --test <number>
@@ -49,7 +76,7 @@ Where `<number>` is a test case number from 1 to 25.
 ## Example
 
 ```bash
-$ go run main.go --test 3
+$ ./grlp --test 3
 0x8b68656c6c6f20776f726c64
 ```
 

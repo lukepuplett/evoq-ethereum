@@ -8,7 +8,7 @@ echo ""
 
 for i in {1..25}
 do
-    result=$(go run main.go --test $i)
+    result=$(./grlp --test $i)
     echo "// Test Case $i"
     echo "// $(grep -A 2 "case $i:" main.go | tail -n +2 | head -n 1 | sed 's/\/\/ //')"
     echo "var testCase${i}Output = \"$result\";"
