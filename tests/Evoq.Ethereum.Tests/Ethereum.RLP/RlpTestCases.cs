@@ -248,6 +248,30 @@ public static class RlpTestCases
                 Array.Empty<byte>() // data (empty)
             },
             "0xe9018504a817c80082520894000102030405060708090a0b0c0d0e0f101112138806f05b59d3b2000080"
+        ),
+
+        [23] = new(
+            "Contract creation transaction",
+            "Tests the RLP encoding of a contract creation transaction (no 'to' address)",
+            // Create a list of objects that matches the ContractCreationTx structure
+            new List<object>
+            {
+                0UL, // nonce
+                new BigInteger("50000000000"), // gasPrice (50 Gwei)
+                500000UL, // gasLimit
+                new BigInteger("0"), // value (0 ETH)
+                // Contract bytecode
+                new byte[]
+                {
+                    0x60, 0x80, 0x60, 0x40, 0x52, // PUSH1 80 PUSH1 40 MSTORE
+                    0x60, 0x0a, 0x60, 0x00, 0x55, // PUSH1 0a PUSH1 00 SSTORE (stores 10 at storage slot 0)
+                    0x60, 0x00, 0x80, 0xfd // PUSH1 00 DUP1 REVERT
+                },
+                28UL, // v
+                HexToByteArray("9876543210abcdef"), // r
+                HexToByteArray("fedcba0987654321")  // s
+            },
+            "0xee80850ba43b74008307a120808e6080604052600a600055600080fd1c889876543210abcdef88fedcba0987654321"
         )
     };
 
