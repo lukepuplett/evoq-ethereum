@@ -272,6 +272,31 @@ public static class RlpTestCases
                 HexToByteArray("fedcba0987654321")  // s
             },
             "0xee80850ba43b74008307a120808e6080604052600a600055600080fd1c889876543210abcdef88fedcba0987654321"
+        ),
+
+        [24] = new(
+            "Ethereum block header",
+            "Tests the RLP encoding of an Ethereum block header",
+            // Create a list of objects that matches the BlockHeader structure
+            new List<object>
+            {
+                CreateSequentialBytes(32, 1), // parentHash
+                CreateSequentialBytes(32, 2), // uncleHash
+                CreateSequentialBytes(20, 1), // coinbase
+                CreateSequentialBytes(32, 3), // root
+                CreateSequentialBytes(32, 4), // txHash
+                CreateSequentialBytes(32, 5), // receiptHash
+                new byte[256], // bloom (all zeros)
+                new BigInteger("2000000"), // difficulty
+                new BigInteger("12345"), // number
+                15000000UL, // gasLimit
+                12500000UL, // gasUsed
+                1618203344UL, // time
+                Encoding.ASCII.GetBytes("Ethereum"), // extra
+                CreateSequentialBytes(32, 6), // mixDigest
+                CreateSequentialBytes(8, 1)   // nonce
+            },
+            "0xf90204a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20a002030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021940102030405060708090a0b0c0d0e0f1011121314a0030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122a00405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223a005060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000831e848082303983e4e1c083bebc20846073d2d088457468657265756da0060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425880102030405060708"
         )
     };
 
@@ -281,6 +306,16 @@ public static class RlpTestCases
         for (int i = 0; i < length; i++)
         {
             result[i] = (byte)(i % 256);
+        }
+        return result;
+    }
+
+    private static byte[] CreateSequentialBytes(int length, int startValue)
+    {
+        var result = new byte[length];
+        for (int i = 0; i < length; i++)
+        {
+            result[i] = (byte)((i + startValue) % 256);
         }
         return result;
     }
