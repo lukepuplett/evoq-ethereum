@@ -7,8 +7,9 @@ namespace Evoq.Ethereum.Crypto;
 /// </summary>
 public class TransactionSigner
 {
-    private readonly ISignBytes _signer;
+    private readonly ITransactionSigner _signer;
     private readonly IRlpTransactionEncoder _encoder;
+    private readonly ITransactionHasher _hasher;
     private readonly byte[] _privateKey;
 
     //
@@ -18,11 +19,17 @@ public class TransactionSigner
     /// </summary>
     /// <param name="signer">The signer to use.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="hasher">The hasher to use.</param>
     /// <param name="privateKey">The private key to use.</param>
-    public TransactionSigner(ISignBytes signer, IRlpTransactionEncoder encoder, byte[] privateKey)
+    public TransactionSigner(
+        ITransactionSigner signer,
+        IRlpTransactionEncoder encoder,
+        ITransactionHasher hasher,
+        byte[] privateKey)
     {
         _signer = signer;
         _encoder = encoder;
+        _hasher = hasher;
         _privateKey = privateKey;
     }
 
@@ -35,7 +42,14 @@ public class TransactionSigner
     /// <returns>The signature.</returns>
     public RsvSignature GetSignature(Transaction transaction)
     {
-        return _signer.Sign(_encoder.Encode(transaction));
+        var hash = _hasher.Hash(_encoder.Encode(transaction));
+
+        return _signer.Sign(new SigningPayload
+        {
+            Data = hash.ToByteArray(),
+            IsEIP155 = true,
+            ChainId = null
+        });
     }
 
     /// <summary>
@@ -55,9 +69,15 @@ public class TransactionSigner
     /// <returns>The signature.</returns>
     public RsvSignature GetSignature(TransactionEIP1559 transaction)
     {
-        return _signer.Sign(_encoder.Encode(transaction));
-    }
+        var hash = _hasher.Hash(_encoder.Encode(transaction));
 
+        return _signer.Sign(new SigningPayload
+        {
+            Data = hash.ToByteArray(),
+            IsEIP155 = true,
+            ChainId = null
+        });
+    }
     /// <summary>
     /// Signs the given transaction.
     /// </summary>
@@ -77,6 +97,10 @@ public class TransactionSigner
     /// <returns>The TransactionSigner instance.</returns>
     public static TransactionSigner Create(byte[] privateKey)
     {
-        return new TransactionSigner(new Secp256k1Signer(privateKey), new RlpEncoder(), privateKey);
+        return new TransactionSigner(
+            new Secp256k1Signer(privateKey),
+            new RlpEncoder(),
+            new TransactionHasher(),
+            privateKey);
     }
 }

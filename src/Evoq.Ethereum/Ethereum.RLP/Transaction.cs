@@ -1,4 +1,5 @@
 using System;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Math;
 
@@ -57,8 +58,8 @@ public struct Transaction
         BigInteger value,
         byte[] data,
         byte v,
-        byte[] r,
-        byte[] s)
+        Hex r,
+        Hex s)
         : this(nonce, gasPrice, gasLimit, to, value, data, new RsvSignature(v, r, s))
     {
     }
@@ -106,21 +107,6 @@ public struct Transaction
     /// <returns>True if the transaction is signed; otherwise, false.</returns>
     public bool IsSigned => Signature.HasValue;
 
-    /// <summary>
-    /// Gets the V component of the signature, or 0 if the transaction is unsigned.
-    /// </summary>
-    public byte V => Signature?.V ?? 0;
-
-    /// <summary>
-    /// Gets the R component of the signature, or empty array if the transaction is unsigned.
-    /// </summary>
-    public byte[] R => Signature?.R ?? Array.Empty<byte>();
-
-    /// <summary>
-    /// Gets the S component of the signature, or empty array if the transaction is unsigned.
-    /// </summary>
-    public byte[] S => Signature?.S ?? Array.Empty<byte>();
-
     //
 
     /// <summary>
@@ -148,7 +134,7 @@ public struct Transaction
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(byte v, byte[] r, byte[] s)
+    public Transaction WithSignature(byte v, Hex r, Hex s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
@@ -161,7 +147,7 @@ public struct Transaction
     /// <param name="s">The S component of the signature.</param>
     /// <param name="chainId">The chain ID for EIP-155 replay protection.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignatureFromRecoveryId(byte recoveryId, byte[] r, byte[] s, ulong chainId = 0)
+    public Transaction WithSignatureFromRecoveryId(byte recoveryId, Hex r, Hex s, ulong chainId = 0)
     {
         return WithSignature(RsvSignature.FromRecoveryId(recoveryId, r, s, chainId));
     }

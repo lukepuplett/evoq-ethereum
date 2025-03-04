@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Evoq.Blockchain;
 using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;
@@ -320,6 +321,7 @@ public class RlpEncoder : IRlpTransactionEncoder
             string str => Encode(str),
             Transaction tx => Encode(tx),
             TransactionEIP1559 tx1559 => Encode(tx1559),
+            Hex hex => Encode(hex.ToByteArray()),
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };
     }

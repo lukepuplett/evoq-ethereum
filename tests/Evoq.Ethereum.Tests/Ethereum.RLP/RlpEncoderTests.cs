@@ -3,6 +3,7 @@ namespace Evoq.Ethereum.RLP;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Org.BouncyCastle.Math;
@@ -11,6 +12,10 @@ using Org.BouncyCastle.Math;
 public class RlpEncoderTests
 {
     private readonly RlpEncoder _encoder = new RlpEncoder();
+
+    private static readonly Hex zeroHex = Hex.Parse("0x00");
+    private static readonly Hex oneHex = Hex.Parse("0x01");
+    private static readonly Hex twoHex = Hex.Parse("0x02");
 
     [TestMethod]
     public void Encode_EmptyString_ReturnsCorrectEncoding()
@@ -311,7 +316,7 @@ public class RlpEncoderTests
             value: new BigInteger("1000000000000000000"), // 1 ETH
             data: new byte[0],
             accessList: Array.Empty<AccessListItem>(),
-            new RsvSignature(0, new byte[] { 0x01 }, new byte[] { 0x02 })
+            new RsvSignature(0, oneHex, twoHex)
         );
 
         // Encode the transaction
@@ -339,7 +344,7 @@ public class RlpEncoderTests
             value: new BigInteger("1000000000000000000"), // 1 ETH
             data: new byte[0],
             accessList: Array.Empty<AccessListItem>(),
-            new RsvSignature(27, new byte[] { 0x01 }, new byte[] { 0x02 })
+            new RsvSignature(27, oneHex, twoHex)
         );
 
         // Encode the transaction for signing (should exclude signature components)
@@ -367,7 +372,7 @@ public class RlpEncoderTests
             to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
             value: new BigInteger("1000000000000000000"), // 1 ETH
             data: new byte[0],
-            new RsvSignature(27, new byte[] { 0x01 }, new byte[] { 0x02 })
+            new RsvSignature(27, oneHex, twoHex)
         );
 
         // Encode the transaction for signing with chainId = 1 (Ethereum mainnet)
@@ -399,7 +404,7 @@ public class RlpEncoderTests
         );
 
         // Create the same transaction but with signature
-        var signedTx = unsignedTx.WithSignature(27, new byte[] { 0x01 }, new byte[] { 0x02 });
+        var signedTx = unsignedTx.WithSignature(27, oneHex, twoHex);
 
         // Encode both transactions
         byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
@@ -429,7 +434,7 @@ public class RlpEncoderTests
         );
 
         // Create the same transaction but with signature
-        var signedTx = unsignedTx.WithSignature(0, new byte[] { 0x01 }, new byte[] { 0x02 });
+        var signedTx = unsignedTx.WithSignature(0, oneHex, twoHex);
 
         // Encode both transactions
         byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
@@ -485,8 +490,8 @@ public class RlpEncoderTests
             },
             signature: new RsvSignature(
                 v: 1,
-                r: HexToByteArray("1234567890abcdef"),
-                s: HexToByteArray("fedcba9876543210")
+                r: Hex.Parse("1234567890abcdef"),
+                s: Hex.Parse("fedcba9876543210")
             )
         );
 

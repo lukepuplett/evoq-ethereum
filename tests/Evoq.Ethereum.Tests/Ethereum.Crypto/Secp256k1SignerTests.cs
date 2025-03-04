@@ -1,7 +1,6 @@
-using System;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.Tests.Crypto;
 
@@ -30,19 +29,25 @@ public class Secp256k1SignerTests
         //
         // (37, 18515461264373351373200002665853028612451056578545711640558177340181847433846, 46948507304638947509940763649030358759909902576025900602547168820602576006531)
         //
-        var expectedR = Hex.Parse("18515461264373351373200002665853028612451056578545711640558177340181847433846");
-        var expectedS = Hex.Parse("46948507304638947509940763649030358759909902576025900602547168820602576006531");
+        var expectedR = new BigInteger("18515461264373351373200002665853028612451056578545711640558177340181847433846");
+        var expectedS = new BigInteger("46948507304638947509940763649030358759909902576025900602547168820602576006531");
         var expectedV = 37;
 
-        // Create signer and sign
+        // Create signer and payload
         var signer = new Secp256k1Signer(privateKey.ToByteArray());
+        var payload = new SigningPayload
+        {
+            Data = messageHash.ToByteArray(),
+            IsEIP155 = true,
+            ChainId = 1
+        };
 
         // Act
-        var signature = signer.Sign(messageHash.ToByteArray());
+        var signature = signer.Sign(payload);
 
         // Assert
-        Assert.AreEqual(expectedR, new Hex(signature.R), "R component does not match");
-        Assert.AreEqual(expectedS, new Hex(signature.S), "S component does not match");
+        Assert.AreEqual(expectedR.ToHex(), signature.R, "R component does not match");
+        Assert.AreEqual(expectedS.ToHex(), signature.S, "S component does not match");
         Assert.AreEqual(expectedV, signature.V, "V component does not match");
     }
 

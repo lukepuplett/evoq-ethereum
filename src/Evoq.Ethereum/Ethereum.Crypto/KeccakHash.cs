@@ -1,3 +1,4 @@
+using Evoq.Blockchain;
 using Org.BouncyCastle.Crypto.Digests;
 
 namespace Evoq.Ethereum.Crypto;
@@ -22,4 +23,30 @@ public static class KeccakHash
 
         return output;
     }
+}
+
+/// <summary>
+/// Hashes a transaction.
+/// </summary>
+public interface ITransactionHasher
+{
+    /// <summary>
+    /// Hashes the given encoded transaction.
+    /// </summary>
+    /// <param name="encodedTransaction">The encoded transaction.</param>
+    /// <returns>The hash.</returns>
+    Hex Hash(byte[] encodedTransaction);
+}
+
+/// <summary>
+/// Default implementation of ITransactionHasher.
+/// </summary>
+public class TransactionHasher : ITransactionHasher
+{
+    /// <summary>
+    /// Hashes the given encoded transaction.
+    /// </summary>
+    /// <param name="encodedTransaction">The encoded transaction.</param>
+    /// <returns>The hash.</returns>
+    public Hex Hash(byte[] encodedTransaction) => new Hex(KeccakHash.ComputeHash(encodedTransaction));
 }

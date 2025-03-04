@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Math;
 
@@ -189,8 +190,8 @@ public static class RlpTestCases
                 data: Array.Empty<byte>(),
                 new RsvSignature(
                     v: 27,
-                    r: HexToByteArray("1234567890abcdef"),
-                    s: HexToByteArray("fedcba9876543210")
+                    r: Hex.Parse("1234567890abcdef"),
+                    s: Hex.Parse("fedcba9876543210")
                 )
             ),
             "0xf83c2a8506fc23ac00825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a7640000801b881234567890abcdef88fedcba9876543210"
@@ -221,13 +222,13 @@ public static class RlpTestCases
                         HexToByteArray("0102030405060708090a0b0c0d0e0f1011121314"), // address
                         new List<object>
                         {
-                            HexToByteArray("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20") // storage key
+                            Hex.Parse("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20") // storage key
                         }
                     }
                 },
                 1UL, // v
-                HexToByteArray("1234567890abcdef"), // r
-                HexToByteArray("fedcba9876543210")  // s
+                Hex.Parse("1234567890abcdef"), // r
+                Hex.Parse("fedcba9876543210")  // s
             },
             "0xf880017b8477359400850ba43b7400825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a764000084cafebabef838f7940102030405060708090a0b0c0d0e0f1011121314e1a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2001881234567890abcdef88fedcba9876543210"
         ),
