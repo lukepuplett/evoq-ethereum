@@ -9,6 +9,15 @@ You'll need Go installed to build the binary, but once built, the binary can be 
 ```bash
 # Build the binary
 go build -o grlp main.go
+# Make it executable
+chmod +x grlp
+```
+
+Alternatively, you can use the provided build script:
+
+```bash
+chmod +x build.sh
+./build.sh
 ```
 
 ## Installation
@@ -32,8 +41,15 @@ Once built, you can use the binary directly:
 Or run the test script to generate all test cases:
 
 ```bash
+chmod +x run_all_tests.sh
 ./run_all_tests.sh
 ```
+
+The test script will automatically:
+1. Check if the `grlp` binary exists
+2. If not, attempt to build it
+3. If building fails, fall back to using `go run` directly
+4. Generate all test cases
 
 ### Using Go Directly (Development)
 
@@ -79,6 +95,10 @@ Where `<number>` is a test case number from 1 to 25.
 $ ./grlp --test 3
 0x8b68656c6c6f20776f726c64
 ```
+
+## Distribution
+
+Once the `grlp` binary is built, it can be distributed and used on compatible systems without requiring Go to be installed. This makes it easier to run the RLP encoding tests in environments where installing Go is not practical.
 
 ## RLP Encoding Rules
 
