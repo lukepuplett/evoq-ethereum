@@ -3,6 +3,7 @@ namespace Evoq.Ethereum.RLP;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Evoq.Ethereum.Crypto;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Org.BouncyCastle.Math;
 
