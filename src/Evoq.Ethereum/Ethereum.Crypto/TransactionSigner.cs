@@ -1,4 +1,6 @@
+using System;
 using Evoq.Ethereum.RLP;
+using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.Crypto;
 
@@ -47,7 +49,7 @@ public class TransactionSigner
         return _signer.Sign(new SigningPayload
         {
             Data = hash.ToByteArray(),
-            IsEIP155 = true,
+            IsEIP155 = false,
             ChainId = null
         });
     }
@@ -69,13 +71,18 @@ public class TransactionSigner
     /// <returns>The signature.</returns>
     public RsvSignature GetSignature(TransactionEIP1559 transaction)
     {
+        if (transaction.ChainId < 0)
+        {
+            throw new ArgumentException("ChainId must be greater than 0", nameof(transaction));
+        }
+
         var hash = _hasher.Hash(_encoder.Encode(transaction));
 
         return _signer.Sign(new SigningPayload
         {
             Data = hash.ToByteArray(),
             IsEIP155 = true,
-            ChainId = null
+            ChainId = BigInteger.ValueOf((long)transaction.ChainId)
         });
     }
     /// <summary>

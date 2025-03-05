@@ -1,5 +1,5 @@
 using System;
-using Evoq.Blockchain;
+using System.Linq;
 using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Math;
 
@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.RLP;
 /// <summary>
 /// Represents an Ethereum transaction.
 /// </summary>
-public struct TransactionEIP1559
+public struct TransactionEIP1559 : ITransactionFeatures
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct.
@@ -72,9 +72,9 @@ public struct TransactionEIP1559
         BigInteger value,
         byte[] data,
         AccessListItem[]? accessList,
-        byte v,
-        Hex r,
-        Hex s)
+        BigInteger v,
+        BigInteger r,
+        BigInteger s)
         : this(chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, new RsvSignature(v, r, s))
     {
     }
@@ -135,7 +135,17 @@ public struct TransactionEIP1559
     /// Determines whether this transaction is signed.
     /// </summary>
     /// <returns>True if the transaction is signed; otherwise, false.</returns>
-    public bool IsSigned => Signature.HasValue;
+    public bool IsSigned(out RsvSignature signature)
+    {
+        if (this.Signature.HasValue)
+        {
+            signature = this.Signature.Value;
+            return true;
+        }
+
+        signature = default;
+        return false;
+    }
 
     //
 
@@ -167,22 +177,9 @@ public struct TransactionEIP1559
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignature(byte v, Hex r, Hex s)
+    public TransactionEIP1559 WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(new RsvSignature(v, r, s));
-    }
-
-    /// <summary>
-    /// Creates a signed transaction by adding a signature created from a recovery ID.
-    /// </summary>
-    /// <param name="recoveryId">The recovery ID (0 or 1).</param>
-    /// <param name="r">The R component of the signature.</param>
-    /// <param name="s">The S component of the signature.</param>
-    /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignatureFromRecoveryId(byte recoveryId, Hex r, Hex s)
-    {
-        // For EIP-1559, the v value is just the recovery ID (0 or 1)
-        return WithSignature(recoveryId, r, s);
     }
 
     /// <summary>
@@ -237,5 +234,49 @@ public struct TransactionEIP1559
             accessList,
             null // No signature
         );
+    }
+
+    /// <summary>
+    /// Gets the features of this transaction.
+    /// </summary>  
+    /// <returns>The transaction features as flags.</returns>
+    public TransactionFeatures GetFeatures(ulong? _ = null)
+    {
+        var features = TransactionFeatures.TypedTransaction | TransactionFeatures.FeeMarket;
+
+        // EIP-1559 always has EIP-155 replay protection via the chain ID field
+        features |= TransactionFeatures.EIP155ReplayProtection;
+
+        // Check if signed
+        if (this.IsSigned(out var _))
+        {
+            features |= TransactionFeatures.Signed;
+        }
+
+        // Check for access list
+        if (this.AccessList != null && this.AccessList.Length > 0)
+        {
+            features |= TransactionFeatures.AccessList;
+        }
+
+        // Check for contract creation
+        if (this.To == null || this.To.Length == 0 || this.To.All(b => b == 0))
+        {
+            features |= TransactionFeatures.ContractCreation;
+        }
+
+        // Check for zero value
+        if (this.Value.SignValue == 0)
+        {
+            features |= TransactionFeatures.ZeroValue;
+        }
+
+        // Check for data payload
+        if (this.Data != null && this.Data.Length > 0)
+        {
+            features |= TransactionFeatures.HasData;
+        }
+
+        return features;
     }
 }

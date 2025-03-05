@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;
@@ -14,14 +15,17 @@ public class RlpEncoder : IRlpTransactionEncoder
 {
     /// <summary>
     /// Encodes an EIP-1559 transaction into RLP format.
+    /// EIP-1559 introduced a new transaction type (type 2) with a fee market mechanism.
     /// </summary>
     /// <param name="tx">The transaction to encode.</param>
     /// <returns>The RLP encoded transaction.</returns>
     public byte[] Encode(TransactionEIP1559 tx)
     {
-        // Check if To is null or an array of all zeros
+        // Check if To is null or an array of all zeros (indicating contract creation)
         bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
 
+        // Validate that the transaction has required fields
+        // EIP-1559 transactions must have chainId, fee parameters, and gas limit
         if (
             tx.ChainId == 0 ||
             (tx.MaxPriorityFeePerGas.SignValue == 0 && tx.MaxFeePerGas.SignValue == 0) ||
@@ -30,38 +34,77 @@ public class RlpEncoder : IRlpTransactionEncoder
             throw new ArgumentException("Transaction cannot be empty or invalid.");
         }
 
+        // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, to, value, data, access_list, signature_y_parity, signature_r, signature_s]
+
         // For EIP-1559 transactions, we need to:
         // 1. Start with the transaction type byte (0x02)
         // 2. RLP encode the transaction fields as a list
 
         // Create the list of fields to encode
+        // IMPORTANT: This order is mandatory and must not be changed
+        // EIP-1559 defines this exact sequence for transaction encoding
         var fields = new List<object>
         {
-            tx.ChainId,
-            tx.Nonce,
-            tx.MaxPriorityFeePerGas,
-            tx.MaxFeePerGas,
-            tx.GasLimit,
-            tx.To!,
-            tx.Value,
-            tx.Data,
+            tx.ChainId,              // Chain ID is now a required field in the transaction itself
+                                     // This is different from legacy transactions where chainId was optional
+                                     // and encoded in the v value for EIP-155
+            
+            tx.Nonce,                // Transaction sequence number from the sender (prevents replay attacks)
+            
+            tx.MaxPriorityFeePerGas, // Max fee per gas the sender is willing to give to miners as a tip
+                                     // This is a new field introduced in EIP-1559
+                                     // Replaces the single gasPrice field from legacy transactions
+            
+            tx.MaxFeePerGas,         // Max total fee per gas the sender is willing to pay
+                                     // This includes both the base fee (burned) and priority fee (to miners)
+                                     // Another new field introduced in EIP-1559
+            
+            tx.GasLimit,             // Maximum gas units allowed for this transaction
+                                     // Same as in legacy transactions
+            
+            tx.To!,                  // Recipient address (or empty for contract creation)
+                                     // Same as in legacy transactions
+            
+            tx.Value,                // Amount of Ether to transfer
+                                     // Same as in legacy transactions
+            
+            tx.Data,                 // Transaction payload data (or contract initialization code)
+                                     // Same as in legacy transactions
+            
+            // Access list (EIP-2930 feature included in EIP-1559)
+            // This allows specifying storage slots and addresses the transaction will access
+            // to reduce gas costs for accessing them during execution
             EncodeAccessList(tx.AccessList)
         };
 
         // If the transaction is signed, include signature components
-        if (tx.Signature.HasValue)
+        if (tx.IsSigned(out var signature))
         {
-            fields.Add(tx.Signature.Value.V);
-            fields.Add(tx.Signature.Value.R);
-            fields.Add(tx.Signature.Value.S);
+            // Use the new methods from RsvSignature to get the appropriate y-parity value
+            // This simplifies the logic and centralizes the signature format handling
+            byte yParity = signature.GetYParity(tx);
+
+            // Add y_parity (0 or 1) - this will be minimally encoded
+            fields.Add(yParity);
+
+            // R component
+            fields.Add(signature.R);
+
+            // S component
+            fields.Add(signature.S);
         }
+        // NOTE: Unlike legacy transactions, EIP-1559 does not need empty r and s placeholders
+        // for unsigned transactions because the chain ID is always included in the transaction fields
 
         // RLP encode the fields
+        // This creates the payload portion of the EIP-1559 transaction
         byte[] rlpEncoded = EncodeList(fields);
 
         // Prepend the transaction type byte (0x02 for EIP-1559)
+        // EIP-1559 transactions are identified by this leading byte
+        // This is different from legacy transactions which don't have a type prefix
         byte[] result = new byte[rlpEncoded.Length + 1];
-        result[0] = 0x02;
+        result[0] = 0x02;  // Type identifier for EIP-1559 transactions
         Array.Copy(rlpEncoded, 0, result, 1, rlpEncoded.Length);
 
         return result;
@@ -75,9 +118,11 @@ public class RlpEncoder : IRlpTransactionEncoder
     /// <returns>The RLP encoded transaction.</returns>
     public byte[] Encode(Transaction tx, ulong chainId = 0)
     {
-        // Check if To is null or an array of all zeros
+        // Check if To is null or an array of all zeros (indicating contract creation)
         bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
 
+        // Validate that the transaction has at least some data
+        // A completely empty transaction is invalid in Ethereum
         if (
             tx.Nonce == 0 &&
             tx.GasPrice.SignValue == 0 &&
@@ -89,33 +134,61 @@ public class RlpEncoder : IRlpTransactionEncoder
             throw new ArgumentException("Transaction cannot be empty or invalid.");
         }
 
+        // Create a list with the basic transaction fields in the order specified by Ethereum protocol
+        // IMPORTANT: This order is mandatory and must not be changed
+        // The Ethereum Yellow Paper defines this exact sequence for transaction encoding
         var fields = new List<object>
         {
-            tx.Nonce,
-            tx.GasPrice,
-            tx.GasLimit,
-            tx.To!,
-            tx.Value,
-            tx.Data
+            tx.Nonce,    // Transaction sequence number from the sender (prevents replay attacks)
+            tx.GasPrice, // Price per gas unit the sender is willing to pay
+            tx.GasLimit, // Maximum gas units allowed for this transaction
+            tx.To!,      // Recipient address (or empty for contract creation)
+            tx.Value,    // Amount of Ether to transfer
+            tx.Data      // Transaction payload data (or contract initialization code)
         };
 
-        if (tx.Signature.HasValue)
+        // Handle signature components based on whether the transaction is signed or not
+        if (tx.IsSigned(out var signature))
         {
-            // For a signed transaction, include the signature components
-            fields.Add(tx.Signature.Value.V);
+            // For signed transactions, append the signature components (v, r, s)
+            // NOTE: The order here is v, r, s (not r, s, v) as per Ethereum specification
 
-            // Add R and S directly as they are now byte arrays
-            fields.Add(tx.Signature.Value.R);
-            fields.Add(tx.Signature.Value.S);
+            // Use the V value directly for legacy transactions
+            // The RsvSignature struct already handles the correct format for V
+            fields.Add(signature.V);
+
+            // R component
+            fields.Add(signature.R);
+
+            // S component
+            fields.Add(signature.S);
         }
         else if (chainId > 0)
         {
-            // For an unsigned transaction with EIP-155 replay protection
+            // For unsigned transactions with EIP-155 replay protection
+            // This is used when preparing a transaction for signing
+
+            // Add the chain ID as the v value
+            // This implements EIP-155 replay protection for unsigned transactions
+            // When the transaction is signed, this chainId will be incorporated into the v value
             fields.Add(chainId);
+
+            // Add empty placeholders for r and s
+            // IMPORTANT: These empty placeholders are REQUIRED by EIP-155 specification
+            // When calculating the transaction hash for signing, EIP-155 requires including:
+            // 1. All transaction fields
+            // 2. The chain ID (as v)
+            // 3. Empty values for r and s
+            // This ensures the signature is bound to a specific chain ID, preventing replay attacks
             fields.Add(new byte[0]); // r placeholder as empty byte array
             fields.Add(new byte[0]); // s placeholder as empty byte array
         }
+        // NOTE: If the transaction is unsigned and chainId is 0, we don't add v, r, s fields
+        // This is for legacy (pre-EIP-155) unsigned transactions
+        // Such transactions are vulnerable to replay attacks across different chains
 
+        // Encode the entire list of fields using RLP encoding
+        // RLP (Recursive Length Prefix) is the standard serialization method in Ethereum
         return EncodeList(fields);
     }
 

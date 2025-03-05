@@ -100,7 +100,7 @@ public class ExtensionsTests
         var bigInteger = new BCMath.BigInteger("123456789");
 
         // Act
-        var hex = bigInteger.ToHex();
+        var hex = bigInteger.ToHexStruct();
 
         // Assert
         Assert.AreEqual("0x075bcd15", hex.ToString());
@@ -122,7 +122,7 @@ public class ExtensionsTests
         var bigInteger = new BCMath.BigInteger("-123456789");
 
         // Act
-        var hex = bigInteger.ToHex();
+        var hex = bigInteger.ToHexStruct();
 
         // Assert
         // When unsigned=true (default), negative numbers are treated as positive
@@ -145,7 +145,7 @@ public class ExtensionsTests
         var bigInteger = new BCMath.BigInteger("-123456789");
 
         // Act
-        var hex = bigInteger.ToHex(unsigned: false);
+        var hex = bigInteger.ToHexStruct(unsigned: false);
 
         // Assert
         // For negative numbers with signed representation, the most significant bit is set
@@ -167,7 +167,7 @@ public class ExtensionsTests
         var bigInteger = new BCMath.BigInteger("340282366920938463463374607431768211457");
 
         // Act
-        var hex = bigInteger.ToHex();
+        var hex = bigInteger.ToHexStruct();
 
         // Assert
         Assert.AreEqual("0x0100000000000000000000000000000001", hex.ToString());
@@ -365,7 +365,7 @@ public class ExtensionsTests
         var expectedNumerics = NMath.BigInteger.Parse("12345678901234567890123456789012345678901234567890");
 
         // Act
-        var hex = bouncyOriginal.ToHex();
+        var hex = bouncyOriginal.ToHexStruct();
         var numericsResult = hex.ToBigInteger();
 
         // Assert
@@ -384,7 +384,7 @@ public class ExtensionsTests
         var expectedNumerics = NMath.BigInteger.Parse("-12345678901234567890123456789012345678901234567890");
 
         // Act
-        var hex = bouncyOriginal.ToHex();
+        var hex = bouncyOriginal.ToHexStruct();
         // Specify Signed to correctly interpret the high bit as a sign bit
         var numericsResult = hex.ToBigInteger(HexSignedness.Signed, HexEndianness.BigEndian);
 
@@ -404,7 +404,7 @@ public class ExtensionsTests
 
         // Act
         var bouncy = numericsOriginal.ToBigBouncy();
-        var hex = bouncy.ToHex();
+        var hex = bouncy.ToHexStruct();
         var numericsResult = hex.ToBigInteger();
 
         // Assert
@@ -423,7 +423,7 @@ public class ExtensionsTests
 
         // Act
         var bouncy = numericsOriginal.ToBigBouncy();
-        var hex = bouncy.ToHex();
+        var hex = bouncy.ToHexStruct();
         // Specify Signed to correctly interpret the high bit as a sign bit
         var numericsResult = hex.ToBigInteger(HexSignedness.Signed, HexEndianness.BigEndian);
 
@@ -443,7 +443,7 @@ public class ExtensionsTests
 
         // Act
         var bouncy = numericsOriginal.ToBigBouncy();
-        var hex = bouncy.ToHex();
+        var hex = bouncy.ToHexStruct();
         var numericsResult = hex.ToBigInteger();
 
         // Assert

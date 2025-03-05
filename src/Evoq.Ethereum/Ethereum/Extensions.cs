@@ -47,7 +47,7 @@ public static class BouncyBigIntegerExtensions
     /// </list>
     /// </param>
     /// <returns>A <see cref="Hex"/> value representing the <see cref="BCMath.BigInteger"/>.</returns>
-    public static Hex ToHex(this BCMath.BigInteger value, bool unsigned = true) =>
+    public static Hex ToHexStruct(this BCMath.BigInteger value, bool unsigned = true) =>
         new Hex(unsigned ? value.ToByteArrayUnsigned() : value.ToByteArray());
 
     /// <summary>
@@ -84,6 +84,80 @@ public static class BouncyBigIntegerExtensions
         }
 
         return new NMath.BigInteger(bytes);
+    }
+
+    /// <summary>
+    /// Determines whether the first <see cref="BCMath.BigInteger"/> value is greater than the second.
+    /// </summary>
+    /// <param name="left">The first value to compare.</param>
+    /// <param name="right">The second value to compare.</param>
+    /// <returns>true if <paramref name="left"/> is greater than <paramref name="right"/>; otherwise, false.</returns>
+    public static bool IsGreaterThan(this BCMath.BigInteger left, BCMath.BigInteger right)
+    {
+        return left.CompareTo(right) > 0;
+    }
+
+    /// <summary>
+    /// Determines whether the first <see cref="BCMath.BigInteger"/> value is less than the second.
+    /// </summary>
+    /// <param name="left">The first value to compare.</param>
+    /// <param name="right">The second value to compare.</param>
+    /// <returns>true if <paramref name="left"/> is less than <paramref name="right"/>; otherwise, false.</returns>
+    public static bool IsLessThan(this BCMath.BigInteger left, BCMath.BigInteger right)
+    {
+        return left.CompareTo(right) < 0;
+    }
+
+    /// <summary>
+    /// Determines whether the first <see cref="BCMath.BigInteger"/> value is greater than or equal to the second.
+    /// </summary>
+    /// <param name="left">The first value to compare.</param>
+    /// <param name="right">The second value to compare.</param>
+    /// <returns>true if <paramref name="left"/> is greater than or equal to <paramref name="right"/>; otherwise, false.</returns>
+    public static bool IsGreaterThanOrEqual(this BCMath.BigInteger left, BCMath.BigInteger right)
+    {
+        return left.CompareTo(right) >= 0;
+    }
+
+    /// <summary>
+    /// Determines whether the first <see cref="BCMath.BigInteger"/> value is less than or equal to the second.
+    /// </summary>
+    /// <param name="left">The first value to compare.</param>
+    /// <param name="right">The second value to compare.</param>
+    /// <returns>true if <paramref name="left"/> is less than or equal to <paramref name="right"/>; otherwise, false.</returns>
+    public static bool IsLessThanOrEqual(this BCMath.BigInteger left, BCMath.BigInteger right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
+
+    /// <summary>
+    /// Determines whether the <see cref="BCMath.BigInteger"/> value is zero.
+    /// </summary>
+    /// <param name="value">The value to check.</param>
+    /// <returns>true if <paramref name="value"/> is zero; otherwise, false.</returns>
+    public static bool IsZero(this BCMath.BigInteger value)
+    {
+        return value.CompareTo(BCMath.BigInteger.Zero) == 0;
+    }
+
+    /// <summary>
+    /// Determines whether the <see cref="BCMath.BigInteger"/> value is positive (greater than zero).
+    /// </summary>
+    /// <param name="value">The value to check.</param>
+    /// <returns>true if <paramref name="value"/> is positive; otherwise, false.</returns>
+    public static bool IsPositive(this BCMath.BigInteger value)
+    {
+        return value.CompareTo(BCMath.BigInteger.Zero) > 0;
+    }
+
+    /// <summary>
+    /// Determines whether the <see cref="BCMath.BigInteger"/> value is negative (less than zero).
+    /// </summary>
+    /// <param name="value">The value to check.</param>
+    /// <returns>true if <paramref name="value"/> is negative; otherwise, false.</returns>
+    public static bool IsNegative(this BCMath.BigInteger value)
+    {
+        return value.CompareTo(BCMath.BigInteger.Zero) < 0;
     }
 }
 

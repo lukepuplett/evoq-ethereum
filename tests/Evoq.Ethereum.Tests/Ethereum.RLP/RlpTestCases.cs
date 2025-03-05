@@ -189,9 +189,9 @@ public static class RlpTestCases
                 value: new BigInteger("1000000000000000000"), // 1 ETH
                 data: Array.Empty<byte>(),
                 new RsvSignature(
-                    v: 27,
-                    r: Hex.Parse("1234567890abcdef"),
-                    s: Hex.Parse("fedcba9876543210")
+                    v: Big.TwentySeven,
+                    r: Hex.Parse("1234567890abcdef").ToBigInteger().ToBigBouncy(),
+                    s: Hex.Parse("fedcba9876543210").ToBigInteger().ToBigBouncy()
                 )
             ),
             "0xf83c2a8506fc23ac00825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a7640000801b881234567890abcdef88fedcba9876543210"
@@ -226,9 +226,9 @@ public static class RlpTestCases
                         }
                     }
                 },
-                1UL, // v
-                Hex.Parse("1234567890abcdef"), // r
-                Hex.Parse("fedcba9876543210")  // s
+                Big.One, // v
+                Hex.Parse("1234567890abcdef").ToBigInteger().ToBigBouncy(), // r
+                Hex.Parse("fedcba9876543210").ToBigInteger().ToBigBouncy()  // s
             },
             "0xf880017b8477359400850ba43b7400825208940102030405060708090a0b0c0d0e0f1011121314880de0b6b3a764000084cafebabef838f7940102030405060708090a0b0c0d0e0f1011121314e1a00102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2001881234567890abcdef88fedcba9876543210"
         ),

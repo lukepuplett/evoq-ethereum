@@ -1,5 +1,4 @@
 using System;
-using Evoq.Blockchain;
 using Org.BouncyCastle.Asn1.Sec;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -9,11 +8,40 @@ using Org.BouncyCastle.Math.EC;
 
 namespace Evoq.Ethereum.Crypto;
 
+/// <summary>
+/// A payload to sign.
+/// </summary>
 public class SigningPayload
 {
+    /// <summary>
+    /// Whether the payload is an EIP-155 transaction.
+    /// </summary>
     public bool IsEIP155 { get; set; } = true;
+    /// <summary>
+    /// The data to sign.
+    /// </summary>
     public byte[] Data { get; set; } = Array.Empty<byte>();
-    public long? ChainId { get; set; }
+
+    /// <summary>
+    /// The chain ID.
+    /// </summary>
+    public BigInteger? ChainId { get; set; }
+}
+
+/// <summary>
+/// A static class containing useful BigInteger constants.
+/// </summary>
+public static class Big
+{
+    public static readonly BigInteger Zero = BigInteger.ValueOf(0);
+    public static readonly BigInteger One = BigInteger.ValueOf(1);
+    public static readonly BigInteger Two = BigInteger.ValueOf(2);
+    public static readonly BigInteger Three = BigInteger.ValueOf(3);
+    public static readonly BigInteger Four = BigInteger.ValueOf(4);
+    public static readonly BigInteger Seven = BigInteger.ValueOf(7);
+    public static readonly BigInteger ThirtyFive = Constants.Eip155BaseValue35;
+    public static readonly BigInteger TwentySeven = Constants.LegacyBaseValue27;
+    public static readonly BigInteger TwentyEight = Constants.LegacyVOne28;
 }
 
 /// <summary>
@@ -55,10 +83,6 @@ public interface ITransactionSigner
 public class Secp256k1Signer : ITransactionSigner
 {
     private readonly byte[] _privateKey;
-    private static readonly BigInteger ONE = BigInteger.ValueOf(1);
-    private static readonly BigInteger THREE = BigInteger.ValueOf(3);
-    private static readonly BigInteger FOUR = BigInteger.ValueOf(4);
-    private static readonly BigInteger SEVEN = BigInteger.ValueOf(7);
 
     /// <summary>
     /// Initializes a new instance of the Secp256k1Signer class.
@@ -89,11 +113,7 @@ public class Secp256k1Signer : ITransactionSigner
 
         var (r, s, v) = SignImpl(payload);
 
-        // need to convert r and s to hex values with padding
-        Hex paddedR = r.ToHex(true).ToPaddedHex(32);
-        Hex paddedS = s.ToHex(true).ToPaddedHex(32);
-
-        return new RsvSignature(v, paddedR, paddedS);
+        return new RsvSignature(v, r, s);
     }
 
     [Obsolete("Needs to return a Hex but creating a byte array from ECPoint is not trivial")]
@@ -112,7 +132,7 @@ public class Secp256k1Signer : ITransactionSigner
 
     //
 
-    private (BigInteger R, BigInteger S, byte V) SignImpl(SigningPayload payload)
+    private (BigInteger R, BigInteger S, BigInteger V) SignImpl(SigningPayload payload)
     {
         var payloadBytes = payload.Data;
 
@@ -147,7 +167,9 @@ public class Secp256k1Signer : ITransactionSigner
         // index of the public key that matches the signature; the index is
         // determined by the signer; the signer chooses the public key that
         // matches the signature; the index is either 0 or 1
+
         int recoveryId = -1;
+
         for (int recId = 0; recId < 2; recId++)
         {
             var Q_recovered = RecoverPublicKey(r, s, payloadBytes, recId, domain);
@@ -157,6 +179,7 @@ public class Secp256k1Signer : ITransactionSigner
                 break;
             }
         }
+
         if (recoveryId == -1)
         {
             throw new InvalidOperationException("Could not determine recovery ID.");
@@ -165,24 +188,26 @@ public class Secp256k1Signer : ITransactionSigner
         // Calculate the V value; this is the recovery ID plus 27 for legacy
         // transactions and 35 plus 2 times the chain ID plus the recovery ID
         // for EIP-155 transactions
-        byte v = payload.IsEIP155
-            ? (byte)(35 + 2 * payload.ChainId! + recoveryId)    // EIP-155
-            : (byte)(27 + recoveryId);                          // Legacy
+
+        BigInteger bigRecoveryId = BigInteger.ValueOf(recoveryId);
+        BigInteger v;
+
+        if (payload.IsEIP155)
+        {
+            if (payload.ChainId == null)
+            {
+                throw new ArgumentException("Chain ID is required for EIP-155 signatures", nameof(payload));
+            }
+
+            v = Big.ThirtyFive.Add(payload.ChainId.Multiply(Big.Two)).Add(bigRecoveryId);
+        }
+        else
+        {
+            v = Big.TwentySeven.Add(bigRecoveryId);
+        }
 
         return (r, s, v);
     }
-
-    // private static byte[] To32ByteArray(BigInteger bi)
-    // {
-    //     var bytes = bi.ToByteArrayUnsigned();
-    //     if (bytes.Length > 32)
-    //     {
-    //         throw new InvalidOperationException("BigInteger exceeds 32 bytes.");
-    //     }
-    //     var result = new byte[32];
-    //     Array.Copy(bytes, 0, result, 32 - bytes.Length, bytes.Length);
-    //     return result;
-    // }
 
     private static ECPoint RecoverPublicKey(BigInteger r, BigInteger s, byte[] hash, int recoveryId, ECDomainParameters domain)
     {
@@ -196,13 +221,13 @@ public class Secp256k1Signer : ITransactionSigner
         var x = r;
 
         // Compute y^2 = x^3 + 7 mod p (secp256k1 equation: y^2 = x^3 + ax + b, where a = 0, b = 7)
-        var ySquared = x.ModPow(THREE, p).Add(SEVEN).Mod(p);
+        var ySquared = x.ModPow(Big.Three, p).Add(Big.Seven).Mod(p);
 
         // Compute y using p ≡ 3 mod 4 property: y = (y^2)^((p+1)/4) mod p
-        var y = ySquared.ModPow((p.Add(ONE)).Divide(FOUR), p);
+        var y = ySquared.ModPow((p.Add(Big.One)).Divide(Big.Four), p);
 
         // Choose y based on recoveryId (0 for even, 1 for odd)
-        BigInteger yRecovered = (y.Mod(BigInteger.Two).Equals(BigInteger.Zero) == (recoveryId % 2 == 0)) ? y : p.Subtract(y);
+        BigInteger yRecovered = (y.Mod(Big.Two).Equals(Big.Zero) == (recoveryId % 2 == 0)) ? y : p.Subtract(y);
 
         // Create the point R
         var R = curve.CreatePoint(x, yRecovered);
