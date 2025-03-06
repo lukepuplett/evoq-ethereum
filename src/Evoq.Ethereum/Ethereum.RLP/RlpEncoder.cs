@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
-using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.Transactions;
 using Org.BouncyCastle.Math;
 
@@ -12,7 +11,7 @@ namespace Evoq.Ethereum.RLP;
 /// <summary>
 /// Encodes an object into RLP format.
 /// </summary>
-public class RlpEncoder : IRlpTransactionEncoder
+internal class RlpEncoder : IRlpTransactionEncoder
 {
     /// <summary>
     /// Encodes an EIP-1559 transaction into RLP format.
