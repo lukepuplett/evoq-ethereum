@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
+using Evoq.Ethereum.Transactions;
 using Org.BouncyCastle.Math;
 
 namespace Evoq.Ethereum.RLP;

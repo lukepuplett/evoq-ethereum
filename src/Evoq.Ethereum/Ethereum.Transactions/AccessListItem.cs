@@ -1,6 +1,6 @@
 using System;
 
-namespace Evoq.Ethereum.RLP;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// Represents an item in an EIP-2930 access list.

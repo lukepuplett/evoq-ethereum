@@ -1,12 +1,11 @@
-namespace Evoq.Ethereum.RLP;
-
-using System;
-using System.Collections.Generic;
 using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Evoq.Ethereum.RLP;
+using Evoq.Ethereum.Transactions;
 using Org.BouncyCastle.Math;
+
+namespace Evoq.Ethereum.Tests.Ethereum.RLP;
 
 [TestClass]
 public class RlpEncoderTests

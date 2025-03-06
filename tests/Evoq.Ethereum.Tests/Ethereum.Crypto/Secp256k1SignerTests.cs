@@ -1,9 +1,8 @@
 using Evoq.Blockchain;
-using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Math;
 
-namespace Evoq.Ethereum.Tests.Crypto;
+namespace Evoq.Ethereum.Crypto;
 
 [TestClass]
 public class Secp256k1SignerTests

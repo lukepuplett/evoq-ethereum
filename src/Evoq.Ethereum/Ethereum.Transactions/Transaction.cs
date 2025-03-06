@@ -3,7 +3,7 @@ using System.Linq;
 using Evoq.Ethereum.Crypto;
 using Org.BouncyCastle.Math;
 
-namespace Evoq.Ethereum.RLP;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// Represents a legacy Ethereum transaction (pre-EIP-1559).

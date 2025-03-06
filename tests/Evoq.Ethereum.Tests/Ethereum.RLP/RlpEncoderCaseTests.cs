@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Evoq.Blockchain;
+using Evoq.Ethereum.RLP;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Evoq.Ethereum.RLP;
