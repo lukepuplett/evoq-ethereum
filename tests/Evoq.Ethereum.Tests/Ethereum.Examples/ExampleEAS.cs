@@ -1,9 +1,15 @@
+using Evoq.Blockchain;
+using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.JsonRPC;
+using Microsoft.Extensions.Logging;
+
 namespace Evoq.Ethereum.Examples;
 
 [TestClass]
 public class ExampleEAS
 {
     [TestMethod]
+    [Ignore]
     public void ExampleEAS_CreateWallet()
     {
         // Call the GetSchema method on Ethereum Attestation Service
@@ -46,5 +52,15 @@ public class ExampleEAS
         // We do need to select a HTTP provider, and a JSON-RPC method.
 
 
+        ILoggerFactory? loggerFactory = null;
+        INonceStore? nonceStore = null;
+        Stream? s = null; // TODO / read the ABI from a file.
+
+        var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
+        var sender = new Sender(Hex.Parse("0x1234567890123456789012345678901234567890"), nonceStore!);
+        var contract = new Contract(s!);
+        var contractCaller = ContractCaller.CreateDefault(new Uri("https://mainnet.infura.io/v3/"), sender, loggerFactory!);
+
+        var schemaId = contractCaller.CallAsync(contract, "GetSchema", account, 1, 2, 3);
     }
 }
