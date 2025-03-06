@@ -49,6 +49,42 @@ This package targets .NET Standard 2.1 for maximum compatibility across:
 // Example usage will be added as features are implemented
 ```
 
+## To Do List
+
+### API Validation and Examples
+- [ ] Create sample wallet application (create/sign/submit transactions)
+- [ ] Create smart contract interaction example (deploy and call methods)
+- [ ] Create ERC-20 token transfer example
+- [ ] Create NFT minting example (ERC-721)
+- [ ] Develop integration tests with test networks (Sepolia)
+- [ ] Create CLI tool for common Ethereum operations
+
+### API Design Improvements
+- [ ] Review and refine public API surface
+- [ ] Mark appropriate implementation classes as internal
+- [ ] Create helper methods for common workflows
+- [ ] Improve error handling and messages
+- [ ] Add comprehensive XML documentation
+
+### Core Functionality Testing
+- [ ] Transaction creation, signing, and submission
+- [ ] Gas estimation
+- [ ] Contract deployment
+- [ ] Contract method calls (read and write)
+- [ ] Event log parsing
+- [ ] ABI encoding/decoding
+- [ ] RLP encoding/decoding
+- [ ] Address validation and formatting
+- [ ] Private key management
+- [ ] Nonce management
+- [ ] Fee estimation (EIP-1559)
+
+### Documentation
+- [ ] Add usage examples to README
+- [ ] Create documentation site
+- [ ] Add code samples for common tasks
+- [ ] Document architecture decisions
+
 ## Building
 
 Testing depends on Golang executables which are included in the repository along with their source code:
