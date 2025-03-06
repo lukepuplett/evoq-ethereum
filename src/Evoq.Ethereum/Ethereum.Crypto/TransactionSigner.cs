@@ -10,10 +10,9 @@ namespace Evoq.Ethereum.Crypto;
 /// </summary>
 public class TransactionSigner
 {
-    private readonly ITransactionSigner _signer;
-    private readonly IRlpTransactionEncoder _encoder;
-    private readonly ITransactionHasher _hasher;
-    private readonly byte[] _privateKey;
+    private readonly ISignPayload signer;
+    private readonly IRlpTransactionEncoder encoder;
+    private readonly ITransactionHasher hasher;
 
     //
 
@@ -23,17 +22,14 @@ public class TransactionSigner
     /// <param name="signer">The signer to use.</param>
     /// <param name="encoder">The encoder to use.</param>
     /// <param name="hasher">The hasher to use.</param>
-    /// <param name="privateKey">The private key to use.</param>
     public TransactionSigner(
-        ITransactionSigner signer,
+        ISignPayload signer,
         IRlpTransactionEncoder encoder,
-        ITransactionHasher hasher,
-        byte[] privateKey)
+        ITransactionHasher hasher)
     {
-        _signer = signer;
-        _encoder = encoder;
-        _hasher = hasher;
-        _privateKey = privateKey;
+        this.signer = signer;
+        this.encoder = encoder;
+        this.hasher = hasher;
     }
 
     //
@@ -45,9 +41,9 @@ public class TransactionSigner
     /// <returns>The signature.</returns>
     public RsvSignature GetSignature(Transaction transaction)
     {
-        var hash = _hasher.Hash(_encoder.Encode(transaction));
+        var hash = this.hasher.Hash(this.encoder.Encode(transaction));
 
-        return _signer.Sign(new SigningPayload
+        return this.signer.Sign(new SigningPayload
         {
             Data = hash.ToByteArray(),
             IsEIP155 = false,
@@ -77,9 +73,9 @@ public class TransactionSigner
             throw new ArgumentException("ChainId must be greater than 0", nameof(transaction));
         }
 
-        var hash = _hasher.Hash(_encoder.Encode(transaction));
+        var hash = this.hasher.Hash(this.encoder.Encode(transaction));
 
-        return _signer.Sign(new SigningPayload
+        return this.signer.Sign(new SigningPayload
         {
             Data = hash.ToByteArray(),
             IsEIP155 = true,
@@ -108,7 +104,6 @@ public class TransactionSigner
         return new TransactionSigner(
             new Secp256k1Signer(privateKey),
             new RlpEncoder(),
-            new TransactionHasher(),
-            privateKey);
+            new TransactionHasher());
     }
 }

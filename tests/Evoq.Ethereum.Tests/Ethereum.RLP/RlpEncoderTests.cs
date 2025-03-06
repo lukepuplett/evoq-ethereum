@@ -347,7 +347,7 @@ public class RlpEncoderTests
             value: new BigInteger("1000000000000000000"), // 1 ETH
             data: new byte[0],
             accessList: Array.Empty<AccessListItem>(),
-            new RsvSignature(Big.TwentySeven, oneBig, twoBig)
+            new RsvSignature(Constants.LegacyBaseValue27, oneBig, twoBig)
         );
 
         // Encode the transaction for signing (should exclude signature components)
@@ -375,7 +375,7 @@ public class RlpEncoderTests
             to: new byte[20] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14 },
             value: new BigInteger("1000000000000000000"), // 1 ETH
             data: new byte[0],
-            new RsvSignature(Big.TwentySeven, oneBig, twoBig)
+            new RsvSignature(Constants.LegacyBaseValue27, oneBig, twoBig)
         );
 
         // Encode the transaction for signing with chainId = 1 (Ethereum mainnet)
@@ -407,7 +407,7 @@ public class RlpEncoderTests
         );
 
         // Create the same transaction but with signature
-        var signedTx = unsignedTx.WithSignature(Big.TwentySeven, oneBig, twoBig);
+        var signedTx = unsignedTx.WithSignature(Constants.LegacyBaseValue27, oneBig, twoBig);
 
         // Encode both transactions
         byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
@@ -620,7 +620,7 @@ public class RlpEncoderTests
             data: new byte[] { 0xca, 0xfe, 0xba, 0xbe },
             accessList: Array.Empty<AccessListItem>(),
             signature: new RsvSignature(
-                v: Big.TwentySeven, // This should encode to y_parity=0
+                v: Constants.LegacyBaseValue27, // This should encode to y_parity=0
                 r: Hex.Parse("1234567890abcdef").ToBigInteger().ToBigBouncy(),
                 s: Hex.Parse("fedcba9876543210").ToBigInteger().ToBigBouncy()
             )
@@ -637,7 +637,7 @@ public class RlpEncoderTests
             data: new byte[] { 0xca, 0xfe, 0xba, 0xbe },
             accessList: Array.Empty<AccessListItem>(),
             signature: new RsvSignature(
-                v: Big.TwentyEight, // This should encode to y_parity=1
+                v: Constants.LegacyVOne28, // This should encode to y_parity=1
                 r: Hex.Parse("1234567890abcdef").ToBigInteger().ToBigBouncy(),
                 s: Hex.Parse("fedcba9876543210").ToBigInteger().ToBigBouncy()
             )

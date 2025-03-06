@@ -192,7 +192,7 @@ public static class RlpTestCases
                 value: new BigInteger("1000000000000000000"), // 1 ETH
                 data: Array.Empty<byte>(),
                 new RsvSignature(
-                    v: Big.TwentySeven,
+                    v: Constants.LegacyBaseValue27,
                     r: Hex.Parse("1234567890abcdef").ToBigInteger().ToBigBouncy(),
                     s: Hex.Parse("fedcba9876543210").ToBigInteger().ToBigBouncy()
                 )

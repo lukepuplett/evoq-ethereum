@@ -17,8 +17,9 @@ public class SigningPayload
     /// Whether the payload is an EIP-155 transaction.
     /// </summary>
     public bool IsEIP155 { get; set; } = true;
+
     /// <summary>
-    /// The data to sign.
+    /// The data to sign, e.g. the RLP-encoded transaction.
     /// </summary>
     public byte[] Data { get; set; } = Array.Empty<byte>();
 
@@ -29,25 +30,9 @@ public class SigningPayload
 }
 
 /// <summary>
-/// A static class containing useful BigInteger constants.
-/// </summary>
-public static class Big
-{
-    public static readonly BigInteger Zero = BigInteger.ValueOf(0);
-    public static readonly BigInteger One = BigInteger.ValueOf(1);
-    public static readonly BigInteger Two = BigInteger.ValueOf(2);
-    public static readonly BigInteger Three = BigInteger.ValueOf(3);
-    public static readonly BigInteger Four = BigInteger.ValueOf(4);
-    public static readonly BigInteger Seven = BigInteger.ValueOf(7);
-    public static readonly BigInteger ThirtyFive = Constants.Eip155BaseValue35;
-    public static readonly BigInteger TwentySeven = Constants.LegacyBaseValue27;
-    public static readonly BigInteger TwentyEight = Constants.LegacyVOne28;
-}
-
-/// <summary>
 /// Signs a payload.
 /// </summary>
-public interface ITransactionSigner
+public interface ISignPayload
 {
     /// <summary>
     /// Signs the given payload.
@@ -80,7 +65,7 @@ public interface ITransactionSigner
 /// <summary>
 /// Default implementation of the secp256k1 curve.
 /// </summary>
-public class Secp256k1Signer : ITransactionSigner
+public class Secp256k1Signer : ISignPayload
 {
     private readonly byte[] _privateKey;
 
@@ -199,11 +184,14 @@ public class Secp256k1Signer : ITransactionSigner
                 throw new ArgumentException("Chain ID is required for EIP-155 signatures", nameof(payload));
             }
 
-            v = Big.ThirtyFive.Add(payload.ChainId.Multiply(Big.Two)).Add(bigRecoveryId);
+            v = Constants.Eip155BaseValue35
+                .Add(payload.ChainId
+                    .Multiply(Constants.Eip155ChainIdMultiplier2))
+                .Add(bigRecoveryId); // 35 + chainId * 2 + recoveryId
         }
         else
         {
-            v = Big.TwentySeven.Add(bigRecoveryId);
+            v = Constants.LegacyBaseValue27.Add(bigRecoveryId);
         }
 
         return (r, s, v);
