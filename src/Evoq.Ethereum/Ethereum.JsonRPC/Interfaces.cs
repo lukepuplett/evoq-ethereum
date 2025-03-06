@@ -6,7 +6,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// <summary>
 /// Interface for the eth_estimateGas RPC method
 /// </summary>
-interface IEstimateGas
+public interface IEstimateGas
 {
     /// <summary>
     /// Estimates the gas needed to execute a transaction
@@ -20,7 +20,7 @@ interface IEstimateGas
 /// <summary>
 /// Interface for the eth_sendTransaction RPC method
 /// </summary>
-interface ISendTransaction
+public interface ISendTransaction
 {
     /// <summary>
     /// Sends a transaction to the network
@@ -34,7 +34,7 @@ interface ISendTransaction
 /// <summary>
 /// Interface for the eth_sendRawTransaction RPC method
 /// </summary>
-interface ISendRawTransaction
+public interface ISendRawTransaction
 {
     /// <summary>
     /// Sends a signed transaction to the network
@@ -48,22 +48,22 @@ interface ISendRawTransaction
 /// <summary>
 /// Interface for the eth_call RPC method
 /// </summary>
-interface IEthCall
+public interface IEthCall
 {
     /// <summary>
     /// Executes a call without creating a transaction on the blockchain
     /// </summary>
-    /// <param name="transactionParams">The transaction parameters</param>
+    /// <param name="ethCallParams">The eth_call parameters, which looks similar to a transaction object but is not a transaction</param>
     /// <param name="blockParameter">The block parameter</param>
     /// <param name="id">The request identifier</param>
     /// <returns>The return data from the call as a hex value</returns>
-    Task<Hex> CallAsync(TransactionParamsDto transactionParams, string blockParameter = "latest", int id = 1);
+    Task<Hex> CallAsync(EthCallParamObjectDto ethCallParams, string blockParameter = "latest", int id = 1);
 }
 
 /// <summary>
 /// Interface for the eth_getTransactionCount RPC method
 /// </summary>
-interface IGetTransactionCount
+public interface IGetTransactionCount
 {
     /// <summary>
     /// Gets the transaction count for an address
@@ -78,7 +78,7 @@ interface IGetTransactionCount
 /// <summary>
 /// Interface for the eth_getBalance RPC method
 /// </summary>
-interface IGetBalance
+public interface IGetBalance
 {
     /// <summary>
     /// Gets the balance for an address
@@ -106,7 +106,7 @@ public interface IGetCode
 /// <summary>
 /// Composite interface for all Ethereum JSON-RPC methods
 /// </summary>
-interface IEthereumJsonRpc :
+public interface IEthereumJsonRpc :
    IEstimateGas,
    ISendTransaction,
    ISendRawTransaction,

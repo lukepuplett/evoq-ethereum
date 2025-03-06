@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -64,7 +65,7 @@ public class FunctionSignature
     /// <param name="encoder">The encoder to use.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded full function signature.</returns>
-    public byte[] EncodeFullSignature(IAbiEncoder encoder, ITuple values)
+    public byte[] EncodeFullSignature(IAbiEncoder encoder, IReadOnlyList<object?> values)
     {
         var result = encoder.EncodeParameters(this.Parameters, values);
 
@@ -93,8 +94,9 @@ public class FunctionSignature
     /// <returns>The function selector.</returns>
     public byte[] GetSelector()
     {
-        var signature = GetCanonicalSignature();
-        return Crypto.KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
+        var signature = this.GetCanonicalSignature();
+
+        return KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
     }
 
     /// <summary>
@@ -234,7 +236,7 @@ public static class FunctionSignatureExtensions
         this FunctionSignature signature, IAbiEncoder encoder, T value)
         where T : struct, IConvertible
     {
-        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+        return signature.EncodeFullSignature(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -247,7 +249,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, string value)
     {
-        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+        return signature.EncodeFullSignature(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -260,7 +262,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, BigInteger value)
     {
-        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+        return signature.EncodeFullSignature(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -273,7 +275,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, byte[] value)
     {
-        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+        return signature.EncodeFullSignature(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -286,6 +288,19 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, Array value)
     {
-        return signature.EncodeFullSignature(encoder, ValueTuple.Create(value));
+        return signature.EncodeFullSignature(encoder, new object[] { value });
+    }
+
+    /// <summary>
+    /// Encodes a tuple parameter for a function signature.
+    /// </summary>
+    /// <param name="signature">The function signature.</param>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="values">The tuple to encode.</param>
+    /// <returns>The encoded full function signature.</returns>
+    public static byte[] EncodeFullSignature(
+        this FunctionSignature signature, IAbiEncoder encoder, ITuple values)
+    {
+        return signature.EncodeFullSignature(encoder, values.GetElements().ToList());
     }
 }

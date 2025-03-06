@@ -60,23 +60,18 @@ public static class JsonRpcRequestDtoFactory
     /// <summary>
     /// Creates a request for the eth_call method.
     /// </summary>
-    /// <param name="transactionParams">The transaction parameters.</param>
+    /// <param name="ethCallParams">The eth_call parameters.</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
     /// <returns>A JSON-RPC request for the eth_call method.</returns>
-    public static JsonRpcRequestDto CreateCallRequest(TransactionParamsDto transactionParams, string blockParameter = "latest", int id = 1)
+    public static JsonRpcRequestDto CreateCallRequest(EthCallParamObjectDto ethCallParams, string blockParameter = "latest", int id = 1)
     {
         return new JsonRpcRequestDto(
             "eth_call",
             new List<object>
             {
-                new EthCallParamDto {
-                    Call = new EthCallParamObjectDto {
-                        From = transactionParams.From,
-                        To = transactionParams.To!,
-                        Value = transactionParams.Value,
-                        Input = transactionParams.Data },
-                    BlockParameter = blockParameter }
+                ethCallParams,
+                blockParameter
             },
             id);
     }

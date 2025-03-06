@@ -3,24 +3,6 @@ using System.Text.Json.Serialization;
 namespace Evoq.Ethereum.JsonRPC;
 
 /// <summary>
-/// Represents the parameters for an eth_call JSON-RPC request.
-/// </summary>
-public class EthCallParamDto
-{
-    /// <summary>
-    /// The transaction call object.
-    /// </summary>
-    [JsonPropertyName("call")]
-    public EthCallParamObjectDto Call { get; set; } = new EthCallParamObjectDto();
-
-    /// <summary>
-    /// The block parameter: an integer block number or a tag ("latest", "earliest", "pending", "safe", "finalized").
-    /// </summary>
-    [JsonPropertyName("block")]
-    public string BlockParameter { get; set; } = "latest";
-}
-
-/// <summary>
 /// Represents the transaction call object within eth_call parameters.
 /// </summary>
 public class EthCallParamObjectDto

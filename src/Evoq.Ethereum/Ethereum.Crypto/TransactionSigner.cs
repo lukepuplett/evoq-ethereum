@@ -6,9 +6,29 @@ using Org.BouncyCastle.Math;
 namespace Evoq.Ethereum.Crypto;
 
 /// <summary>
+/// Interface for signing transactions.
+/// </summary>
+public interface ITransactionSigner
+{
+    /// <summary>
+    /// Signs the given transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction to sign.</param>
+    /// <returns>The signed transaction.</returns>
+    Transaction GetSignedTransaction(Transaction transaction);
+
+    /// <summary>
+    /// Signs the given transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction to sign.</param>
+    /// <returns>The signed transaction.</returns>
+    TransactionEIP1559 GetSignedTransaction(TransactionEIP1559 transaction);
+}
+
+/// <summary>
 /// Default implementation of ISignBytes that uses the secp256k1 curve.
 /// </summary>
-public class TransactionSigner
+public class TransactionSigner : ITransactionSigner
 {
     private readonly ISignPayload signer;
     private readonly IRlpTransactionEncoder encoder;

@@ -71,9 +71,27 @@ public class JsonRpcClient : IEthereumJsonRpc
 
     //
 
-    public Task<Hex> CallAsync(TransactionParamsDto transactionParams, string blockParameter = "latest", int id = 1)
+    /// <summary>
+    /// Executes a call without creating a transaction on the blockchain.
+    /// </summary>
+    /// <param name="ethCallParams">The eth_call parameters, which looks similar to a transaction object but is not a transaction</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The return data from the call as a hex value.</returns>
+    /// <exception cref="JsonRpcNullResultException">Thrown when the JSON-RPC response has a null result.</exception>
+    public async Task<Hex> CallAsync(EthCallParamObjectDto ethCallParams, string blockParameter = "latest", int id = 1)
     {
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateCallRequest(ethCallParams, blockParameter, id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        var hexString = response.Result;
+        if (hexString == null)
+        {
+            throw new JsonRpcNullResultException("JSON-RPC response has null result");
+        }
+
+        return Hex.Parse(hexString);
     }
 
     public Task<Hex> EstimateGasAsync(TransactionParamsDto transactionParams, int id = 1)
@@ -104,7 +122,7 @@ public class JsonRpcClient : IEthereumJsonRpc
     {
         var request = JsonRpcRequestDtoFactory.CreateSendRawTransactionRequest(signedTransaction.ToString(), id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo("eth_sendRawTransaction", id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
 
         var hexString = response.Result;
         if (hexString == null)
