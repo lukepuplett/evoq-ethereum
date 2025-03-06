@@ -96,15 +96,3 @@ public class ContractCaller
         return this.rng.Next();
     }
 }
-
-public class Contract
-{
-    // TODO / read ABI
-
-    public EthereumAddress Address { get; set; }
-
-    public FunctionSignature GetFunctionSignature(string methodName)
-    {
-        throw new NotImplementedException();
-    }
-}
