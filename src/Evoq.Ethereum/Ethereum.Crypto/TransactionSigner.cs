@@ -104,6 +104,6 @@ public class TransactionSigner
         return new TransactionSigner(
             new Secp256k1Signer(privateKey),
             new RlpEncoder(),
-            new TransactionHasher());
+            new DefaultTransactionHasher());
     }
 }

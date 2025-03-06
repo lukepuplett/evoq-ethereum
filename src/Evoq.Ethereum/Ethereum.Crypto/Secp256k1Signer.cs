@@ -8,40 +8,6 @@ using Org.BouncyCastle.Math.EC;
 
 namespace Evoq.Ethereum.Crypto;
 
-/// <summary>
-/// A payload to sign.
-/// </summary>
-public class SigningPayload
-{
-    /// <summary>
-    /// Whether the payload is an EIP-155 transaction.
-    /// </summary>
-    public bool IsEIP155 { get; set; } = true;
-
-    /// <summary>
-    /// The data to sign, e.g. the RLP-encoded transaction.
-    /// </summary>
-    public byte[] Data { get; set; } = Array.Empty<byte>();
-
-    /// <summary>
-    /// The chain ID.
-    /// </summary>
-    public BigInteger? ChainId { get; set; }
-}
-
-/// <summary>
-/// Signs a payload.
-/// </summary>
-public interface ISignPayload
-{
-    /// <summary>
-    /// Signs the given payload.
-    /// </summary>
-    /// <param name="payload">The payload to sign.</param>
-    /// <returns>The signature in RSV format.</returns>
-    RsvSignature Sign(SigningPayload payload);
-}
-
 /*
     https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
 
@@ -63,9 +29,9 @@ public interface ISignPayload
 */
 
 /// <summary>
-/// Default implementation of the secp256k1 curve.
+/// Signs a payload using the secp256k1 curve.
 /// </summary>
-public class Secp256k1Signer : ISignPayload
+internal class Secp256k1Signer : ISignPayload
 {
     private readonly byte[] _privateKey;
 
