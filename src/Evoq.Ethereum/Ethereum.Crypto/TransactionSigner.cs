@@ -115,11 +115,11 @@ public class TransactionSigner : ITransactionSigner
     //
 
     /// <summary>
-    /// Creates a new TransactionSigner instance.
+    /// Creates a new TransactionSigner instance using the default secp256k1 curve.
     /// </summary>
     /// <param name="privateKey">The private key to use.</param>
     /// <returns>The TransactionSigner instance.</returns>
-    public static TransactionSigner Create(byte[] privateKey)
+    public static TransactionSigner CreateDefault(byte[] privateKey)
     {
         return new TransactionSigner(
             new Secp256k1Signer(privateKey),

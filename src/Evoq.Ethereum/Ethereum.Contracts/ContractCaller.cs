@@ -1,10 +1,10 @@
 using System;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Contracts;
 
@@ -33,8 +33,8 @@ public class ContractCaller
     private readonly IEthereumJsonRpc jsonRpc;
     private readonly IAbiEncoder abiEncoder;
     private readonly IAbiDecoder abiDecoder;
-    private readonly ITransactionSigner transactionSigner;
-    private readonly INonceStore nonceStore;
+    private readonly ITransactionSigner? transactionSigner;
+    private readonly INonceStore? nonceStore;
 
     //
 
@@ -50,8 +50,8 @@ public class ContractCaller
         IEthereumJsonRpc jsonRpc,
         IAbiEncoder abiEncoder,
         IAbiDecoder abiDecoder,
-        ITransactionSigner transactionSigner,
-        INonceStore nonceStore)
+        ITransactionSigner? transactionSigner,
+        INonceStore? nonceStore)
     {
         this.jsonRpc = jsonRpc;
         this.abiEncoder = abiEncoder;
@@ -94,5 +94,35 @@ public class ContractCaller
     private int GetRandomId()
     {
         return this.rng.Next();
+    }
+
+    //
+
+    /// <summary>
+    /// Creates a new ContractCaller instance using the default secp256k1 curve, if the sender is provided.
+    /// </summary>
+    /// <param name="providerBaseUrl">The base URL of the JSON-RPC provider.</param>
+    /// <param name="sender">The sender; if null, the ContractCaller will be read-only; attempts to send transactions will throw.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <returns>The ContractCaller instance.</returns>
+    public static ContractCaller CreateDefault(
+        Uri providerBaseUrl,
+        Sender? sender,
+        ILoggerFactory loggerFactory)
+    {
+        var jsonRpc = new JsonRpcClient(providerBaseUrl, loggerFactory);
+        var abiEncoder = new AbiEncoder();
+        var abiDecoder = new AbiDecoder();
+
+        if (sender.HasValue)
+        {
+            var transactionSigner = TransactionSigner.CreateDefault(sender.Value.PrivateKey.ToByteArray());
+
+            return new ContractCaller(jsonRpc, abiEncoder, abiDecoder, transactionSigner, sender.Value.NonceStore);
+        }
+        else
+        {
+            return new ContractCaller(jsonRpc, abiEncoder, abiDecoder, null, null);
+        }
     }
 }
