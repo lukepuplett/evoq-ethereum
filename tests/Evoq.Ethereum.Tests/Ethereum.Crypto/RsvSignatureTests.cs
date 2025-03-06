@@ -259,7 +259,7 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             Assert.AreEqual(1, yParity);
 
             // Also test the direct Constants.VToYParity method
-            var yParityFromConstants = Constants.VToYParity(signature.V);
+            var yParityFromConstants = Signing.VToYParity(signature.V);
             Assert.AreEqual(1, yParityFromConstants);
         }
     }
