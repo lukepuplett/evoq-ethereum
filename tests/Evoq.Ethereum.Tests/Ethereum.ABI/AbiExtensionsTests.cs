@@ -224,9 +224,14 @@ public class AbiExtensionsTests
         var selector = function.GetFunctionSelector();
 
         // Assert
-        // Compute the expected selector
-        var signatureBytes = System.Text.Encoding.UTF8.GetBytes(
-            "complexFunction(address,(uint256,bytes32),((bool,(string,uint8))[]))");
+        // Get the canonical signature from the function
+        var canonicalSignature = function.GetCanonicalSignature();
+
+        // Verify the canonical signature is in the expected format
+        Assert.AreEqual("complexFunction(address,(uint256,bytes32),(bool,(string,uint8))[])", canonicalSignature);
+
+        // Compute the expected selector using the canonical signature
+        var signatureBytes = System.Text.Encoding.UTF8.GetBytes(canonicalSignature);
         var fullHash = KeccakHash.ComputeHash(signatureBytes);
         var expectedSelector = new byte[4];
         Array.Copy(fullHash, expectedSelector, 4);

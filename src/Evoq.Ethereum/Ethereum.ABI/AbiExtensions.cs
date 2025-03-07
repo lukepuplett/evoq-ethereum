@@ -82,9 +82,9 @@ public static class AbiExtensions
             return string.Empty;
         }
 
-        // Use AbiParameterFormatter to format each parameter individually
-        // This preserves the tuple structure
-        var formattedParams = string.Join(",", parameters.Select(AbiParameterFormatter.FormatParameter));
+        // var formattedParams = string.Join(",", parameters.Select(AbiParameterFormatter.FormatParameter));
+
+        var formattedParams = AbiParameterFormatter.FormatParameters(parameters);
 
         return formattedParams;
     }
