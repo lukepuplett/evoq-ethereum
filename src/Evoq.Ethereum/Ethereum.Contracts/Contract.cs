@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Evoq.Ethereum.ABI;
 
 namespace Evoq.Ethereum.Contracts;
@@ -37,8 +38,15 @@ public class Contract
     /// <exception cref="Exception">Thrown when the method is not found in the ABI.</exception>
     public FunctionSignature GetFunctionSignature(string methodName)
     {
-        return this.abi.TryGetFunction(methodName, out var function)
-            ? function.GetFunctionSignature()
-            : throw new Exception($"Function {methodName} not found in ABI");
+        if (this.abi.TryGetFunction(methodName, out var function))
+        {
+            return function.GetFunctionSignature();
+        }
+        else
+        {
+            var functions = this.abi.GetFunctions().Select(f => f.Name);
+
+            throw new Exception($"Function {methodName} not found in ABI. Available functions: {string.Join(", ", functions)}");
+        }
     }
 }

@@ -29,7 +29,7 @@
     <PackageReference Include="Nethereum.Util" Version="4.29.0" />
     <PackageReference Include="Nethereum.Web3" Version="4.29.0" />
     <PackageReference Include="BouncyCastle.NetCore" Version="2.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

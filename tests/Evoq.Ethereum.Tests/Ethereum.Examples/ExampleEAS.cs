@@ -11,7 +11,7 @@ public class ExampleEAS
 {
     [TestMethod]
     // [Ignore]
-    public void ExampleEAS_CreateWallet()
+    public async Task ExampleEAS_CreateWallet()
     {
         // Call the GetSchema method on Ethereum Attestation Service
 
@@ -71,13 +71,15 @@ public class ExampleEAS
         var privateKey = Hex.Parse(privateKeyBase64);
 
         // Read the ABI file using our helper method
-        Stream abiStream = AbiFileHelper.GetAbiStream("EAS.abi.json");
+        Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
 
         var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
         var sender = new Sender(privateKey, nonceStore!);
         var contract = new Contract(abiStream);
         var contractCaller = ContractCaller.CreateDefault(new Uri("https://mainnet.infura.io/v3/"), sender, loggerFactory!);
 
-        var schemaId = contractCaller.CallAsync(contract, "GetSchema", account, 1, 2, 3);
+        var schemaId = await contractCaller.CallAsync(contract, "getSchema", account, 1, 2, 3);
+
+        Assert.IsNotNull(schemaId);
     }
 }
