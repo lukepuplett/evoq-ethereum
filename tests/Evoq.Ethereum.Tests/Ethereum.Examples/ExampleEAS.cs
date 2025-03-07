@@ -10,7 +10,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    [Ignore]
+    // [Ignore]
     public void ExampleEAS_CreateWallet()
     {
         // Call the GetSchema method on Ethereum Attestation Service
@@ -66,15 +66,15 @@ public class ExampleEAS
             builder => builder.AddSimpleConsole(
                 options => options.SingleLine = true).SetMinimumLevel(LogLevel.Debug));
 
-        // var logger = loggerFactory.CreateLogger<ExampleEAS>();
-
         INonceStore nonceStore = new InMemoryNonceStore(loggerFactory);
+        var privateKeyBase64 = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
+        var privateKey = Hex.Parse(privateKeyBase64);
 
         // Read the ABI file using our helper method
         Stream abiStream = AbiFileHelper.GetAbiStream("EAS.abi.json");
 
         var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
-        var sender = new Sender(Hex.Parse("0x1234567890123456789012345678901234567890"), nonceStore!);
+        var sender = new Sender(privateKey, nonceStore!);
         var contract = new Contract(abiStream);
         var contractCaller = ContractCaller.CreateDefault(new Uri("https://mainnet.infura.io/v3/"), sender, loggerFactory!);
 
