@@ -1,0 +1,17 @@
+{
+    "abi": [
+        {
+            "inputs": [],
+            "name": "testFunction",
+            "outputs": [
+                {
+                    "type": "bool",
+                    "name": "success"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ],
+    "testMarker": "This is a test ABI file specifically for AbiFileHelper tests"
+}
