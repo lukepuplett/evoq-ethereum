@@ -127,6 +127,118 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Local Development with Hardhat and EAS
+
+### Setting Up Ethereum Attestation Service (EAS)
+
+For local testing and development, this project can be integrated with the [Ethereum Attestation Service (EAS)](https://attest.sh/). The following steps outline how to set up a local environment with EAS contracts deployed to a Hardhat node:
+
+1. Clone the EAS repository from GitHub
+2. Install the Hardhat Ignition extension (EAS uses Hardhat, not Foundry)
+3. Add a custom deployment script
+4. Run a local Hardhat node
+5. Deploy the EAS contracts to your local node
+
+#### Prerequisites
+
+- Node.js (v16+)
+- pnpm (EAS uses pnpm as its package manager)
+- Git
+
+#### Step 1: Clone the EAS Repository
+
+```bash
+git clone https://github.com/ethereum-attestation-service/eas-contracts.git
+cd eas-contracts
+pnpm install
+```
+
+#### Step 2: Install Hardhat Ignition
+
+```bash
+pnpm add --dev @nomicfoundation/hardhat-ignition
+```
+
+Update your `hardhat.config.js` or `hardhat.config.ts` to include the Ignition plugin.
+
+#### Step 3: Create Ignition Deployment Script
+
+Create a directory for your Ignition modules and add a deployment script:
+
+```bash
+mkdir -p ignition/modules
+```
+
+Create a file at `ignition/modules/eas.ts` with the following content:
+
+```typescript
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+
+export default buildModule("EASDeployment", (m) => {
+    // Deploy SchemaRegistry first (no constructor args needed)
+    const schemaRegistry = m.contract("SchemaRegistry");
+
+    // Deploy EAS with SchemaRegistry address
+    const eas = m.contract("EAS", [schemaRegistry]);
+
+    // Return the contract instances
+    return {
+        schemaRegistry,
+        eas,
+    };
+});
+```
+
+#### Step 4: Run a Local Hardhat Node
+
+In a separate terminal window, start a local Hardhat node:
+
+```bash
+pnpm hardhat node
+```
+
+This will spin up a local Ethereum node with several pre-funded accounts for testing.
+
+#### Step 5: Deploy EAS Contracts
+
+With your local node running, deploy the EAS contracts:
+
+```bash
+npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
+```
+
+After successful deployment, you'll see output similar to:
+
+```
+Hardhat Ignition 🚀
+
+Deploying [ EASDeployment ]
+
+Batch #1
+  Executed EASDeployment#SchemaRegistry
+
+Batch #2
+  Executed EASDeployment#EAS
+
+[ EASDeployment ] successfully deployed 🚀
+
+Deployed Addresses
+
+EASDeployment#SchemaRegistry - 0x5FbDB2315678afecb367f032d93F642f64180aa3
+EASDeployment#EAS - 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+```
+
+These contract addresses can be used in your application to interact with the EAS system on your local development environment.
+
+### Integration Testing
+
+With the local Hardhat node running and EAS contracts deployed, you can now test your Ethereum applications against a fully functional local blockchain environment. This setup is ideal for:
+
+- Testing smart contract interactions
+- Developing and testing dApps
+- Validating EAS attestation functionality
+- Simulating various blockchain scenarios without spending real ETH
+
 ## Author
 
 Luke Puplett
