@@ -49,6 +49,8 @@ namespace Evoq.Ethereum.Contracts
             return reader.ReadToEnd();
         }
 
+        //
+
         private static Stream? TryGetEmbeddedResource(string fileName, Assembly assembly)
         {
             // Try exact match first
