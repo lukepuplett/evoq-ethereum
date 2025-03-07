@@ -78,7 +78,9 @@ public class ExampleEAS
         var contract = new Contract(abiStream);
         var contractCaller = ContractCaller.CreateDefault(new Uri("https://mainnet.infura.io/v3/"), sender, loggerFactory!);
 
-        var schemaId = await contractCaller.CallAsync(contract, "getSchema", account, 1, 2, 3);
+        // random, non-existent schemaId
+        var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e");
+        var schemaId = await contractCaller.CallAsync(contract, "getSchema", account, schemaIdHex);
 
         Assert.IsNotNull(schemaId);
     }

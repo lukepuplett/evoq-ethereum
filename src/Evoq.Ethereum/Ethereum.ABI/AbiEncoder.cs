@@ -134,7 +134,9 @@ public class AbiEncoder : IAbiEncoder
             string type = parameters.GetCanonicalType();
             string valuesStr = string.Join(", ", values.Select(v => v?.ToString() ?? "null"));
 
-            throw new ArgumentException($"Expected {slotCount} values for {type} but got {values.Count}, '{valuesStr}'. Nested tuples can be a source of confusion.");
+            throw new ArgumentException(
+                $"Unable to encode parameters for signature {type}: expected {slotCount} values but got {values.Count}: '{valuesStr}'. " +
+                "Note that nested tuples can be a source of confusion.");
         }
 
         var root = new SlotCollection(capacity: slotCount * 8);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -48,7 +49,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             AbiTypeNames.FixedByteArrays.Bytes30,
             AbiTypeNames.FixedByteArrays.Bytes31,
             AbiTypeNames.FixedByteArrays.Bytes32
-        }, new HashSet<Type> { typeof(byte[]), typeof(byte), typeof(sbyte), typeof(char), typeof(string) })
+        }, new HashSet<Type> { typeof(byte[]), typeof(byte), typeof(sbyte), typeof(char), typeof(string), typeof(Hex) })
     {
     }
 
@@ -133,13 +134,24 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return true;
         }
 
+        if (value is Hex hexValue)
+        {
+            if (hexValue.Length > maxBytesSize)
+            {
+                return false;
+            }
+
+            encoded = EncodeBytes(hexValue.ToByteArray());
+            return true;
+        }
+
         //
 
         return false;
     }
 
     /// <summary>
-    /// Attempts to decode a bytes type from its ABI binary representation. 
+    /// Attempts to decode a bytes type from its ABI binary representation into the specified CLR type.
     /// </summary>
     /// <param name="abiType">The ABI type to decode.</param>
     /// <param name="data">The data to decode.</param>
@@ -160,64 +172,69 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (!AbiTypes.TryGetBytesSize(abiType, out var maxBytesSize))
+        if (!AbiTypes.TryGetBytesSize(abiType, out var abiSize))
         {
             return false;
         }
 
         //
 
-        var bytes = DecodeBytes(data, maxBytesSize);
+        var decodedBytes = DecodeBytes(data, abiSize);
 
         if (clrType == typeof(byte[]))
         {
             // all ABI types are fixed sizes and will fit into a byte array, so we can just decode the bytes
 
-            decoded = bytes;
+            decoded = decodedBytes;
             return true;
         }
 
         if (clrType == typeof(byte))
         {
-            if (maxBytesSize > 1) // risk of overflow
+            if (abiSize > 1) // risk of overflow
             {
                 return false;
             }
 
-            decoded = bytes[0];
+            decoded = decodedBytes[0];
             return true;
         }
 
         if (clrType == typeof(sbyte))
         {
-            if (maxBytesSize > 1) // risk of overflow
+            if (abiSize > 1) // risk of overflow
             {
                 return false;
             }
 
-            decoded = (sbyte)bytes[0];
+            decoded = (sbyte)decodedBytes[0];
             return true;
         }
 
         if (clrType == typeof(char))
         {
-            if (maxBytesSize > 2) // risk of overflow
+            if (abiSize > 2) // risk of overflow
             {
                 return false;
             }
 
-            decoded = (char)bytes[0];
+            decoded = (char)decodedBytes[0];
             return true;
         }
 
         if (clrType == typeof(string))
         {
-            if (maxBytesSize > bytes.Length)
-            {
-                return false;
-            }
+            // all ABI types are fixed sizes and will fit into a string, so we can just decode the bytes
 
-            decoded = Encoding.UTF8.GetString(bytes).Trim('\0');
+            decoded = Encoding.UTF8.GetString(decodedBytes).Trim('\0');
+            return true;
+        }
+
+        if (clrType == typeof(Hex))
+        {
+            // all ABI types are fixed sizes and will fit into a Hex, so we can just decode the bytes
+
+            decoded = new Hex(decodedBytes);
             return true;
         }
 

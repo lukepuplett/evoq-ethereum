@@ -454,5 +454,29 @@ public class EthereumAddressTests
         Assert.AreEqual(20, address3.ToByteArray().Length);
         CollectionAssert.AreEqual(new byte[20], address3.ToByteArray());
     }
+
+    [TestMethod]
+    public void Default_EthereumAddress_Behavior()
+    {
+        // Arrange
+        var defaultAddress = default(EthereumAddress);
+
+        // Act & Assert
+        Assert.IsTrue(defaultAddress.IsEmpty);
+        Assert.IsFalse(defaultAddress.IsZero);
+        Assert.AreEqual("0x", defaultAddress.ToString());
+
+        // Test exception when trying to get padded representation
+        Assert.ThrowsException<InvalidOperationException>(() => defaultAddress.ToPadded(40));
+
+        // Test equality
+        Assert.AreEqual(default(EthereumAddress), defaultAddress);
+        Assert.AreNotEqual(EthereumAddress.Zero, defaultAddress);
+
+        // Test byte array
+        var bytes = defaultAddress.ToByteArray();
+        Assert.IsNotNull(bytes);
+        Assert.AreEqual(0, bytes.Length); // Should return empty array for default address
+    }
 }
 

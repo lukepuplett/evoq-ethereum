@@ -104,12 +104,28 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <summary>
     /// The underlying address.
     /// </summary>
-    public Hex Address { get; } = Hex.Empty;
+    public Hex Address { get; } = Hex.Empty; // in the case of default(EthereumAddress), the Hex will be default(Hex)
 
     /// <summary>
-    /// Whether the address is the zero address.
+    /// Whether the address is the zero address; returns false if the address is uninitialized or empty.
     /// </summary>
-    public bool IsZero => this.Address.IsZeroValue();
+    public bool IsZero
+    {
+        get
+        {
+            if (this.Address == default)
+            {
+                return false; // default(EthereumAddress) is not zero, it's uninitialized and empty
+            }
+
+            return this.Address.IsZeroValue();
+        }
+    }
+
+    /// <summary>
+    /// Whether the address is empty; returns false if the address is uninitialized or zero.
+    /// </summary>
+    public bool IsEmpty => this.Address == default || this.Address.IsEmpty();
 
     //
 
@@ -248,11 +264,9 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <param name="shortZero">Whether to return a short zero address</param>
     public string ToString(bool shortZero = false)
     {
-        var addressUtil = new Nethereum.Util.AddressUtil();
-
-        if (this.Address == default || this.Address == Hex.Empty)
+        if (this.IsEmpty)
         {
-            return "<EMPTY>";
+            return "0x";
         }
         else if (this.Address.IsZeroValue())
         {
@@ -266,6 +280,8 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
         var bytes = this.Address.ToByteArray();
         var hex = BitConverter.ToString(bytes).Replace("-", "").ToLower();
+
+        var addressUtil = new Nethereum.Util.AddressUtil();
 
         return addressUtil.ConvertToChecksumAddress("0x" + hex);
     }
@@ -284,7 +300,12 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
             throw new ArgumentException($"Total length must be at least 40 characters, got {totalLength}", nameof(totalLength));
         }
 
-        if (this.Address.Length == 0)
+        if (this.IsEmpty)
+        {
+            throw new InvalidOperationException("Cannot convert an empty address to a padded string.");
+        }
+
+        if (this.IsZero)
         {
             return "0x" + new string('0', totalLength);
         }

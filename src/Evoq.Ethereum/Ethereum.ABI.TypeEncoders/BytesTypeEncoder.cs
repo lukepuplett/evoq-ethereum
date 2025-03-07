@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -13,12 +14,15 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Initializes a new instance of the <see cref="BytesTypeEncoder"/> class.
     /// </summary>
     public BytesTypeEncoder()
-        : base(new HashSet<string> { "bytes" }, new HashSet<Type> { typeof(byte[]) }) { }
+        : base(
+            new HashSet<string> { "bytes" },
+            new HashSet<Type> { typeof(byte[]), typeof(Hex) })
+    { }
 
     //
 
     /// <summary>
-    /// Attempts to encode a bytes type to its ABI binary representation.
+    /// Attempts to encode a CLR object to its ABI binary representation as a bytes type.
     /// </summary>
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
@@ -36,6 +40,12 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
         if (value is byte[] bytes)
         {
             encoded = EncodeBytes(bytes);
+            return true;
+        }
+
+        if (value is Hex hexValue)
+        {
+            encoded = EncodeBytes(hexValue.ToByteArray());
             return true;
         }
 
@@ -63,13 +73,19 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
-        if (clrType != typeof(byte[]))
+        if (clrType == typeof(byte[]))
         {
-            return false;
+            decoded = DecodeBytes(data);
+            return true;
         }
 
-        decoded = DecodeBytes(data);
-        return true;
+        if (clrType == typeof(Hex))
+        {
+            decoded = new Hex(data);
+            return true;
+        }
+
+        return false;
     }
 
     //
