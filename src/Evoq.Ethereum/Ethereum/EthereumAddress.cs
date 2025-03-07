@@ -127,6 +127,11 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// </summary>
     public bool IsEmpty => this.Address == default || this.Address.IsEmpty();
 
+    /// <summary>
+    /// Whether the address is valid; returns false if the address is uninitialized or zero.
+    /// </summary>
+    public bool HasValue => !this.IsEmpty && !this.IsZero;
+
     //
 
     /// <summary>

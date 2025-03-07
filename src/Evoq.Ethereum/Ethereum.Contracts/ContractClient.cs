@@ -26,7 +26,7 @@ namespace Evoq.Ethereum.Contracts;
 /// <summary>
 /// A class that can be used to call methods on a contract.
 /// </summary>
-public class ContractCaller
+public class ContractClient
 {
     private readonly Random rng = new Random();
 
@@ -46,7 +46,7 @@ public class ContractCaller
     /// <param name="abiDecoder">The ABI decoder.</param>
     /// <param name="transactionSigner">The transaction signer.</param>
     /// <param name="nonceStore">The nonce store.</param>
-    public ContractCaller(
+    public ContractClient(
         IEthereumJsonRpc jsonRpc,
         IAbiEncoder abiEncoder,
         IAbiDecoder abiDecoder,
@@ -81,8 +81,8 @@ public class ContractCaller
 
         var ethCallParams = new EthCallParamObjectDto
         {
-            To = contract.Address.ToString(),
-            From = senderAddress.ToString(),
+            To = contract.Address.HasValue ? contract.Address.ToString() : throw new InvalidOperationException("Contract address is not set"),
+            From = senderAddress.HasValue ? senderAddress.ToString() : throw new InvalidOperationException("Sender address is not set"),
             Input = new Hex(encoded).ToString(),
         };
 
@@ -105,7 +105,7 @@ public class ContractCaller
     /// <param name="sender">The sender; if null, the ContractCaller will be read-only; attempts to send transactions will throw.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <returns>The ContractCaller instance.</returns>
-    public static ContractCaller CreateDefault(
+    public static ContractClient CreateDefault(
         Uri providerBaseUrl,
         Sender? sender,
         ILoggerFactory loggerFactory)
@@ -118,11 +118,11 @@ public class ContractCaller
         {
             var transactionSigner = TransactionSigner.CreateDefault(sender.Value.PrivateKey.ToByteArray());
 
-            return new ContractCaller(jsonRpc, abiEncoder, abiDecoder, transactionSigner, sender.Value.NonceStore);
+            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, transactionSigner, sender.Value.NonceStore);
         }
         else
         {
-            return new ContractCaller(jsonRpc, abiEncoder, abiDecoder, null, null);
+            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, null);
         }
     }
 }

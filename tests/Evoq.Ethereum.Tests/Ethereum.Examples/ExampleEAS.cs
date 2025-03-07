@@ -52,13 +52,16 @@ public class ExampleEAS
         //
         // We do need to select a HTTP provider, and a JSON-RPC method.
 
+        string infuraBaseUrl = "https://mainnet.infura.io/v3/";
+        string hardhatBaseUrl = "http://localhost:8545";
+
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
             .AddInMemoryCollection(
                 new Dictionary<string, string?>
                 {
-                    { "GoogleCloud:ProjectName", "evoq-capricorn-timesheets" },                                 // for GCP JSON-RPC
-                    { "Blockchain:Ethereum:JsonRPC:GoogleSepolia:ProjectId", "evoq-capricorn-timesheets" }      // for GCP JSON-RPC
+                    { "GoogleCloud:ProjectName", "evoq-capricorn-timesheets" },                                 // for GCP
+                    { "Blockchain:Ethereum:JsonRPC:GoogleSepolia:ProjectId", "evoq-capricorn-timesheets" }      // for GCP
                 })
             .Build();
 
@@ -74,13 +77,14 @@ public class ExampleEAS
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
 
         var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
+        var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
         var sender = new Sender(privateKey, nonceStore!);
-        var contract = new Contract(abiStream);
-        var contractCaller = ContractCaller.CreateDefault(new Uri("https://mainnet.infura.io/v3/"), sender, loggerFactory!);
+        var contract = new Contract(abiStream, schemaRegistryAddress);
+        var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
 
         // random, non-existent schemaId
         var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e");
-        var schemaId = await contractCaller.CallAsync(contract, "getSchema", account, schemaIdHex);
+        var schemaId = await contractClient.CallAsync(contract, "getSchema", account, schemaIdHex);
 
         Assert.IsNotNull(schemaId);
     }

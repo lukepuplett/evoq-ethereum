@@ -18,9 +18,11 @@ public class Contract
     /// Initializes a new instance of the Contract class.   
     /// </summary>
     /// <param name="stream">The stream containing the ABI.</param>
-    public Contract(Stream stream)
+    /// <param name="address">The address of the contract.</param>
+    public Contract(Stream stream, EthereumAddress address)
     {
         this.abi = ContractAbiReader.Read(stream);
+        this.Address = address;
     }
 
     /// <summary>
