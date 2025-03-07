@@ -77,7 +77,7 @@ public class ContractClient
         params object[] parameters)
     {
         var signature = contract.GetFunctionSignature(methodName);
-        var encoded = signature.EncodeFullSignature(this.abiEncoder, parameters);
+        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, parameters);
 
         var ethCallParams = new EthCallParamObjectDto
         {

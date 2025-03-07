@@ -13,61 +13,83 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class FunctionSignature
 {
-    private readonly string _name;
-
-    //
-
     /// <summary>
     /// Creates a new function signature from a name and parameter descriptor.
     /// </summary>
     /// <param name="name">The function name.</param>
-    /// <param name="descriptor">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
-    public FunctionSignature(string name, string descriptor)
+    /// <param name="inputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
+    /// <param name="outputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
+    public FunctionSignature(string name, string inputsSignature, string outputsSignature = "")
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Function name cannot be empty", nameof(name));
-
-        descriptor = descriptor.Trim();
-
-        if (string.IsNullOrWhiteSpace(descriptor))
-            throw new ArgumentException("Function descriptor cannot be empty", nameof(descriptor));
-
-        if (descriptor.StartsWith("(") && descriptor.EndsWith(")"))
         {
-            _name = name;
-            Parameters = AbiParameters.Parse(descriptor);
+            throw new ArgumentException("Function name cannot be empty", nameof(name));
+        }
+
+        inputsSignature = inputsSignature.Trim();
+        outputsSignature = outputsSignature.Trim();
+
+        if (string.IsNullOrWhiteSpace(inputsSignature))
+        {
+            throw new ArgumentException("Function descriptor cannot be empty", nameof(inputsSignature));
+        }
+
+        if (inputsSignature.StartsWith("(") && inputsSignature.EndsWith(")"))
+        {
+            this.Name = name;
+            this.Inputs = AbiParameters.Parse(inputsSignature);
         }
         else
         {
-            _name = name;
-            Parameters = AbiParameters.Parse($"({descriptor})");
+            this.Name = name;
+            this.Inputs = AbiParameters.Parse($"({inputsSignature})");
+        }
+
+        if (outputsSignature.StartsWith("(") && outputsSignature.EndsWith(")"))
+        {
+            this.Outputs = AbiParameters.Parse(outputsSignature);
+        }
+        else if (!string.IsNullOrEmpty(outputsSignature))
+        {
+            this.Outputs = AbiParameters.Parse($"({outputsSignature})");
         }
     }
 
-    private FunctionSignature(string name, IEnumerable<AbiParam> parameters)
+    private FunctionSignature(string name, IEnumerable<AbiParam> inputs, IEnumerable<AbiParam> outputs)
     {
-        _name = name;
-        Parameters = new AbiParameters(parameters.ToList());
+        this.Name = name;
+        this.Inputs = new AbiParameters(inputs.ToList());
+        this.Outputs = new AbiParameters(outputs.ToList());
     }
 
     //
+
+    /// <summary>
+    /// Gets the name of the function.
+    /// </summary>
+    public string Name { get; }
 
     /// <summary>
     /// Gets the parameters of the function signature.
     /// </summary>
-    public AbiParameters Parameters { get; }
+    public AbiParameters Inputs { get; }
+
+    /// <summary>
+    /// Gets the parameters of the function signature.
+    /// </summary>
+    public AbiParameters? Outputs { get; }
 
     //
 
     /// <summary>
-    /// Encodes the full function signature, including the name and parameters.
+    /// Encodes the full function signature, including the name and parameter values.
     /// </summary>
     /// <param name="encoder">The encoder to use.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded full function signature.</returns>
-    public byte[] EncodeFullSignature(IAbiEncoder encoder, IReadOnlyList<object?> values)
+    public byte[] AbiEncodeCallValues(IAbiEncoder encoder, IReadOnlyList<object?> values)
     {
-        var result = encoder.EncodeParameters(this.Parameters, values);
+        var result = encoder.EncodeParameters(this.Inputs, values);
 
         var selectorBytes = this.GetSelector();
         var resultBytes = result.GetBytes();
@@ -83,9 +105,23 @@ public class FunctionSignature
     /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
     /// </summary>
     /// <returns>The canonical signature.</returns>
-    public string GetCanonicalSignature()
+    public string GetCanonicalInputsSignature()
     {
-        return $"{_name}{Parameters.GetCanonicalType(includeNames: false, includeSpaces: false)}";
+        return $"{this.Name}{this.Inputs.GetCanonicalType(includeNames: false, includeSpaces: false)}";
+    }
+
+    /// <summary>
+    /// Gets the canonical outputs signature string, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".
+    /// </summary>
+    /// <returns>The canonical outputs signature.</returns>
+    public string GetCanonicalOutputsSignature()
+    {
+        if (this.Outputs == null || this.Outputs.Count == 0)
+        {
+            return "()";
+        }
+
+        return this.Outputs.GetCanonicalType(includeNames: false, includeSpaces: false);
     }
 
     /// <summary>
@@ -94,7 +130,7 @@ public class FunctionSignature
     /// <returns>The function selector.</returns>
     public byte[] GetSelector()
     {
-        var signature = this.GetCanonicalSignature();
+        var signature = this.GetCanonicalInputsSignature();
 
         return KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
     }
@@ -103,9 +139,18 @@ public class FunctionSignature
     /// Gets the parameter types from the function signature.
     /// </summary>
     /// <returns>An array of parameter type strings.</returns>
-    public string[] GetParameterTypes()
+    public string[] GetInputParameterTypes()
     {
-        return Parameters.Select(p => p.AbiType).ToArray();
+        return this.Inputs.Select(p => p.AbiType).ToArray();
+    }
+
+    /// <summary>
+    /// Gets the output parameter types from the function signature.
+    /// </summary>
+    /// <returns>An array of parameter type strings.</returns>
+    public string[] GetOutputParameterTypes()
+    {
+        return this.Outputs.Select(p => p.AbiType).ToArray();
     }
 
     /// <summary>
@@ -129,7 +174,7 @@ public class FunctionSignature
     /// <returns>The canonical signature.</returns>
     public override string ToString()
     {
-        return GetCanonicalSignature();
+        return this.GetCanonicalInputsSignature();
     }
 
     //
@@ -139,23 +184,28 @@ public class FunctionSignature
     /// </summary>
     /// <param name="fullSignature">The full function signature in one of these formats:
     /// <list type="bullet">
-    /// <item><description>Simple types: "transfer(address,uint256)"</description></item>
+    /// <item><description>Simple types: "transfer(address,uint256) returns (bool)"</description></item>
     /// <item><description>Array types: "batch(address[],uint256[])"</description></item>
     /// <item><description>Fixed arrays: "matrix(uint256[2][3])"</description></item>
     /// <item><description>Single tuple: "setPerson((string,uint256,address))"</description></item>
     /// <item><description>Mixed tuple: "setPersonActive((string,uint256,address),bool)"</description></item>
     /// <item><description>Nested tuples: "complex((uint256,(address,bool)[]))"</description></item>
+    /// <item><description>No parameters: "getEverything()"</description></item>
+    /// <item><description>No parameters with returns: "getEverything() returns (uint256,(bool,string)[])"</description></item>
     /// </list>
     /// </param>
     /// <returns>A new FunctionSignature instance.</returns>
     /// <exception cref="ArgumentException">If the signature format is invalid.</exception>
     public static FunctionSignature Parse(string fullSignature)
     {
-        // Normalize the input first
-        var input = fullSignature.Trim();
+        // Split the signature into inputs and outputs
+        var parts = fullSignature.Split(" returns ", StringSplitOptions.None);
+
+        var nameAndInputs = parts[0].Trim();
+        var outputs = parts.Length > 1 ? parts[1].Trim() : string.Empty;
 
         // Find the start of parameters
-        var startIndex = input.IndexOf('(');
+        var startIndex = nameAndInputs.IndexOf('(');
         if (startIndex == -1)
         {
             throw new ArgumentException(
@@ -163,16 +213,17 @@ public class FunctionSignature
         }
 
         // Extract the function name
-        var name = input[..startIndex];
+        var name = nameAndInputs[..startIndex];
         if (string.IsNullOrEmpty(name))
         {
             throw new ArgumentException(
                 "Invalid function signature format. Missing function name", nameof(fullSignature));
         }
 
-        var parameters = AbiParameters.Parse(input[startIndex..]);
+        var ins = AbiParameters.Parse(nameAndInputs[startIndex..]);
+        var outs = AbiParameters.Parse(outputs);
 
-        return new FunctionSignature(name, parameters);
+        return new FunctionSignature(name, ins, outs);
     }
 
     //
@@ -236,7 +287,7 @@ public static class FunctionSignatureExtensions
         this FunctionSignature signature, IAbiEncoder encoder, T value)
         where T : struct, IConvertible
     {
-        return signature.EncodeFullSignature(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -249,7 +300,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, string value)
     {
-        return signature.EncodeFullSignature(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -262,7 +313,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, BigInteger value)
     {
-        return signature.EncodeFullSignature(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -275,7 +326,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, byte[] value)
     {
-        return signature.EncodeFullSignature(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -288,7 +339,7 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, Array value)
     {
-        return signature.EncodeFullSignature(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new object[] { value });
     }
 
     /// <summary>
@@ -301,6 +352,6 @@ public static class FunctionSignatureExtensions
     public static byte[] EncodeFullSignature(
         this FunctionSignature signature, IAbiEncoder encoder, ITuple values)
     {
-        return signature.EncodeFullSignature(encoder, values.GetElements().ToList());
+        return signature.AbiEncodeCallValues(encoder, values.GetElements().ToList());
     }
 }

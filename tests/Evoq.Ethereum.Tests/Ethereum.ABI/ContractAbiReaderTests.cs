@@ -144,6 +144,6 @@ public class ContractAbiReaderTests
         var found = abi.TryGetFunction("batchProcess", out var function2);
         Assert.IsTrue(found);
         var signature = function2!.GetFunctionSignature();
-        Assert.AreEqual("batchProcess(bytes32[],string[])", signature.GetCanonicalSignature());
+        Assert.AreEqual("batchProcess(bytes32[],string[])", signature.GetCanonicalInputsSignature());
     }
 }

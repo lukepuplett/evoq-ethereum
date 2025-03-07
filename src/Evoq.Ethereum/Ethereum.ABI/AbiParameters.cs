@@ -95,6 +95,22 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     /// <exception cref="ArgumentException">Thrown when the parameter string is not a valid function signature.</exception>
     public static AbiParameters Parse(string descriptor)
     {
+        if (descriptor == null)
+        {
+            throw new ArgumentNullException(nameof(descriptor));
+        }
+
+        if (descriptor.Length == 0)
+        {
+            return new AbiParameters(new List<AbiParam>());
+        }
+
+        // Special case for empty parentheses "()"
+        if (descriptor == "()")
+        {
+            return new AbiParameters(new List<AbiParam>());
+        }
+
         return new AbiParameters(SplitParams(descriptor));
     }
 
@@ -118,7 +134,9 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
 
         // check it starts with a '(' and ends with a ')'
         if (descriptor[0] != '(' || descriptor[^1] != ')')
+        {
             throw new ArgumentException($"Invalid descriptor '{descriptor}'. Missing parentheses.", nameof(descriptor));
+        }
 
         // remove the outermost parentheses and add a final comma, e.g. string, (uint256, bool), address,
         descriptor = descriptor[1..^1].Trim() + ',';

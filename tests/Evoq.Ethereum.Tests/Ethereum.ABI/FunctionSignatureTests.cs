@@ -16,21 +16,21 @@ public class FunctionSignatureTests
     public void Constructor_WithNameAndTypes_CreatesCorrectSignature()
     {
         var signature = new FunctionSignature("transfer", "address recipient, uint256 amount");
-        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalSignature());
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_NormalizesTypes()
     {
         var signature = new FunctionSignature("example", "uint foo, int bar, byte[] data");
-        Assert.AreEqual("example(uint256,int256,bytes1[])", signature.GetCanonicalSignature());
+        Assert.AreEqual("example(uint256,int256,bytes1[])", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_HandlesArrayTypes()
     {
         var signature = new FunctionSignature("example", "uint256[] numbers, address[3] addresses");
-        Assert.AreEqual("example(uint256[],address[3])", signature.GetCanonicalSignature());
+        Assert.AreEqual("example(uint256[],address[3])", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
@@ -38,29 +38,29 @@ public class FunctionSignatureTests
     {
         // Tuple parameter
         var signature = new FunctionSignature("setPerson", "(string name, uint256 age, address wallet)");
-        Assert.AreEqual("setPerson(string,uint256,address)", signature.GetCanonicalSignature());
+        Assert.AreEqual("setPerson(string,uint256,address)", signature.GetCanonicalInputsSignature());
 
         // Multiple tuples with arrays
         signature = new FunctionSignature("complexOp", "(address[] accounts, uint256 value)[], bool enabled");
-        Assert.AreEqual("complexOp((address[],uint256)[],bool)", signature.GetCanonicalSignature());
+        Assert.AreEqual("complexOp((address[],uint256)[],bool)", signature.GetCanonicalInputsSignature());
 
         // Nested tuples
         signature = new FunctionSignature("nestedData", "(string name, (uint256 x, uint256 y)[] points)");
-        Assert.AreEqual("nestedData(string,(uint256,uint256)[])", signature.GetCanonicalSignature());
+        Assert.AreEqual("nestedData(string,(uint256,uint256)[])", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_WithNamedBasicParameters_StripsNames()
     {
         var signature = new FunctionSignature("transfer", "address recipient, uint256 amount");
-        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalSignature());
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_WithNamedTupleParameters_StripsNames()
     {
         var signature = new FunctionSignature("setPerson", "(string userName, uint256 userAge, address userWallet) person");
-        Assert.AreEqual("setPerson((string,uint256,address))", signature.GetCanonicalSignature());
+        Assert.AreEqual("setPerson((string,uint256,address))", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
@@ -74,30 +74,31 @@ public class FunctionSignatureTests
     public void Constructor_WithWhitespace_NormalizesCorrectly()
     {
         var signature = new FunctionSignature("complex", "  (  string  name ,  uint256  age  )  data  ,  bool  enabled  ");
-        Assert.AreEqual("complex((string,uint256),bool)", signature.GetCanonicalSignature());
+        Assert.AreEqual("complex((string,uint256),bool)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void FromString_WithFullSignature_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("transfer(address,uint256)");
-        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalSignature());
+        var signature = FunctionSignature.Parse("transfer(address,uint256) returns (bool)");
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
     }
 
     [TestMethod]
     public void FromString_WithFullSignatureWithNames_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("transfer(address recipient, uint256 amount)");
-        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalSignature());
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void FromString_WithTupleParameter_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("setPerson((string,uint256,address))");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
-        Assert.AreEqual("setPerson", signature.GetCanonicalSignature()[..signature.GetCanonicalSignature().IndexOf('(')]);
+        Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
         Assert.AreEqual(1, types.Length);
         Assert.AreEqual("(string,uint256,address)", types[0]);
     }
@@ -106,9 +107,9 @@ public class FunctionSignatureTests
     public void FromString_WithTupleParameterWithNames_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("setPerson((string userName, uint256 userAge, address userWallet))");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
-        Assert.AreEqual("setPerson", signature.GetCanonicalSignature()[..signature.GetCanonicalSignature().IndexOf('(')]);
+        Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
         Assert.AreEqual(1, types.Length);
         Assert.AreEqual("(string,uint256,address)", types[0]);
     }
@@ -117,9 +118,9 @@ public class FunctionSignatureTests
     public void FromString_WithNestedTupleParameter_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("setPerson(((string,string),uint256,address))");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
-        Assert.AreEqual("setPerson", signature.GetCanonicalSignature()[..signature.GetCanonicalSignature().IndexOf('(')]);
+        Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
         Assert.AreEqual(1, types.Length);
         Assert.AreEqual("((string,string),uint256,address)", types[0]);
     }
@@ -128,7 +129,7 @@ public class FunctionSignatureTests
     public void FromString_WithTupleAndOtherParameters_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("setPersonAndActive((string,uint256,address),bool)");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(2, types.Length);
         Assert.AreEqual("(string,uint256,address)", types[0]);
@@ -139,7 +140,7 @@ public class FunctionSignatureTests
     public void FromString_WithNestedTuples_ParsesCorrectly()
     {
         var signature = FunctionSignature.Parse("complexFunction((uint256,(address,bool)[]))");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(1, types.Length);
         Assert.AreEqual("(uint256,(address,bool)[])", types[0]);
@@ -216,7 +217,7 @@ public class FunctionSignatureTests
     {
         // Single tuple parameter
         var signature = FunctionSignature.Parse("setPerson((string,uint256,address))");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(1, types.Length);
         Assert.AreEqual("(string,uint256,address)", types[0]);
@@ -227,11 +228,150 @@ public class FunctionSignatureTests
     {
         // Tuple and bool parameters
         var signature = FunctionSignature.Parse("setPersonData((string,uint256,address),bool)");
-        var types = signature.GetParameterTypes();
+        var types = signature.GetInputParameterTypes();
 
         Assert.IsTrue(types.Any());
         Assert.AreEqual("(string,uint256,address)", types[0]);
         Assert.AreEqual(2, types.Length);
         Assert.AreEqual("bool", types[1]);
+    }
+
+    [TestMethod]
+    public void FromString_WithSimpleReturnType_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("transfer(address,uint256) returns (bool)");
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithMultipleReturnTypes_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getDetails(address) returns (string,uint256,bool)");
+        Assert.AreEqual("getDetails(address)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(string,uint256,bool)", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithTupleReturnType_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getPerson(uint256) returns ((string,uint256,address))");
+        Assert.AreEqual("getPerson(uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("((string,uint256,address))", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithNestedTupleReturnType_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getComplex(bytes32) returns ((string,uint256,(bool,address)))");
+        Assert.AreEqual("getComplex(bytes32)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("((string,uint256,(bool,address)))", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithArrayReturnType_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getList(uint256) returns (address[])");
+        Assert.AreEqual("getList(uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(address[])", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithTupleArrayReturnType_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getPersons(bool) returns ((string,uint256,address)[])");
+        Assert.AreEqual("getPersons(bool)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("((string,uint256,address)[])", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithComplexReturnTypes_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
+        Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(uint256,(bool,string)[],(address,bytes32)[3])", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithEmptyInput_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getEverything()");
+        Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("()", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithNamedReturnParameters_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getValues(address) returns (uint256 balance, bool active)");
+        Assert.AreEqual("getValues(address)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(uint256,bool)", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithNamedTupleReturnParameters_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getUserData(address) returns ((string name, uint256 age, bool active) userData)");
+        Assert.AreEqual("getUserData(address)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("((string,uint256,bool))", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void FromString_WithRealWorldExample_ParsesCorrectly()
+    {
+        // Based on the getAttestation function from EAS
+        var signature = FunctionSignature.Parse("getAttestation(bytes32) returns ((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))");
+        Assert.AreEqual("getAttestation(bytes32)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void Constructor_WithInputsAndOutputs_CreatesCorrectSignature()
+    {
+        var signature = new FunctionSignature("transfer", "address,uint256", "bool");
+        Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void Constructor_WithComplexInputsAndOutputs_CreatesCorrectSignature()
+    {
+        var signature = new FunctionSignature(
+            "complexFunction",
+            "address,(uint256,bytes32),((bool,(string,uint8))[]))",
+            "(bytes32,uint64,address)");
+
+        Assert.AreEqual("complexFunction(address,(uint256,bytes32),((bool,(string,uint8))[]))", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(bytes32,uint64,address)", signature.GetCanonicalOutputsSignature());
+    }
+
+    [TestMethod]
+    public void GetOutputParameterTypes_WithSimpleTypes_ReturnsCorrectTypes()
+    {
+        var signature = FunctionSignature.Parse("getValues() returns (uint256,bool,address)");
+        var types = signature.GetOutputParameterTypes();
+
+        Assert.AreEqual(3, types.Length);
+        Assert.AreEqual("uint256", types[0]);
+        Assert.AreEqual("bool", types[1]);
+        Assert.AreEqual("address", types[2]);
+    }
+
+    [TestMethod]
+    public void GetOutputParameterTypes_WithTupleType_ReturnsCorrectTypes()
+    {
+        var signature = FunctionSignature.Parse("getPerson() returns ((string,uint256,address))");
+        var types = signature.GetOutputParameterTypes();
+
+        Assert.AreEqual(1, types.Length);
+        Assert.AreEqual("(string,uint256,address)", types[0]);
+    }
+
+    [TestMethod]
+    public void FromString_WithEmptyInputAndComplexReturnTypes_ParsesCorrectly()
+    {
+        var signature = FunctionSignature.Parse("getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
+        Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(uint256,(bool,string)[],(address,bytes32)[3])", signature.GetCanonicalOutputsSignature());
     }
 }

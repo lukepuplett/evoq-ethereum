@@ -137,11 +137,11 @@ public class AbiTypeValidatorTests
     [TestMethod]
     public void ValidateParameters_AbiFunction_ValidatesCorrectly()
     {
-        var function = new AbiItem
+        var function = new ContractAbiItem
         {
             Type = "function",
             Name = "transfer",
-            Inputs = new List<Parameter>
+            Inputs = new List<ContractAbiParameter>
             {
                 new() { Type = "address" },
                 new() { Type = "uint256" }
@@ -177,7 +177,7 @@ public class AbiTypeValidatorTests
     {
         string m;
 
-        var eventItem = new AbiItem
+        var eventItem = new ContractAbiItem
         {
             Type = "event",
             Name = "Transfer"

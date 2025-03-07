@@ -38,7 +38,7 @@ public class AbiDecoderTests
         // Act - This will throw NotImplementedException for now, which is expected
         try
         {
-            var result = this.decoder.DecodeParameters(signature.Parameters, encodedBytes);
+            var result = this.decoder.DecodeParameters(signature.Inputs, encodedBytes);
 
             // If we get here, the decoder didn't throw, so we should check the results
             Assert.IsNotNull(result, $"Test case {caseNumber}: {testCase.Name} failed to decode.");

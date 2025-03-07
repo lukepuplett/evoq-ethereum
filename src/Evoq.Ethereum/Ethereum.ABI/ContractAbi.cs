@@ -11,17 +11,30 @@ namespace Evoq.Ethereum.ABI;
 public class ContractAbi
 {
     /// <summary>
+    /// Initializes a new instance of the <see cref="ContractAbi"/> class with the specified items.
+    /// </summary>
+    /// <param name="items">The ABI items to initialize with.</param>
+    public ContractAbi(IEnumerable<ContractAbiItem> items)
+    {
+        this.Items = new List<ContractAbiItem>(items);
+    }
+
+    //
+
+    /// <summary>
     /// The items in the ABI.
     /// </summary>
-    public List<AbiItem> Items { get; set; } = new();
+    public IReadOnlyList<ContractAbiItem> Items { get; set; } = new List<ContractAbiItem>();
+
+    //
 
     /// <summary>
     /// Gets all functions in the ABI.
     /// </summary>
     /// <returns>An enumerable of function items.</returns>
-    public IEnumerable<AbiItem> GetFunctions()
+    public IReadOnlyList<ContractAbiItem> GetFunctions()
     {
-        return Items.Where(item => item.Type == "function");
+        return Items.Where(item => item.Type == "function").ToList();
     }
 
     /// <summary>
@@ -30,7 +43,7 @@ public class ContractAbi
     /// <param name="name">The function name to find.</param>
     /// <param name="function">The function if found, null otherwise.</param>
     /// <returns>True if the function was found, false otherwise.</returns>
-    public bool TryGetFunction(string name, [NotNullWhen(true)] out AbiItem? function)
+    public bool TryGetFunction(string name, [NotNullWhen(true)] out ContractAbiItem? function)
     {
         var first = Items.FirstOrDefault(item =>
             item.Type == "function" &&
@@ -51,18 +64,18 @@ public class ContractAbi
     /// </summary>
     /// <param name="name">The function name to find.</param>
     /// <returns>An enumerable of matching functions (for overloaded functions).</returns>
-    public IEnumerable<AbiItem> GetFunctions(string name)
+    public IReadOnlyList<ContractAbiItem> GetFunctions(string name)
     {
         return Items.Where(item =>
             item.Type == "function" &&
-            string.Equals(item.Name, name, StringComparison.Ordinal));
+            string.Equals(item.Name, name, StringComparison.Ordinal)).ToList();
     }
 }
 
 /// <summary>
 /// An item in a contract ABI.
 /// </summary>
-public class AbiItem
+public class ContractAbiItem
 {
     /// <summary>
     /// The type of the item.
@@ -75,11 +88,11 @@ public class AbiItem
     /// <summary>
     /// The inputs of the item.
     /// </summary>
-    public List<Parameter> Inputs { get; set; } = new();
+    public List<ContractAbiParameter> Inputs { get; set; } = new();
     /// <summary>
     /// The outputs of the item.
     /// </summary>
-    public List<Parameter>? Outputs { get; set; }
+    public List<ContractAbiParameter>? Outputs { get; set; }
     /// <summary>
     /// The state mutability of the item.
     /// </summary>
@@ -93,7 +106,7 @@ public class AbiItem
 /// <summary>
 /// A parameter in a contract ABI.
 /// </summary>
-public class Parameter
+public class ContractAbiParameter
 {
     /// <summary>
     /// The name of the parameter.
@@ -114,5 +127,10 @@ public class Parameter
     /// <summary>
     /// The components of the parameter.
     /// </summary>
-    public List<Parameter>? Components { get; set; }  // for tuple types
+    public List<ContractAbiParameter>? Components { get; set; }  // for tuple types
+
+    /// <summary>
+    /// Whether the parameter is a tuple.
+    /// </summary>
+    public bool IsTuple => this.Components != null && this.Components.Any();
 }

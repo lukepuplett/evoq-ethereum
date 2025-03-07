@@ -228,7 +228,7 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <returns>True if all values are compatible, false otherwise.</returns>
     public bool ValidateParameters(FunctionSignature signature, IReadOnlyList<object?> values, out string message, bool tryEncoding = false)
     {
-        var parameterTypes = signature.GetParameterTypes();
+        var parameterTypes = signature.GetInputParameterTypes();
 
         if (parameterTypes.Length != values.Count)
         {
@@ -257,7 +257,7 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <param name="message">The message if the values are not compatible</param>
     /// <returns>True if all values are compatible, false otherwise.</returns>
     /// <exception cref="ArgumentException">If the ABI item is not a function.</exception>
-    public bool ValidateParameters(AbiItem function, IReadOnlyList<object?> values, out string message, bool tryEncoding = false)
+    public bool ValidateParameters(ContractAbiItem function, IReadOnlyList<object?> values, out string message, bool tryEncoding = false)
     {
         var signature = function.GetFunctionSignature();
 
@@ -273,7 +273,7 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <param name="message">The message if the value is not compatible</param>
     /// <returns>True if the value is compatible, false otherwise.</returns>
     /// <exception cref="ArgumentException">If the ABI item is not a function or has more than one parameter.</exception>
-    public bool ValidateParameters(AbiItem function, object? value, out string message, bool tryEncoding = false)
+    public bool ValidateParameters(ContractAbiItem function, object? value, out string message, bool tryEncoding = false)
     {
         if (function.Inputs == null || function.Inputs.Count == 0)
         {

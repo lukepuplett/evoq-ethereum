@@ -52,7 +52,7 @@ public class AbiEncoderTests
             .ToList();
 
         // Act
-        var result = this.encoder.EncodeParameters(signature.Parameters, testCase.Values);
+        var result = this.encoder.EncodeParameters(signature.Inputs, testCase.Values);
         var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
 
         // Assert

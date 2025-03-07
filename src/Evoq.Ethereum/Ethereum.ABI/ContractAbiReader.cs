@@ -32,30 +32,36 @@ public static class ContractAbiReader
         return ParseAbiDocument(document.RootElement);
     }
 
+    //
+
     private static ContractAbi ParseAbiDocument(JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Array)
             throw new ArgumentException("Contract ABI must be a JSON array");
 
-        var abi = new ContractAbi();
+        var items = new List<ContractAbiItem>();
 
         foreach (var element in root.EnumerateArray())
         {
             var item = ParseAbiItem(element);
             if (item != null)
-                abi.Items.Add(item);
+            {
+                items.Add(item);
+            }
         }
 
-        return abi;
+        return new ContractAbi(items);
     }
 
-    private static AbiItem? ParseAbiItem(JsonElement element)
+    private static ContractAbiItem? ParseAbiItem(JsonElement element)
     {
         var type = element.GetProperty("type").GetString();
         if (string.IsNullOrEmpty(type))
+        {
             return null;
+        }
 
-        var item = new AbiItem
+        var item = new ContractAbiItem
         {
             Type = type
         };
@@ -78,13 +84,13 @@ public static class ContractAbiReader
         return item;
     }
 
-    private static List<Parameter> ParseParameters(JsonElement element)
+    private static List<ContractAbiParameter> ParseParameters(JsonElement element)
     {
-        var parameters = new List<Parameter>();
+        var parameters = new List<ContractAbiParameter>();
 
         foreach (var param in element.EnumerateArray())
         {
-            parameters.Add(new Parameter
+            parameters.Add(new ContractAbiParameter
             {
                 Name = param.GetProperty("name").GetString() ?? string.Empty,
                 Type = param.GetProperty("type").GetString() ?? string.Empty,

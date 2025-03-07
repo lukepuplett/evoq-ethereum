@@ -278,13 +278,13 @@ public class EvmParamTests
     {
         // Test single param (count = 1)
         var sig = FunctionSignature.Parse("transfer(uint256 amount)");
-        var param = sig.Parameters[0];
+        var param = sig.Inputs[0];
         var visitCount = param.ValidateValue(this.validator, BigInteger.One);
         Assert.AreEqual(1, visitCount, "Single parameter should have visit count of 1");
 
         // Test simple tuple (count = 2)
         sig = FunctionSignature.Parse("process((bool valid, uint256 amount) data)");
-        param = sig.Parameters[0];
+        param = sig.Inputs[0];
         visitCount = param.ValidateValue(this.validator, (true, BigInteger.One));
         Assert.AreEqual(2, visitCount, "Simple tuple should have visit count of 2");
     }
@@ -293,16 +293,16 @@ public class EvmParamTests
     public void DeepCount_WithComplexSignature_ReturnsCorrectCount()
     {
         var sig = FunctionSignature.Parse("process((bool active, uint256 balance) user, bool valid, uint256 amount)");
-        var count = sig.Parameters.DeepCount();
-        Assert.AreEqual(4, count, $"Should return 4 parameters; {sig.Parameters.GetCanonicalType()}");
+        var count = sig.Inputs.DeepCount();
+        Assert.AreEqual(4, count, $"Should return 4 parameters; {sig.Inputs.GetCanonicalType()}");
     }
 
     [TestMethod]
     public void DeepCount_WithMoreComplexSig_ReturnsCorrectCount()
     {
         var sig = FunctionSignature.Parse("process(((bool active, uint256 balance) account, (string name, uint8 age) profile) user, bool valid, uint256 amount)");
-        var count = sig.Parameters.DeepCount();
-        Assert.AreEqual(6, count, $"Should return 6 parameters; {sig.Parameters.GetCanonicalType()}");
+        var count = sig.Inputs.DeepCount();
+        Assert.AreEqual(6, count, $"Should return 6 parameters; {sig.Inputs.GetCanonicalType()}");
     }
 
     [TestMethod]

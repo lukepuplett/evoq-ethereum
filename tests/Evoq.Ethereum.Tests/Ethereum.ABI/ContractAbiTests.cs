@@ -9,16 +9,13 @@ public class ContractAbiTests
     public void GetFunctions_ReturnsOnlyFunctions()
     {
         // Arrange
-        var abi = new ContractAbi
+        var abi = new ContractAbi(new List<ContractAbiItem>
         {
-            Items = new List<AbiItem>
-            {
-                new() { Type = "function", Name = "transfer" },
-                new() { Type = "event", Name = "Transfer" },
-                new() { Type = "function", Name = "balanceOf" },
-                new() { Type = "error", Name = "InsufficientBalance" }
-            }
-        };
+            new() { Type = "function", Name = "transfer" },
+            new() { Type = "event", Name = "Transfer" },
+            new() { Type = "function", Name = "balanceOf" },
+            new() { Type = "error", Name = "InsufficientBalance" }
+        });
 
         // Act
         var functions = abi.GetFunctions().ToList();
@@ -34,14 +31,11 @@ public class ContractAbiTests
     public void GetFunction_WithExistingName_ReturnsFunction()
     {
         // Arrange
-        var abi = new ContractAbi
+        var abi = new ContractAbi(new List<ContractAbiItem>
         {
-            Items = new List<AbiItem>
-            {
-                new() { Type = "function", Name = "transfer" },
-                new() { Type = "event", Name = "Transfer" }
-            }
-        };
+            new() { Type = "function", Name = "transfer" },
+            new() { Type = "event", Name = "Transfer" }
+        });
 
         // Act
         var found = abi.TryGetFunction("transfer", out var function);
@@ -56,13 +50,10 @@ public class ContractAbiTests
     public void GetFunction_WithNonExistentName_ReturnsNull()
     {
         // Arrange
-        var abi = new ContractAbi
+        var abi = new ContractAbi(new List<ContractAbiItem>
         {
-            Items = new List<AbiItem>
-            {
-                new() { Type = "function", Name = "transfer" }
-            }
-        };
+            new() { Type = "function", Name = "transfer" }
+        });
 
         // Act
         var found = abi.TryGetFunction("nonexistent", out var function);
@@ -75,15 +66,12 @@ public class ContractAbiTests
     public void GetFunctions_WithOverloadedName_ReturnsAllOverloads()
     {
         // Arrange
-        var abi = new ContractAbi
+        var abi = new ContractAbi(new List<ContractAbiItem>
         {
-            Items = new List<AbiItem>
-            {
-                new() { Type = "function", Name = "transfer", Inputs = new List<Parameter> { new() { Type = "address" } } },
-                new() { Type = "function", Name = "transfer", Inputs = new List<Parameter> { new() { Type = "address" }, new() { Type = "uint256" } } },
-                new() { Type = "event", Name = "Transfer" }
-            }
-        };
+            new() { Type = "function", Name = "transfer", Inputs = new List<ContractAbiParameter> { new() { Type = "address" } } },
+            new() { Type = "function", Name = "transfer", Inputs = new List<ContractAbiParameter> { new() { Type = "address" }, new() { Type = "uint256" } } },
+            new() { Type = "event", Name = "Transfer" }
+        });
 
         // Act
         var overloads = abi.GetFunctions("transfer").ToList();
