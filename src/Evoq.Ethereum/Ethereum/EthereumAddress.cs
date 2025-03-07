@@ -153,6 +153,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// </summary>
     /// <param name="address">The address to parse.</param>
     /// <param name="result">The parsed Ethereum address.</param>
+    /// <param name="checksum">Whether to validate the checksum</param>
     /// <returns>True if the address was parsed successfully, otherwise false.</returns>
     public static bool TryParse(string address, EthereumAddressChecksum checksum, out EthereumAddress result)
     {
@@ -249,7 +250,11 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     {
         var addressUtil = new Nethereum.Util.AddressUtil();
 
-        if (this.Address.IsZeroValue())
+        if (this.Address == default || this.Address == Hex.Empty)
+        {
+            return "<EMPTY>";
+        }
+        else if (this.Address.IsZeroValue())
         {
             if (shortZero)
             {
