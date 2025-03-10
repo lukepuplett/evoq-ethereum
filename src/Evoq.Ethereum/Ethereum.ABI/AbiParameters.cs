@@ -114,6 +114,8 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
         return new AbiParameters(SplitParams(descriptor));
     }
 
+    //
+
     private static List<AbiParam> SplitParams(string descriptor)
     {
         // we're expecting a parameter string of the form:
@@ -241,8 +243,5 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
             throw new ArgumentException($"Invalid descriptor '{descriptor}'. Missing closing parenthesis.", nameof(descriptor));
         }
     }
-
-    //
-
 
 }

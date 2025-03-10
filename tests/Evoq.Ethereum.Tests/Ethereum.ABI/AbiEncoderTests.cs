@@ -62,7 +62,7 @@ public class AbiEncoderTests
 
     private static IEnumerable<object[]> GetTestCases()
     {
-        return AbiTestCases.Cases.Select(kvp => new object[] { kvp.Key, kvp.Value });
+        return AbiEncoderDecoderTestCases.Cases.Select(kvp => new object[] { kvp.Key, kvp.Value });
     }
 
     private static string FormatHexLine(string hex) => hex.Trim().Substring(0, 64 + 2);

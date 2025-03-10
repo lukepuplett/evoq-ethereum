@@ -36,7 +36,7 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Represents a parameter of a function or the components of a parameter.
 /// </summary>
-public record struct AbiParam()
+public class AbiParam
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiParam"/> struct.
@@ -51,7 +51,6 @@ public record struct AbiParam()
         int position, string name, string abiType,
         IReadOnlyList<int>? arrayLengths = null,
         IReadOnlyList<AbiParam>? components = null)
-        : this()
     {
         if (abiType != null && abiType.Trim().EndsWith("]"))
         {

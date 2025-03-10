@@ -102,6 +102,22 @@ public class FunctionSignature
     }
 
     /// <summary>
+    /// Decodes the return values of the function.
+    /// </summary>
+    /// <param name="decoder">The decoder to use.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <returns>The decoded return values.</returns>
+    public AbiDecodingResult AbiDecodeReturnValues(IAbiDecoder decoder, byte[] data)
+    {
+        if (this.Outputs == null || this.Outputs.Count == 0)
+        {
+            return new AbiDecodingResult(new AbiParameters(new List<AbiParam>()));
+        }
+
+        return decoder.DecodeParameters(this.Outputs, data);
+    }
+
+    /// <summary>
     /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
     /// </summary>
     /// <returns>The canonical signature.</returns>

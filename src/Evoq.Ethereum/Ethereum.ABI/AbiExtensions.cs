@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Evoq.Ethereum.Crypto;
 
@@ -11,6 +12,21 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public static class AbiExtensions
 {
+    /// <summary>
+    /// Converts an ITuple to a list of object arrays.
+    /// </summary>
+    /// <param name="tuple">The tuple to convert.</param>
+    /// <returns>A list of object arrays.</returns>
+    public static IReadOnlyList<object> ToList(this ITuple tuple)
+    {
+        var list = new List<object>();
+        for (int i = 0; i < tuple.Length; i++)
+        {
+            list.Add(tuple[i]);
+        }
+        return list;
+    }
+
     /// <summary>
     /// Get the canonical signature for an item.
     /// </summary>

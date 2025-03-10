@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -17,7 +14,7 @@ public record AbiTestCase(
     string ReferenceHex = ""  // Default empty until Go tool output is provided
 );
 
-public static class AbiTestCases
+public static class AbiEncoderDecoderTestCases
 {
     public static readonly Dictionary<int, AbiTestCase> Cases = new()
     {
@@ -44,7 +41,7 @@ public static class AbiTestCases
         [3] = new(
             "Simple uint8 and uint256",
             "function foo(uint8, uint256)",
-            new List<object> { (byte)1, (uint)1 },
+            new List<object> { (byte)1, BigInteger.One },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint8 value of 1",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
@@ -248,7 +245,7 @@ public static class AbiTestCases
         [15] = new(
             "Dynamic string in tuple with bool",
             "function foo(bool isActive, (string id, uint256 balance) account)",
-            new List<object> { true, ("abc", 9u) },
+            new List<object> { true, ("abc", new BigInteger(9u)) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to dynamic tuple 'account'",
@@ -268,7 +265,7 @@ public static class AbiTestCases
         [16] = new(
             "Nested tuple with two dynamic strings",
             "function foo(bool isActive, ((string id, string name) user, uint256 balance) account)",
-            new List<object> { true, (("a", "abc"), 9u) },
+            new List<object> { true, (("a", "abc"), new BigInteger(9u)) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to outer dynamic tuple 'account'",
@@ -310,7 +307,7 @@ public static class AbiTestCases
         [18] = new(
             "Formal spec: Simple uint256 and bool",
             "function baz(uint256 x,bool y)",
-            new List<object> { 69u, true },
+            new List<object> { new BigInteger(69), true },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000045  // uint256 value (69)",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)"
@@ -322,7 +319,7 @@ public static class AbiTestCases
         [19] = new(
             "Formal spec: Dynamic bytes with bool and uint array",
             "function sam(bytes,bool,uint[])",
-            new List<object> { "dave", true, new uint[] { 1, 2, 3 } },
+            new List<object> { "dave", true, new BigInteger[] { 1, 2, 3 } },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000060  // offset to start of bytes data",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)",
@@ -348,7 +345,7 @@ public static class AbiTestCases
         [20] = new(
             "Formal spec: Mixed static and dynamic types",
             "function foo(uint256,uint32[],bytes10,bytes)",
-            new List<object> { 0x123u, new uint[] { 0x456u, 0x789u }, "1234567890", "Hello, world!" },
+            new List<object> { new BigInteger(291), new uint[] { 0x456u, 0x789u }, "1234567890", "Hello, world!" },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000123  // uint256 value (0x123)",
                 "0x0000000000000000000000000000000000000000000000000000000000000080  // offset to start of uint32[] data",
