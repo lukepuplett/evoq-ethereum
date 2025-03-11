@@ -69,7 +69,7 @@ public static class AbiTypes
             return IsValidArrayType(type);
         }
 
-        if (IsTuple(type))
+        if (IsTuple(type, false)) // because we check for arrays first
         {
             return IsValidTuple(type);
         }
@@ -109,7 +109,7 @@ public static class AbiTypes
             canonicalType = canonicalBase + arrayPart;
             return true;
         }
-        else if (IsTuple(type))
+        else if (IsTuple(type, includeArrays: false)) // because we check for arrays first
         {
             canonicalType = AbiParameters.Parse(type).GetCanonicalType(includeNames: false, includeSpaces: false);
             return true;
@@ -158,9 +158,10 @@ public static class AbiTypes
 
             return true;
         }
-        else if (IsTuple(abiType))
+        else if (IsTuple(abiType, includeArrays: false)) // because we check for arrays first
         {
-            clrType = typeof(AbiParameters);
+            clrType = typeof(List<object?>);
+
             return true;
         }
         else
@@ -316,8 +317,15 @@ public static class AbiTypes
     /// <summary>
     /// Checks if the type is a tuple type.
     /// </summary>
-    public static bool IsTuple(string type)
+    /// <param name="type">The type to check.</param>
+    /// <param name="includeArrays">Whether to arrays of tuples count as tuples.</param>
+    public static bool IsTuple(string type, bool includeArrays)
     {
+        if (includeArrays && TryGetArrayBaseType(type, out var baseType) && baseType != null)
+        {
+            return IsTuple(baseType, includeArrays);
+        }
+
         return type.Trim().StartsWith('(') && type.Trim().EndsWith(')');
     }
 
@@ -362,12 +370,22 @@ public static class AbiTypes
             return true;
         }
 
-        if (IsTuple(type))
+        if (IsDynamicArray(type))
         {
+            return true;
+        }
+
+        if (IsTuple(type, includeArrays: true)) // although we check for arrays first, that check is not deep
+        {
+            if (TryGetArrayBaseType(type, out var baseDescriptor))
+            {
+                return AbiParameters.Parse(baseDescriptor).Any(p => IsDynamic(p.AbiType));
+            }
+
             return AbiParameters.Parse(type).Any(p => IsDynamic(p.AbiType));
         }
 
-        return IsDynamicArray(type);
+        return false;
     }
 
     /// <summary>
@@ -476,12 +494,13 @@ public static class AbiTypes
     /// Gets the count of the components in a tuple.
     /// </summary>
     /// <param name="type">The type to get the tuple length for.</param>
+    /// <param name="includeArrays">Whether to include arrays of tuples in the count.</param>
     /// <param name="length">The tuple length if successful.</param>
     /// <returns>True if the tuple length was successfully parsed, false otherwise.</returns>
-    public static bool TryGetTupleLength(string type, out int length)
+    public static bool TryGetTupleLength(string type, bool includeArrays, out int length)
     {
         length = 0;
-        if (!IsTuple(type))
+        if (!IsTuple(type, includeArrays))
         {
             return false;
         }
@@ -576,6 +595,7 @@ public static class AbiTypes
     public static bool TryGetArrayBaseType(string type, out string? baseType)
     {
         baseType = null;
+
         if (string.IsNullOrEmpty(type))
         {
             return false;
@@ -661,6 +681,16 @@ public static class AbiTypes
         return false;
     }
 
+    /// <summary>
+    /// Validates if a type string represents a valid tuple.
+    /// </summary>
+    /// <param name="type">The type to validate.</param>
+    /// <returns>True if the type is a valid tuple, false otherwise.</returns>
+    public static bool IsValidTuple(string type)
+    {
+        return AbiParameters.Parse(type).All(p => IsValidType(p.AbiType));
+    }
+
     //
 
     private static bool IsValidIntegerType(string type)
@@ -694,11 +724,6 @@ public static class AbiTypes
                size <= BytesSizeRange.End.Value;
     }
 
-    private static bool IsValidTuple(string type)
-    {
-        return AbiParameters.Parse(type).All(p => IsValidType(p.ToString()));
-    }
-
     private static bool IsValidArrayType(string type)
     {
         if (!TryGetArrayBaseType(type, out var baseType) || baseType == null)
@@ -706,7 +731,7 @@ public static class AbiTypes
             return false;
         }
 
-        if (IsTuple(baseType))
+        if (IsTuple(baseType, false)) // check for tuple in the base type
         {
             if (!IsValidTuple(baseType))
                 return false;

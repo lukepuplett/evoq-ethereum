@@ -41,7 +41,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
 
         this.DeepVisit(child =>
         {
-            if (!child.IsTuple)
+            if (!child.IsTupleStrict)
             {
                 singles++;
             }
@@ -139,6 +139,8 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
         var currentParamName = new List<char>();
         var currentParams = new List<AbiParam>();
         var currentArrayLengths = new List<int>();
+
+        string? currentNestedDesc = null;
         IReadOnlyList<AbiParam>? currentNestedParams = null;
 
         for (int i = 0; i < descriptor.Length; i++)
@@ -149,8 +151,8 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
             {
                 case '(': // start of nested descriptor, recurse
                     var nextCloseParen = findClosingParen(descriptor, i);
-                    var nestedDesc = descriptor[i..(nextCloseParen + 1)];
-                    currentNestedParams = SplitParams(nestedDesc); // recurse
+                    currentNestedDesc = descriptor[i..(nextCloseParen + 1)];
+                    currentNestedParams = SplitParams(currentNestedDesc); // recurse
                     i = nextCloseParen; // jump to the closing parenthesis
                     Debug.Assert(descriptor[i] == ')');
                     isHarvestingParamType = false; // we're now harvesting the param name
@@ -165,8 +167,9 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
                     skipWhitespace = true; // don't process consecutive spaces
                     break;
                 case ',': // end of param or descriptor, perform reset ready for next param
-                    var currentParam = makeParam(currentNestedParams); // make the param, add it to the components and reset
+                    var currentParam = makeParam(currentNestedDesc); // make the param, add it to the components and reset
                     currentParams.Add(currentParam);
+                    currentNestedDesc = null;
                     currentNestedParams = null;
                     currentParamType.Clear();
                     currentParamName.Clear();
@@ -202,16 +205,13 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
 
         return currentParams;
 
-        AbiParam makeParam(IReadOnlyList<AbiParam>? components = null)
+        AbiParam makeParam(string? tupleDescriptor)
         {
             var name = new string(currentParamName.ToArray());
 
-            string type = "";
-            if (components == null) // only pass in a type if there are no components
-            {
-                type = new string(currentParamType.ToArray());
-            }
-            return new AbiParam(ordinal, name, type, currentArrayLengths.ToArray(), components);
+            string type = tupleDescriptor ?? new string(currentParamType.ToArray());
+
+            return new AbiParam(ordinal, name, type, currentArrayLengths.ToArray());
         }
 
         int findClosingParen(string descriptor, int start)

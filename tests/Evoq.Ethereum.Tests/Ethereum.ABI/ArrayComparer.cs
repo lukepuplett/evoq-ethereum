@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Evoq.Ethereum.ABI;
 
 public static class ArrayComparer
@@ -14,22 +16,30 @@ public static class ArrayComparer
     {
         // Check if both arrays are null
         if (expected == null && actual == null)
+        {
             return;
+        }
 
         // Check if only one array is null
         if (expected == null || actual == null)
+        {
             throw new Exception($"{message}: At {path}: One array is null and the other is not");
+        }
 
         // Check array types
         Type expectedType = expected.GetType();
         Type actualType = actual.GetType();
 
         if (expectedType != actualType)
-            throw new Exception($"{message}: At {path}: Type mismatch - Expected {expectedType.Name}, got {actualType.Name}");
+        {
+            throw new Exception($"{message}: At {path}: Type mismatch - Expected {expectedType.Name}, actual {actualType.Name}");
+        }
 
         // Check array lengths
         if (expected.Length != actual.Length)
-            throw new Exception($"{message}: At {path}: Length mismatch - Expected {expected.Length}, got {actual.Length}");
+        {
+            throw new Exception($"{message}: At {path}: Length mismatch - Expected {expected.Length}, actual {actual.Length}");
+        }
 
         // Check array elements
         for (int i = 0; i < expected.Length; i++)
@@ -40,27 +50,31 @@ public static class ArrayComparer
 
             // Handle null values
             if (expectedItem == null && actualItem == null)
+            {
                 continue;
+            }
 
             if (expectedItem == null || actualItem == null)
+            {
                 throw new Exception($"{message}: At {currentPath}: One value is null and the other is not");
+            }
 
             // Check types of elements
             Type expectedItemType = expectedItem.GetType();
             Type actualItemType = actualItem.GetType();
 
-            if (expectedItemType != actualItemType)
-                throw new Exception($"{message}: At {currentPath}: Type mismatch - Expected {expectedItemType.Name}, got {actualItemType.Name}");
-
             // Recursively compare nested arrays
-            if (expectedItem is Array expectedNestedArray && actualItem is Array actualNestedArray)
+            if (TryArray(expectedItem, out var exItemArr) && TryArray(actualItem, out var actItemArr))
             {
-                AssertEqual(expectedNestedArray, actualNestedArray, message, currentPath);
+                AssertEqual(exItemArr!, actItemArr!, message, currentPath);
             }
-            // Compare regular values
+            else if (expectedItemType != actualItemType)
+            {
+                throw new Exception($"{message}: At {currentPath}: Type mismatch - Expected {expectedItemType.Name}, actual {actualItemType.Name}");
+            }
             else if (!Equals(expectedItem, actualItem))
             {
-                throw new Exception($"{message}: At {currentPath}: Value mismatch - Expected '{expectedItem}', got '{actualItem}'");
+                throw new Exception($"{message}: At {currentPath}: Value mismatch - Expected '{expectedItem}', actual '{actualItem}'");
             }
         }
     }
@@ -79,5 +93,37 @@ public static class ArrayComparer
         {
             return false;
         }
+    }
+
+    //
+
+    private static bool TryArray(object obj, out Array? array)
+    {
+        if (obj is Array y)
+        {
+            array = y;
+            return true;
+        }
+
+        if (obj is ITuple tuple)
+        {
+            array = tuple.ToList().ToArray();
+            return true;
+        }
+
+        if (obj is IEnumerable<object> objects)
+        {
+            array = objects.ToArray();
+            return true;
+        }
+
+        if (obj is IEnumerable<object?> maybeObjects)
+        {
+            array = maybeObjects.ToArray();
+            return true;
+        }
+
+        array = null;
+        return false;
     }
 }

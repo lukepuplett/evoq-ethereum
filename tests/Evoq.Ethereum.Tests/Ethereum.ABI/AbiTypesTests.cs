@@ -48,6 +48,15 @@ public class AbiTypesTests
     }
 
     [TestMethod]
+    [DataRow("(uint8,uint8)")]
+    [DataRow("(uint8,(string,string))")] // (id, (firstname, lastname))
+    [DataRow("(bool valid,address owner)")]
+    public void IsValidTuple_ValidTypes_ReturnsTrue(string type)
+    {
+        Assert.IsTrue(AbiTypes.IsValidTuple(type), $"Type '{type}' should be valid");
+    }
+
+    [TestMethod]
     [DataRow("uint", "uint256")]
     [DataRow("int", "int256")]
     [DataRow("byte", "bytes1")]
@@ -58,15 +67,18 @@ public class AbiTypesTests
     [DataRow("uint[5][]", "uint256[5][]")]
     public void TryGetCanonicalType_BasicTypes_ReturnsNormalizedType(string input, string expected)
     {
-        Assert.AreEqual(expected, AbiTypes.TryGetCanonicalType(input, out var canonicalType) ? canonicalType : null);
+        Assert.IsTrue(AbiTypes.TryGetCanonicalType(input, out var canonicalType));
+        Assert.AreEqual(expected, canonicalType);
     }
 
     [TestMethod]
+    [DataRow("(bool valid,address owner)", "(bool,address)")]
     [DataRow("(uint8,uint8)", "(uint8,uint8)")]
     [DataRow("(uint8,(string,string))", "(uint8,(string,string))")] // (id, (firstname, lastname))
     public void TryGetCanonicalType_TupleTypes_ReturnsNormalizedType(string input, string expected)
     {
-        Assert.AreEqual(expected, AbiTypes.TryGetCanonicalType(input, out var canonicalType) ? canonicalType : null);
+        Assert.IsTrue(AbiTypes.TryGetCanonicalType(input, out var canonicalType));
+        Assert.AreEqual(expected, canonicalType);
     }
 
     [TestMethod]
@@ -204,7 +216,7 @@ public class AbiTypesTests
     public void TryGetTupleLength_ValidTuples_ReturnsExpectedLength(string type, bool expectedSuccess, int expectedLength)
     {
         // Act
-        bool success = AbiTypes.TryGetTupleLength(type, out int length);
+        bool success = AbiTypes.TryGetTupleLength(type, includeArrays: false, out int length);
 
         // Assert
         Assert.IsTrue(success, $"Should successfully get tuple length for {type}");
@@ -225,7 +237,7 @@ public class AbiTypesTests
     public void TryGetTupleLength_NonTupleTypes_ReturnsFalse(string type)
     {
         // Act
-        bool success = AbiTypes.TryGetTupleLength(type, out int length);
+        bool success = AbiTypes.TryGetTupleLength(type, includeArrays: false, out int length);
 
         // Assert
         Assert.IsFalse(success, $"Should return false for non-tuple type {type}");
@@ -304,8 +316,8 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)", typeof(AbiParameters))]
-    [DataRow("(uint8,string,address)", typeof(AbiParameters))]
+    [DataRow("(uint256,bool)", typeof(List<object?>))]
+    [DataRow("(uint8,string,address)", typeof(List<object?>))]
     public void TryGetDefaultClrType_TupleTypes_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act
@@ -589,7 +601,21 @@ public class AbiTypesTests
     public void IsTuple_ValidTupleTypes_ReturnsTrue(string type)
     {
         // Act
-        bool result = AbiTypes.IsTuple(type);
+        bool result = AbiTypes.IsTuple(type, includeArrays: false);
+
+        // Assert
+        Assert.IsTrue(result, $"Type '{type}' should be recognized as a tuple");
+    }
+
+    [TestMethod]
+    [DataRow("(uint256,bool)[]")]
+    [DataRow("(uint8,string,address)[2]")]
+    [DataRow("(uint256,bytes32,bool[])[][2]")]
+    [DataRow("(uint256,(string,bool))[][2]")]
+    public void IsTupleArray_ValidTupleArrayTypes_ReturnsTrue(string type)
+    {
+        // Act
+        bool result = AbiTypes.IsTuple(type, includeArrays: true);
 
         // Assert
         Assert.IsTrue(result, $"Type '{type}' should be recognized as a tuple");
@@ -608,7 +634,7 @@ public class AbiTypesTests
     public void IsTuple_NonTupleTypes_ReturnsFalse(string type)
     {
         // Act
-        bool result = AbiTypes.IsTuple(type);
+        bool result = AbiTypes.IsTuple(type, includeArrays: false);
 
         // Assert
         Assert.IsFalse(result, $"Type '{type}' should not be recognized as a tuple");
@@ -674,10 +700,10 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)[]", typeof(AbiParameters[]))]
-    [DataRow("(address,uint256)[5]", typeof(AbiParameters[]))]
-    [DataRow("(string,bytes32)[][]", typeof(AbiParameters[][]))]
-    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(AbiParameters[][]))]
+    [DataRow("(uint256,bool)[]", typeof(List<object?>[]))]
+    [DataRow("(address,uint256)[5]", typeof(List<object?>[]))]
+    [DataRow("(string,bytes32)[][]", typeof(List<object?>[][]))]
+    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(List<object?>[][]))]
     public void TryGetDefaultClrType_SimpleTupleArrays_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act

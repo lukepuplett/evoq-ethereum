@@ -67,7 +67,7 @@ public class AbiDecoderTests
     //
 
     private void ValidateDecodedParameters(
-        IReadOnlyList<object> expectedValues, IReadOnlyList<AbiParam> decodedParameters, int caseNumber, string name, string paramName)
+        IReadOnlyList<object?> expectedValues, IReadOnlyList<AbiParam> decodedParameters, int caseNumber, string name, string paramName)
     {
         for (int i = 0; i < decodedParameters.Count; i++)
         {
@@ -81,29 +81,34 @@ public class AbiDecoderTests
 
         //
 
-        void assert(object expectedValue, AbiParam p, int i)
+        void assert(object? expectedValue, AbiParam p, int i)
         {
             var actualValue = p.Value;
 
-            if (p.IsTuple)
+            if (p.IsTupleStrict)
             {
-                // we expect either a tuple, or a list, and the tuple param itself has a null value
+                // we expect either a tuple, or a list for the expected value, and a list for the actual value
 
-                if (expectedValue is ITuple expectedTuple)
+                if (actualValue is List<object?> actualList)
                 {
-                    var expectedValues = expectedTuple.ToList();
+                    if (expectedValue is ITuple expectedTuple)
+                    {
+                        var expectedValues = expectedTuple.ToList().ToArray();
 
-                    // iterate over the sub parameters
-
-                    ValidateDecodedParameters(expectedValues, p.Components!, caseNumber, name, p.Name);
-                }
-                else if (expectedValue is List<object> expectedList)
-                {
-                    ValidateDecodedParameters(expectedList, p.Components!, caseNumber, name, p.Name);
+                        ArrayComparer.AssertEqual(expectedValues, actualList.ToArray(), $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
+                    }
+                    else if (expectedValue is List<object?> expectedList)
+                    {
+                        ArrayComparer.AssertEqual(expectedList.ToArray(), actualList.ToArray(), $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
+                    }
+                    else
+                    {
+                        Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not a tuple or list, got {expectedValue?.GetType()}");
+                    }
                 }
                 else
                 {
-                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not a tuple or list, got {expectedValue.GetType()}");
+                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Actual value was not a tuple or list, got {actualValue?.GetType()}");
                 }
             }
             else if (expectedValue is string[] expectedStrings && actualValue is byte[][] jagged)
@@ -129,7 +134,7 @@ public class AbiDecoderTests
                 }
                 else
                 {
-                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not an array, got {expectedValue.GetType()}");
+                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not an array, got {expectedValue?.GetType()}");
                 }
             }
             else if (p.AbiType.StartsWith(AbiTypeNames.Bytes))
@@ -164,7 +169,7 @@ public class AbiDecoderTests
                 }
                 else
                 {
-                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not a byte array, got {expectedValue.GetType()}");
+                    Assert.Fail($"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected value was not a byte array, got {expectedValue?.GetType()}");
                 }
             }
             else if (expectedValue is UInt32 expectedUInt32 && actualValue is BigInteger actualBigInt)
@@ -175,7 +180,7 @@ public class AbiDecoderTests
             }
             else
             {
-                Assert.AreEqual(expectedValue, actualValue, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected {expectedValue.GetType()}, got {actualValue?.GetType()}");
+                Assert.AreEqual(expectedValue, actualValue, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected {expectedValue?.GetType()}, got {actualValue?.GetType()}");
             }
         }
     }
@@ -185,7 +190,7 @@ public class AbiDecoderTests
         // Start with a subset of test cases to focus on basic functionality
         return AbiEncoderDecoderTestCases.Cases
             // .Where(numberCase => numberCase.Key > 0 && numberCase.Key <= 20)              // IMPORTANT / filter
-            // .Where(numberCase => numberCase.Key == 6)                                    // IMPORTANT / filter
+            // .Where(numberCase => numberCase.Key == 10)                                    // IMPORTANT / filter
             .Select(numberCase => new object[] { numberCase.Key, numberCase.Value });
     }
 

@@ -109,7 +109,7 @@ public static class AbiEncoderDecoderTestCases
         [7] = new(
             "Simple static tuple with two uint256",
             "function foo((uint256 id, uint256 balance) account)",
-            new List<object> { (3u, 10u) },
+            new List<object> { ((BigInteger)3u, (BigInteger)10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // account.balance"
@@ -121,7 +121,7 @@ public static class AbiEncoderDecoderTestCases
         [8] = new(
             "Bool and static tuple with two uint256",
             "function foo(bool isActive, (uint256 id, uint256 balance) account)",
-            new List<object> { true, (3u, 10u) },
+            new List<object> { true, ((BigInteger)3u, (BigInteger)10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
@@ -135,7 +135,7 @@ public static class AbiEncoderDecoderTestCases
         [9] = new(
             "Two static tuples with mixed static types",
             "function foo((bool isActive, uint256 seenUnix) prof, (uint256 id, uint256 balance) account)",
-            new List<object> { (true, 20u), (3u, 10u) },
+            new List<object> { (true, (BigInteger)20u), ((BigInteger)3u, (BigInteger)10u) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // prof.seenUnix",
@@ -151,7 +151,7 @@ public static class AbiEncoderDecoderTestCases
         [10] = new(
             "Nested static tuple with mixed static types",
             "function foo(((bool isActive, uint256 seenUnix) prof, uint256 id, uint256 balance) account)",
-            new List<object> { ((true, 20u), 3u, 10u) },
+            new List<object> { ((true, (BigInteger)20), (BigInteger)3, (BigInteger)10) },
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // account.prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // account.prof.seenUnix",

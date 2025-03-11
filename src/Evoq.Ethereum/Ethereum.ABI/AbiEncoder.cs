@@ -17,7 +17,8 @@ record class EncodingContext(
 {
     public bool IsRoot => this.Parent == null;
     public bool IsAbiDynamic => AbiTypes.IsDynamic(this.AbiType);
-    public bool IsAbiTuple => AbiTypes.IsTuple(this.AbiType);
+    public bool IsAbiTupleStrict => AbiTypes.IsTuple(this.AbiType, false);
+    public bool IsAbiTupleArray => AbiTypes.IsTuple(this.AbiType, true);
     public bool IsAbiArray => AbiTypes.IsArray(this.AbiType);
     public bool IsValueArray(out Array? array)
     {
@@ -32,13 +33,13 @@ record class EncodingContext(
     }
     public bool IsValueList(out IReadOnlyList<object?>? list)
     {
-        if (this.IsAbiTuple && this.Value is IReadOnlyList<object?> valueList)
+        if (this.IsAbiTupleStrict && this.Value is IReadOnlyList<object?> valueList)
         {
             list = valueList;
             return true;
         }
 
-        if (this.IsAbiTuple && this.Value is ITuple tuple)
+        if (this.IsAbiTupleStrict && this.Value is ITuple tuple)
         {
             list = tuple.GetElements().ToList();
             return true;
@@ -188,7 +189,7 @@ public class AbiEncoder : IAbiEncoder
     {
         // e.g. bool or uint256, but not tuples like (bool,uint256)
 
-        if (context.IsAbiTuple)
+        if (context.IsAbiTupleStrict)
         {
             throw new ArgumentException($"The type {context.AbiType} is a tuple, not a single slot static value");
         }
@@ -217,7 +218,7 @@ public class AbiEncoder : IAbiEncoder
         // all elements are directly encoded into the block with no count
         // of elements since this can be determined from the ABI type
 
-        if (context.IsAbiTuple)
+        if (context.IsAbiTupleStrict)
         {
             throw new ArgumentException($"The type {context.AbiType} is a tuple, not an array");
         }
@@ -259,7 +260,7 @@ public class AbiEncoder : IAbiEncoder
             throw new ArgumentException($"The type {context.AbiType} is an array, not a tuple");
         }
 
-        if (!context.IsAbiTuple)
+        if (!context.IsAbiTupleStrict)
         {
             throw new ArgumentException($"The type {context.AbiType} is not a tuple");
         }
@@ -287,7 +288,7 @@ public class AbiEncoder : IAbiEncoder
     {
         // e.g. string or bytes, but not tuples like (string,bytes) or arrays like string[] or bytes[]
 
-        if (context.IsAbiTuple)
+        if (context.IsAbiTupleStrict)
         {
             throw new ArgumentException($"The type {context.AbiType} is a tuple, not a single slot dynamic value");
         }
@@ -512,7 +513,7 @@ public class AbiEncoder : IAbiEncoder
     private void EncodeValue(EncodingContext context)
     {
         bool isArray = context.IsAbiArray;
-        bool isTuple = context.IsAbiTuple;
+        bool isTuple = context.IsAbiTupleStrict;
         bool isDynamic = context.IsAbiDynamic;
         bool hasPointer = context.HasPointer;
 

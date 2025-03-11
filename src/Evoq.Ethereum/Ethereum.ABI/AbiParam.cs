@@ -43,62 +43,42 @@ public class AbiParam
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
-    /// <param name="abiType">The type of the param.</param>
+    /// <param name="descriptor">The type descriptor of the param.</param>
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
-    /// <param name="components">The components of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the components contain nested params.</exception>
     public AbiParam(
-        int position, string name, string abiType,
-        IReadOnlyList<int>? arrayLengths = null,
-        IReadOnlyList<AbiParam>? components = null)
+        int position, string name, string descriptor,
+        IReadOnlyList<int>? arrayLengths = null)
     {
-        if (abiType != null && AbiTypes.TryGetArrayDimensions(abiType, out var dimensions))
+        if (string.IsNullOrEmpty(descriptor))
+        {
+            throw new ArgumentException("Descriptor cannot be null or empty.", nameof(descriptor));
+        }
+
+        (this.AbiType, this.Descriptor) = SetCanonicalTypes(descriptor, arrayLengths);
+
+        if (AbiTypes.TryGetArrayDimensions(descriptor, out var dimensions))
         {
             if (arrayLengths != null && arrayLengths.Count > 0)
             {
                 throw new ArgumentException(
-                    "Type must be a single type when array lengths are specified.",
-                     nameof(abiType));
+                    "Type must not have array dimensions when array lengths are specified.",
+                     nameof(descriptor));
             }
             else
             {
-                abiType = abiType.Substring(0, abiType.IndexOf('['));
                 arrayLengths = dimensions;
             }
         }
 
-        if (components == null) // single type
+        if (!AbiTypes.IsValidType(this.AbiType))
         {
-            this.AbiType = GetCanonicalType(abiType, arrayLengths);
-
-            if (!AbiTypes.IsValidType(this.AbiType))
-            {
-                throw new ArgumentException($"Invalid Solidity type '{this.AbiType}'", nameof(abiType));
-            }
-        }
-        else // tuple
-        {
-            if (components.Count == 0)
-            {
-                throw new ArgumentException("Tuple must have at least one component.", nameof(components));
-            }
-
-            var canonicalType = GetCanonicalType(components, arrayLengths); // e.g. "(uint256,uint256)[2]"
-
-            if (!string.IsNullOrEmpty(abiType) && canonicalType != abiType)
-            {
-                throw new ArgumentException(
-                    "The components do not match the type. Leave the type empty or null to use the type of the components.",
-                    nameof(components));
-            }
-
-            this.AbiType = canonicalType;
+            throw new ArgumentException($"Invalid type '{this.AbiType}'", nameof(descriptor));
         }
 
         this.Position = position;
         this.Name = name;
         this.ArrayLengths = arrayLengths;
-        this.Components = components;
 
         // set the default CLR type for the ABI type
         // e.g. uint8[][] -> System.Byte[][] and bytes3[] -> System.Byte[][] (since bytes3 is 3 bytes which needs to be an array, in an array)
@@ -131,34 +111,25 @@ public class AbiParam
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
-    /// <param name="abiType">The type of the param.</param>
+    /// <param name="descriptor">The type descriptor of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the type is a tuple.</exception>
-    public AbiParam(int position, string name, string abiType)
-        : this(position, name, abiType, null)
+    public AbiParam(int position, string name, string descriptor)
+        : this(position, name, descriptor, null)
     {
-        if (abiType.Contains("("))
-        {
-            throw new ArgumentException("Type must be a single type, not a tuple.", nameof(abiType));
-        }
-    }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AbiParam"/> struct.
-    /// </summary>
-    /// <param name="position">The ordinal of the param within its parent.</param>
-    /// <param name="name">The name of the param.</param>
-    /// <param name="components">The components of the param.</param>
-    public AbiParam(int position, string name, IReadOnlyList<AbiParam> components)
-        : this(position, name, GetCanonicalType(components), null, components)
-    {
     }
 
     //
 
     /// <summary>
-    /// Whether the param has components.
+    /// Whether the param is a tuple, but not an array of tuples.
     /// </summary>
-    public bool IsTuple => this.Components != null && this.Components.Count > 0;
+    public bool IsTupleStrict => AbiTypes.IsTuple(this.AbiType, false);
+
+    /// <summary>
+    /// Whether the param is an array of tuples.
+    /// </summary>
+    public bool IsTupleArray => AbiTypes.IsTuple(this.AbiType, true);
 
     /// <summary>
     /// Whether the param is a dynamic type.
@@ -181,19 +152,24 @@ public class AbiParam
     public string Name { get; init; } = "";
 
     /// <summary>
-    /// The type of the param.
+    /// The canonical type of the param.
     /// </summary>
     public string AbiType { get; init; } = "";
+
+    /// <summary>
+    /// The type descriptor of the param.
+    /// </summary>
+    public string Descriptor { get; init; } = "";
 
     /// <summary>   
     /// The lengths of the array.
     /// </summary>
     public IReadOnlyList<int>? ArrayLengths { get; init; }
 
-    /// <summary>
-    /// The components of the param.
-    /// </summary>
-    public IReadOnlyList<AbiParam>? Components { get; init; }
+    // /// <summary>
+    // /// The components of the param.
+    // /// </summary>
+    // public IReadOnlyList<AbiParam>? Components { get; init; }
 
     //
 
@@ -204,52 +180,28 @@ public class AbiParam
     //
 
     /// <summary>
-    /// Returns a clone of the parameter.
+    /// Returns the components of the param if it is a tuple or array of tuples.
     /// </summary>
-    /// <returns>A clone of the parameter.</returns>
-    public AbiParam GetClone()
+    /// <returns>The components of the param.</returns>
+    public bool TryParseComponents(out AbiParameters? parameters)
     {
-        var clonedComponents = this.Components?.Select(c => c.GetClone()).ToList();
-
-        return new AbiParam(this.Position, this.Name, this.AbiType, this.ArrayLengths, clonedComponents);
-    }
-
-    /// <summary>
-    /// Returns the canonical type of the parameter, e.g. "uint256" or "(uint256,bool)" or "(uint256 value, bool valid) ticket".
-    /// </summary>
-    /// <param name="includeNames">Whether to include the names of the components.</param>
-    /// <param name="includeSpaces">Whether to include spaces between the components.</param>
-    /// <returns>The canonical type of the parameter.</returns>
-    public string GetCanonicalType(
-        bool includeNames = false, bool includeSpaces = false)
-    {
-        if (!this.IsTuple)
+        if (this.IsTupleArray)
         {
-            if (includeNames && !string.IsNullOrEmpty(this.Name))
+            if (AbiTypes.TryGetArrayBaseType(this.Descriptor, out var baseDescriptor))
             {
-                return $"{this.AbiType} {this.Name}";
+                parameters = AbiParameters.Parse(baseDescriptor!);
+                return true;
             }
-            else
-            {
-                return this.AbiType;
-            }
+
+            parameters = AbiParameters.Parse(this.Descriptor);
+            return true;
         }
         else
         {
-            var componentType = GetCanonicalType(this.Components!, this.ArrayLengths, includeNames, includeSpaces);
-
-            if (includeNames && !string.IsNullOrEmpty(this.Name))
-            {
-                return $"{componentType} {this.Name}";
-            }
-            else
-            {
-                return $"{componentType}";
-            }
+            parameters = null;
+            return false;
         }
     }
-
-    //
 
     internal T? GetAs<T>()
     {
@@ -271,26 +223,35 @@ public class AbiParam
         return (T)this.Value;
     }
 
-    /// <summary>
-    /// Returns the canonical type for a type with optional array lengths.
-    /// </summary>
-    /// <param name="type">The type to get the canonical type of.</param>
-    /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
-    /// <returns>The canonical type of the type.</returns>
-    public static string GetCanonicalType(string? type, IReadOnlyList<int>? arrayLengths = null)
+    private string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
     {
-        if (string.IsNullOrEmpty(type))
+        if (this.TryParseComponents(out var components))
         {
-            return "";
-        }
+            var componentType = GetCanonicalType(components!, this.ArrayLengths, includeNames, includeSpaces);
 
-        if (!AbiTypes.IsValidBaseType(type) || !AbiTypes.TryGetCanonicalType(type, out var canonicalType))
+            if (includeNames && !string.IsNullOrEmpty(this.Name))
+            {
+                return $"{componentType} {this.Name}";
+            }
+            else
+            {
+                return $"{componentType}";
+            }
+        }
+        else
         {
-            throw new ArgumentException($"Invalid ABI base type: {type}", nameof(type));
+            if (includeNames && !string.IsNullOrEmpty(this.Name))
+            {
+                return $"{this.AbiType} {this.Name}";
+            }
+            else
+            {
+                return this.AbiType;
+            }
         }
-
-        return $"{canonicalType}{FormatArrayLengthsSuffix(arrayLengths)}";
     }
+
+    //
 
     /// <summary>
     /// Returns the canonical type of a list of parameters.
@@ -321,6 +282,33 @@ public class AbiParam
                 return $"({string.Join(",", parameters.Select(p => p.GetCanonicalType(includeNames, includeSpaces)))}){suffix}";
             }
         }
+    }
+
+    private static (string, string) SetCanonicalTypes(string type, IReadOnlyList<int>? arrayLengths = null)
+    {
+        if (AbiTypes.IsTuple(type, includeArrays: true))
+        {
+            var components = AbiParameters.Parse(type);
+
+            var bare = components.GetCanonicalType(false, false);
+            var named = components.GetCanonicalType(true, true);
+
+            bare = $"{bare}{FormatArrayLengthsSuffix(arrayLengths)}";
+            named = $"{named}{FormatArrayLengthsSuffix(arrayLengths)}";
+
+            return (bare, named);
+        }
+
+        // single type
+
+        if (!AbiTypes.TryGetCanonicalType(type, out var singleType))
+        {
+            throw new ArgumentException($"Invalid ABI type: {type}", nameof(type));
+        }
+
+        singleType = $"{singleType}{FormatArrayLengthsSuffix(arrayLengths)}";
+
+        return (singleType, singleType);
     }
 
     //
@@ -377,9 +365,9 @@ public class AbiParam
     {
         visitor(this);
 
-        if (this.Components != null && depth > 0)
+        if (this.TryParseComponents(out var components) && depth > 0)
         {
-            foreach (var component in this.Components.OrderBy(c => c.Position))
+            foreach (var component in components!.OrderBy(c => c.Position))
             {
                 component.DeepVisit(visitor, depth - 1);
             }
@@ -426,7 +414,7 @@ public class AbiParam
         }
 
         // For basic types, use the existing validator
-        if (!this.IsTuple)
+        if (!this.IsTupleStrict)
         {
             vc.IncrementVisitorCounter();
 
@@ -439,7 +427,7 @@ public class AbiParam
         }
 
         // For tuples, validate each component
-        if (this.Components != null)
+        if (this.TryParseComponents(out var components))
         {
             if (value is not ITuple tuple)
             {
@@ -447,16 +435,16 @@ public class AbiParam
                 return false;
             }
 
-            if (tuple.Length != this.Components.Count)
+            if (tuple.Length != components!.Count)
             {
-                vc.SetFailed(this.AbiType, value, currentPath, $"expected tuple of length {this.Components.Count}");
+                vc.SetFailed(this.AbiType, value, currentPath, $"expected tuple of length {components.Count}");
                 return false;
             }
 
             // Check each component recursively
-            for (int i = 0; i < this.Components.Count; i++)
+            for (int i = 0; i < components.Count; i++)
             {
-                if (!this.Components[i].ValidateValue(validator, tuple[i], vc, currentPath))
+                if (!components[i].ValidateValue(validator, tuple[i], vc, currentPath))
                 {
                     return false;
                 }

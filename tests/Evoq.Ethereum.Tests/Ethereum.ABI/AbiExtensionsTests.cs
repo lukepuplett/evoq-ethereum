@@ -1,7 +1,5 @@
 namespace Evoq.Ethereum.ABI;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Evoq.Ethereum.Crypto;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -90,13 +88,13 @@ public class AbiExtensionsTests
 
         // Check that the first parameter is a tuple
         var firstParam = signature.Inputs[0];
-        Assert.IsTrue(firstParam.IsTuple, "First parameter should be a tuple");
+        Assert.IsTrue(firstParam.IsTupleStrict, "First parameter should be a tuple");
 
         // Check that the tuple has the correct components
-        Assert.IsNotNull(firstParam.Components, "Tuple components should not be null");
-        Assert.AreEqual(2, firstParam.Components.Count, "Tuple should have 2 components");
-        Assert.AreEqual("uint256", firstParam.Components[0].AbiType, "First component should be uint256");
-        Assert.AreEqual("address", firstParam.Components[1].AbiType, "Second component should be address");
+        Assert.IsTrue(firstParam.TryParseComponents(out var components), "Tuple components should not be null");
+        Assert.AreEqual(2, components!.Count, "Tuple should have 2 components");
+        Assert.AreEqual("uint256", components[0].AbiType, "First component should be uint256");
+        Assert.AreEqual("address", components[1].AbiType, "Second component should be address");
 
         // Finally, check the canonical signature
         Assert.AreEqual("tupleFunction((uint256,address))", signature.GetCanonicalInputsSignature());

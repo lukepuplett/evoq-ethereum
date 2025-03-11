@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using System.Security.Cryptography;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
@@ -141,7 +139,7 @@ public class AbiDecoder : IAbiDecoder
 
             return DecodeStaticArray(parameter, valueSlot, allSlots);
         }
-        else if (parameter.IsTuple)
+        else if (parameter.IsTupleStrict)
         {
             // tuple of static, fixed-length values in sequential slots
 
@@ -163,9 +161,9 @@ public class AbiDecoder : IAbiDecoder
         {
             return DecodeDynamicArray(parameter, pointer, allSlots);
         }
-        else if (parameter.IsTuple)
+        else if (parameter.IsTupleStrict)
         {
-            return DecodeComponents(parameter.Components!, pointer, allSlots);
+            return DecodeTupleComponents(parameter, pointer, allSlots);
         }
         else
         {
@@ -174,6 +172,32 @@ public class AbiDecoder : IAbiDecoder
     }
 
     //
+
+    private int DecodeTupleComponents(AbiParam tuple, Slot firstValueOrPointer, SlotCollection allSlots)
+    {
+        if (!tuple.TryParseComponents(out var components))
+        {
+            throw new InvalidOperationException($"Unable to decode components. {tuple.AbiType} is not a tuple.");
+        }
+
+        if (tuple.ClrType != typeof(List<object?>))
+        {
+            throw new InvalidOperationException(
+                $"Unable to decode static tuple. {tuple.ClrType} is not supported.");
+        }
+        var results = new List<object?>();
+
+        int c = this.DecodeComponents(components!, firstValueOrPointer, allSlots);
+
+        foreach (var p in components!)
+        {
+            results.Add(p.Value);
+        }
+
+        tuple.Value = results;
+
+        return c;
+    }
 
     private int DecodeSingleSlotStaticValue(AbiParam parameter, Slot valueSlot)
     {
@@ -213,12 +237,12 @@ public class AbiDecoder : IAbiDecoder
 
         // the first slot should be the first element and all the values are contiguous
 
-        if (parameter.IsTuple)
+        if (parameter.TryParseComponents(out var components))
         {
             // array of static tuples, these are also laid out in contiguous slots, but
             // since each element has many values, we need to multiply the multiple!
 
-            multiLength *= parameter.Components!.Count;
+            multiLength *= components!.Count;
         }
 
         List<Slot> subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList(); ;
@@ -262,7 +286,7 @@ public class AbiDecoder : IAbiDecoder
 
                 return (arrayOfArrays, skip);
             }
-            else if (AbiTypes.TryGetTupleLength(innerType!, out var tupleLength))
+            else if (parameter.TryParseComponents(out var components))
             {
                 // all arrays have their values stored in the Value property of the parameter
 
@@ -273,13 +297,11 @@ public class AbiDecoder : IAbiDecoder
                 {
                     // decode into a clone of the components, one clone per element of the array
 
-                    var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
-
                     var slot = subSlots.Skip(skip).First(); // skip used here
-                    int c = DecodeComponents(clonedComponents, slot, allSlots);
+                    int c = DecodeComponents(components!, slot, allSlots);
                     consumedSlots += c; // advance
 
-                    array.SetValue(new AbiParameters(clonedComponents), i);
+                    array.SetValue(components, i);
                 }
 
                 return (array, skip + consumedSlots);
@@ -311,54 +333,34 @@ public class AbiDecoder : IAbiDecoder
 
     private int DecodeStaticTuple(AbiParam parameter, Slot firstValueSlot, SlotCollection allSlots)
     {
-        // all values are in contiguous slots, including any in inner static tuples
-        // so we can just iterate over the slots and stick them in their parameters
-
-        // however, static arrays are also laid out in contiguous slots, so once we've read an array
-        // we need to fast forward through its slots to catch up to where we are in the tuple
-
-        int skip = 0;
-        int consumedSlots = 0;
-        var valueSlot = firstValueSlot;
-        parameter.DeepVisit((param) =>
+        if (!parameter.TryParseComponents(out var components))
         {
-            if (ReferenceEquals(parameter, param))
-            {
-                return;
-            }
+            throw new InvalidOperationException(
+                $"Unable to decode static tuple. {parameter.AbiType} is not a tuple.");
+        }
 
-            if (skip == 0) // when this is positive, we are skipping over slots
-            {
-                if (param.IsArray)
-                {
-                    int c = this.DecodeStaticArray(param, valueSlot, allSlots);
-                    consumedSlots += c;
-                    skip = c - 1;
-                }
-                else if (param.IsTuple)
-                {
-                    // the tuple itself is vacant, so do nothing; all inner params will be visited
-                }
-                else
-                {
-                    int c = DecodeSingleSlotStaticValue(param, valueSlot);
-                    consumedSlots += c;
-                }
-            }
-            else
-            {
-                skip--;
-            }
+        if (parameter.ClrType != typeof(List<object?>))
+        {
+            throw new InvalidOperationException(
+                $"Unable to decode static tuple. {parameter.ClrType} is not supported.");
+        }
 
-            // only advance to the next slot if the param wasn't a vacant tuple
+        var results = new List<object?>();
 
-            if (!param.IsTuple && allSlots.TrySkipPast(valueSlot, out var beyond))
-            {
-                valueSlot = beyond.First();
-            }
-        });
+        int consumedSlots = 0;
+        var subSlots = allSlots.SkipTo(firstValueSlot);
 
-        // ^ if this deep visit idea fails, then we can check IsTuple and recurse DecodeStaticTuple
+        foreach (var p in components!)
+        {
+            var slot = subSlots.Skip(consumedSlots).FirstOrDefault();
+
+            int c = this.DecodeStaticComponent(p, slot, allSlots);
+            consumedSlots += c;
+
+            results.Add(p.Value);
+        }
+
+        parameter.Value = results;
 
         return consumedSlots;
     }
@@ -437,7 +439,7 @@ public class AbiDecoder : IAbiDecoder
             for (int i = 0; i < length; i++)
             {
                 var slot = dataSlots[consumedSlots];
-                var stuntParam = new AbiParam(0, $"{parameter.Name}.stunt", innerType!, components: parameter.Components);
+                var stuntParam = new AbiParam(0, $"{parameter.Name}.stunt", innerType!);
 
                 if (hasDynamicInner) // if (isDynamicBase || isDynamicLength)
                 {
@@ -485,16 +487,14 @@ public class AbiDecoder : IAbiDecoder
 
                     slot.DecodePointer(dataSlots);
 
-                    if (parameter.IsTuple)
+                    if (parameter.TryParseComponents(out var components))
                     {
                         // decode into a clone of the components, one clone per element of the array
 
-                        var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
-
-                        DecodeComponents(clonedComponents, slot, allSlots);
+                        DecodeComponents(components!, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer
 
-                        array.SetValue(new AbiParameters(clonedComponents), i);
+                        array.SetValue(components, i);
                     }
                     else
                     {
@@ -508,16 +508,14 @@ public class AbiDecoder : IAbiDecoder
                 {
                     // e.g. uint8, bool, (bool, bool) are laid out sequentially
 
-                    if (parameter.IsTuple)
+                    if (parameter.TryParseComponents(out var components))
                     {
                         // decode into a clone of the components, one clone per element of the array
 
-                        var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
+                        DecodeComponents(components!, slot, allSlots);
+                        consumedSlots += 1;
 
-                        int c = DecodeComponents(clonedComponents, slot, allSlots);
-                        consumedSlots += c;
-
-                        array.SetValue(new AbiParameters(clonedComponents), i);
+                        array.SetValue(components, i);
                     }
                     else
                     {
@@ -533,24 +531,6 @@ public class AbiDecoder : IAbiDecoder
         }
 
         return consumedSlots;
-    }
-
-    private int DecodeDynamicTuple(AbiParam parameter, Slot pointer, SlotCollection allSlots)
-    {
-        if (!parameter.IsTuple)
-        {
-            throw new InvalidOperationException($"Expected tuple type, got {parameter.AbiType}");
-        }
-
-        if (!parameter.IsDynamic)
-        {
-            throw new InvalidOperationException($"Expected dynamic tuple, got {parameter.AbiType}");
-        }
-
-        // fixed length, size information in the tuple, read forward through the slots
-        // which will either be static values or pointers to the next level of dynamic data
-
-        return DecodeComponents(parameter.Components!, pointer, allSlots);
     }
 
     //
