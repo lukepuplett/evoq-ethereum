@@ -9,11 +9,13 @@ public class EvmParametersTests
         var parameterString = "(string)";
         var result = AbiParameters.Parse(parameterString);
 
+        var firstResult = result.ElementAtOrDefault(0);
+
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
-        Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
-        Assert.AreEqual("", result[0].Name, "Parameter should have empty name");
-        Assert.IsNull(result[0].Components, "Parameter should not have components");
+        Assert.AreEqual("string", firstResult.AbiType, "Parameter should be of type 'string'");
+        Assert.AreEqual(0, firstResult.Position, "Parameter should be at position 0");
+        Assert.AreEqual("", firstResult.Name, "Parameter should have empty name");
+        Assert.IsNull(firstResult.Components, "Parameter should not have components");
     }
 
     [TestMethod]
@@ -22,13 +24,15 @@ public class EvmParametersTests
         var parameterString = "(string[2])";
         var result = AbiParameters.Parse(parameterString);
 
+        var firstResult = result.ElementAtOrDefault(0);
+
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string[2]", result[0].AbiType, "Parameter should be of type 'string[2]'");
-        Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
-        Assert.AreEqual("", result[0].Name, "Parameter should have empty name");
-        Assert.IsNull(result[0].Components, "Parameter should not have components");
-        Assert.AreEqual(1, result[0].ArrayLengths!.Count, "Parameter should have 1 array length");
-        Assert.AreEqual(2, result[0].ArrayLengths![0], "Array length should be 2");
+        Assert.AreEqual("string[2]", firstResult.AbiType, "Parameter should be of type 'string[2]'");
+        Assert.AreEqual(0, firstResult.Position, "Parameter should be at position 0");
+        Assert.AreEqual("", firstResult.Name, "Parameter should have empty name");
+        Assert.IsNull(firstResult.Components, "Parameter should not have components");
+        Assert.AreEqual(1, firstResult.ArrayLengths!.Count, "Parameter should have 1 array length");
+        Assert.AreEqual(2, firstResult.ArrayLengths![0], "Array length should be 2");
     }
 
     [TestMethod]
@@ -37,16 +41,19 @@ public class EvmParametersTests
         var parameterString = "(string,uint256)";
         var result = AbiParameters.Parse(parameterString);
 
-        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
-        Assert.AreEqual(0, result[0].Position, "First parameter should be at position 0");
-        Assert.AreEqual("", result[0].Name, "First parameter should have empty name");
-        Assert.IsNull(result[0].Components, "First parameter should not have components");
+        var firstResult = result.ElementAtOrDefault(0);
+        var secondResult = result.ElementAtOrDefault(1);
 
-        Assert.AreEqual("uint256", result[1].AbiType, "Second parameter should be of type 'uint256'");
-        Assert.AreEqual(1, result[1].Position, "Second parameter should be at position 1");
-        Assert.AreEqual("", result[1].Name, "Second parameter should have empty name");
-        Assert.IsNull(result[1].Components, "Second parameter should not have components");
+        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
+        Assert.AreEqual("string", firstResult.AbiType, "First parameter should be of type 'string'");
+        Assert.AreEqual(0, firstResult.Position, "First parameter should be at position 0");
+        Assert.AreEqual("", firstResult.Name, "First parameter should have empty name");
+        Assert.IsNull(firstResult.Components, "First parameter should not have components");
+
+        Assert.AreEqual("uint256", secondResult.AbiType, "Second parameter should be of type 'uint256'");
+        Assert.AreEqual(1, secondResult.Position, "Second parameter should be at position 1");
+        Assert.AreEqual("", secondResult.Name, "Second parameter should have empty name");
+        Assert.IsNull(secondResult.Components, "Second parameter should not have components");
     }
 
     [TestMethod]
@@ -55,17 +62,19 @@ public class EvmParametersTests
         var parameterString = "((string name, uint256 value) item)";
         var result = AbiParameters.Parse(parameterString);
 
+        var firstResult = result.ElementAtOrDefault(0);
+
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("(string,uint256)", result[0].AbiType, "Parameter should be of type '(string,uint256)'");
-        Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
-        Assert.AreEqual("item", result[0].Name, "Parameter should have name 'item'");
-        Assert.IsTrue(result[0].Components != null, "Parameter should have components");
-        Assert.AreEqual(2, result[0].Components!.Count, "Tuple should have exactly two components");
+        Assert.AreEqual("(string,uint256)", firstResult.AbiType, "Parameter should be of type '(string,uint256)'");
+        Assert.AreEqual(0, firstResult.Position, "Parameter should be at position 0");
+        Assert.AreEqual("item", firstResult.Name, "Parameter should have name 'item'");
+        Assert.IsTrue(firstResult.Components != null, "Parameter should have components");
+        Assert.AreEqual(2, firstResult.Components!.Count, "Tuple should have exactly two components");
 
-        Assert.AreEqual("string", result[0].Components![0].AbiType, "First component should be of type 'string'");
-        Assert.AreEqual(0, result[0].Components![0].Position, "First component should be at position 0");
-        Assert.AreEqual("name", result[0].Components![0].Name, "First component should have name 'name'");
-
+        var firstComponent = firstResult.Components!.ElementAtOrDefault(0);
+        Assert.AreEqual("string", firstComponent.AbiType, "First component should be of type 'string'");
+        Assert.AreEqual(0, firstComponent.Position, "First component should be at position 0");
+        Assert.AreEqual("name", firstComponent.Name, "First component should have name 'name'");
     }
 
     [TestMethod]
@@ -74,11 +83,13 @@ public class EvmParametersTests
         var parameterString = "(string name)";
         var result = AbiParameters.Parse(parameterString);
 
+        var firstResult = result.ElementAtOrDefault(0);
+
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string", result[0].AbiType, "Parameter should be of type 'string'");
-        Assert.AreEqual(0, result[0].Position, "Parameter should be at position 0");
-        Assert.AreEqual("name", result[0].Name, "Parameter should have name 'name'");
-        Assert.IsNull(result[0].Components, "Parameter should not have components");
+        Assert.AreEqual("string", firstResult.AbiType, "Parameter should be of type 'string'");
+        Assert.AreEqual(0, firstResult.Position, "Parameter should be at position 0");
+        Assert.AreEqual("name", firstResult.Name, "Parameter should have name 'name'");
+        Assert.IsNull(firstResult.Components, "Parameter should not have components");
     }
 
     [TestMethod]
@@ -87,10 +98,11 @@ public class EvmParametersTests
         var parameterString = "(   (  string  name ,  uint256  age  )  data  ,  bool  enabled )";
         var result = AbiParameters.Parse(parameterString);
 
-        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("(string,uint256)", result[0].AbiType, "First parameter should be of type '(string,uint256)'");
-        Assert.AreEqual("data", result[0].Name, "First parameter should have name 'data'");
+        var firstResult = result.ElementAtOrDefault(0);
 
+        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
+        Assert.AreEqual("(string,uint256)", firstResult.AbiType, "First parameter should be of type '(string,uint256)'");
+        Assert.AreEqual("data", firstResult.Name, "First parameter should have name 'data'");
     }
 
     [TestMethod]
@@ -99,16 +111,19 @@ public class EvmParametersTests
         var parameterString = "(string name, uint256 value)";
         var result = AbiParameters.Parse(parameterString);
 
-        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("string", result[0].AbiType, "First parameter should be of type 'string'");
-        Assert.AreEqual(0, result[0].Position, "First parameter should be at position 0");
-        Assert.AreEqual("name", result[0].Name, "First parameter should have name 'name'");
-        Assert.IsNull(result[0].Components, "First parameter should not have components");
+        var firstResult = result.ElementAtOrDefault(0);
+        var secondResult = result.ElementAtOrDefault(1);
 
-        Assert.AreEqual("uint256", result[1].AbiType, "Second parameter should be of type 'uint256'");
-        Assert.AreEqual(1, result[1].Position, "Second parameter should be at position 1");
-        Assert.AreEqual("value", result[1].Name, "Second parameter should have name 'value'");
-        Assert.IsNull(result[1].Components, "Second parameter should not have components");
+        Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
+        Assert.AreEqual("string", firstResult.AbiType, "First parameter should be of type 'string'");
+        Assert.AreEqual(0, firstResult.Position, "First parameter should be at position 0");
+        Assert.AreEqual("name", firstResult.Name, "First parameter should have name 'name'");
+        Assert.IsNull(firstResult.Components, "First parameter should not have components");
+
+        Assert.AreEqual("uint256", secondResult.AbiType, "Second parameter should be of type 'uint256'");
+        Assert.AreEqual(1, secondResult.Position, "Second parameter should be at position 1");
+        Assert.AreEqual("value", secondResult.Name, "Second parameter should have name 'value'");
+        Assert.IsNull(secondResult.Components, "Second parameter should not have components");
     }
 
     [TestMethod]
@@ -367,7 +382,9 @@ public class EvmParametersTests
         var parameters = AbiParameters.Parse(parameterString);
         var result = parameters.ToString();
 
-        Assert.AreEqual("items", parameters[0].Name, "Parameter should have name 'items'");
+        var firstParam = parameters.ElementAtOrDefault(0);
+
+        Assert.AreEqual("items", firstParam.Name, "Parameter should have name 'items'");
         Assert.AreEqual(parameterString, result, "Should format tuple array correctly");
     }
 

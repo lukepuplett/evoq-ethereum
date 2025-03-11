@@ -21,17 +21,6 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     //
 
     /// <summary>
-    /// Encodes the parameters.
-    /// </summary>
-    /// <param name="values">The values to encode.</param>
-    /// <param name="encoder">The encoder to use.</param>
-    /// <returns>The encoded parameters.</returns>
-    public AbiEncodingResult Encode(ITuple values, IAbiEncoder encoder)
-    {
-        return encoder.EncodeParameters(this, values);
-    }
-
-    /// <summary>
     /// Returns the canonical type of the parameters.
     /// </summary>
     /// <param name="includeNames">Whether to include the names of the parameters.</param>

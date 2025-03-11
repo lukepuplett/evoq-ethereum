@@ -222,13 +222,13 @@ public class AbiDecoder : IAbiDecoder
         }
 
         List<Slot> subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList(); ;
-        List<object?> subValues;
+        List<object?> decodedSubValues;
 
-        subValues = subSlots
+        decodedSubValues = subSlots
             .Select(s => this.DecodeStaticSlotValue(baseType!, parameter.BaseClrType, s))
             .ToList();
 
-        var (array, skip) = getArray(parameter.AbiType, parameter.ClrType, 0, subValues);
+        var (array, skip) = getArray(parameter.AbiType, parameter.ClrType, 0);
 
         parameter.Value = array;
 
@@ -238,9 +238,9 @@ public class AbiDecoder : IAbiDecoder
 
         // define recursive function to decode the array (see note, top)
 
-        (Array Array, int Skip) getArray(string abiType, Type clrType, int skip, IList<object?> values)
+        (Array Array, int Skip) getArray(string abiType, Type clrType, int skip)
         {
-            if (!AbiTypes.TryGetArrayOuterLength(abiType, out var length))
+            if (!AbiTypes.TryGetArrayOuterLength(abiType, out var outerArrayLength))
             {
                 throw new InvalidOperationException($"Failed to get length for {abiType}");
             }
@@ -249,11 +249,11 @@ public class AbiDecoder : IAbiDecoder
             {
                 // inner type is itself an array, so we create an array to hold arrays of that type
 
-                var arrayOfArrays = Array.CreateInstance(clrType.GetElementType(), length);
+                var arrayOfArrays = Array.CreateInstance(clrType.GetElementType(), outerArrayLength);
 
-                for (int i = 0; i < length; i++)
+                for (int i = 0; i < outerArrayLength; i++)
                 {
-                    var inner = getArray(innerType!, clrType.GetElementType(), skip, values); // recurse
+                    var inner = getArray(innerType!, clrType.GetElementType(), skip); // recurse
 
                     skip = inner.Skip;
 
@@ -262,29 +262,114 @@ public class AbiDecoder : IAbiDecoder
 
                 return (arrayOfArrays, skip);
             }
-            else if (AbiTypes.IsTuple(innerType!))
+            else if (AbiTypes.TryGetTupleLength(innerType!, out var tupleLength))
             {
+                // The inner type is a tuple, which is expansive! A function might return a param
+                // which is an array of 10 tuples like (bool, uint8)[10] and that means 20 values,   
+                // which is 20 AbiParams
+
+                // For a non-array tuple, its components are decoded into the parameter's components
+                // and nested non-array tuples are decoded into their parameter's components and so
+                // there already exists an AbiParam for each component
+
+                // But for an array of tuples, its parameter has components which describe the tuple
+                // as well as array length information, but we cannot decode into the parameter's
+                // components because we don't know how many there are! Actually, we do because this
+                // is a static array, but in the dynamic array case (bool, bool)[], we don't know how
+                // many there are, and I am trying to keep things the same.
+
+                // I could redesign the AbiParam to have an array of components, and upon signature
+                // parsing, we could create/expand an array of AbiParameters in readiness for holding
+                // the decoded values, and then we could decode into that.
+
+                // But we still have the problem for dynamic arrays, so we may as well solve it the
+                // same way.
+
+                // So I will treat each tuple element as its own signature.
+
+
+
+
+
+
+
+
+
+
+
+                // inner type is a tuple; these decode into some kind of .NET collection and
+                // the complexity is that they are expansive! A function might return a param
+                // which is an array of 10 tuples like (bool, bool)[10] and that means 20 values,   
+                // which is 20 AbiParams
+
+                // the key point is that since our design is to decode values into their respective 
+                // AbiParams from the signature, for arrays, we need to instantiate an array of
+                // AbiParams, each of which will have a default CLR type for the inner ABI type... wait!
+                // the inner type will be a tuple (mixed types) and we need the AbiParam to have
+                // the component type, which we depends on which component we are processing, which
+                // we don't know because we're processing it in one go!
+
+
+
+                // var array = Array.CreateInstance(clrType.GetElementType(), outerArrayLength);
+
+                // int consumedSlots = 0;
+                // for (int i = 0; i < outerArrayLength; i++)
+                // {
+                //     int ord = 0;
+                //     var tupleValues = decodedValues.Skip(skip).Take(tupleLength);
+                //     var tupleComponents = tupleValues.Select(obj =>
+                //     {
+                //         var p = new AbiParam(ord++, $"{parameter.Name}.{i}.{ord}", innerType!);
+                //         p.Value = obj;
+                //         return p;
+
+                //     }).ToList();
+
+                //     if (clrType.GetElementType() == typeof(AbiParameters))
+                //     {
+                //         var tuple = new AbiParameters(tupleComponents);
+
+                //         array.SetValue(tuple, i);
+
+                //         consumedSlots += tupleLength;
+                //     }
+                //     else
+                //     {
+                //         throw new NotImplementedException("The CLR type of the array of tuplesis not supported");
+                //     }
+                // }
+
+
+
+
+
+
+
+
                 throw new NotImplementedException("Static array of tuples not implemented");
             }
             else
             {
-                // inner type is a non-array type, so we create an array of that type
-                // and fill it with the non-array values
+                // inner type is a non-array type, i.e. a single value, so we create an array
+                // of that type and fill it with the values
 
-                var array = Array.CreateInstance(clrType.GetElementType(), length);
+                var array = Array.CreateInstance(clrType.GetElementType(), outerArrayLength);
 
                 // fill the array
 
                 int c = 0;
-                foreach (var value in values.Skip(skip).Take(length)) // skip used here
+                foreach (var slot in subSlots.Skip(skip).Take(outerArrayLength)) // skip used here
                 {
+                    var value = this.DecodeStaticSlotValue(innerType!, clrType.GetElementType(), slot);
+
                     array.SetValue(value, c++);
                 }
 
                 // return the filled array and a skip value that will be used by the recursive caller
                 // above to skip over the array values that have already been decoded
 
-                return (array, skip + length);
+                return (array, skip + outerArrayLength);
             }
         }
     }
@@ -473,6 +558,15 @@ public class AbiDecoder : IAbiDecoder
 
                     if (parameter.IsTuple)
                     {
+                        // BUG!?
+                        //
+                        // Decoding into the parameter's components is not correct because the
+                        // there is only one set of them, so their values will be overwritten
+                        // on each iteration.
+                        //
+                        // We need to decode into a new set of components for each iteration, and
+                        // add them to the array, or add them to the parameter's components.
+
                         DecodeComponents(parameter.Components!, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer
 

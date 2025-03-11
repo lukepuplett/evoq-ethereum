@@ -473,6 +473,24 @@ public static class AbiTypes
     }
 
     /// <summary>
+    /// Gets the count of the components in a tuple.
+    /// </summary>
+    /// <param name="type">The type to get the tuple length for.</param>
+    /// <param name="length">The tuple length if successful.</param>
+    /// <returns>True if the tuple length was successfully parsed, false otherwise.</returns>
+    public static bool TryGetTupleLength(string type, out int length)
+    {
+        length = 0;
+        if (!IsTuple(type))
+        {
+            return false;
+        }
+
+        length = AbiParameters.Parse(type).Count;
+        return true;
+    }
+
+    /// <summary>
     /// Gets the array dimensions from a type from outer to inner e.g. uint256[][3] -> [3, -1]
     /// </summary>
     /// <param name="type">The type to get dimensions from.</param>

@@ -52,7 +52,7 @@ public class AbiParam
         IReadOnlyList<int>? arrayLengths = null,
         IReadOnlyList<AbiParam>? components = null)
     {
-        if (abiType != null && abiType.Trim().EndsWith("]"))
+        if (abiType != null && AbiTypes.TryGetArrayDimensions(abiType, out var dimensions))
         {
             if (arrayLengths != null && arrayLengths.Count > 0)
             {
@@ -62,11 +62,6 @@ public class AbiParam
             }
             else
             {
-                if (!AbiTypes.TryGetArrayDimensions(abiType, out var dimensions))
-                {
-                    throw new ArgumentException($"Invalid array type: {abiType}", nameof(abiType));
-                }
-
                 abiType = abiType.Substring(0, abiType.IndexOf('['));
                 arrayLengths = dimensions;
             }
@@ -204,7 +199,7 @@ public class AbiParam
 
     internal Type ClrType { get; init; } = typeof(object);
     internal Type BaseClrType { get; init; } = typeof(object);
-    internal object? Value { get; set; }
+    internal object? Value { get; set; } // TODO / add type checking to setter
 
     //
 
