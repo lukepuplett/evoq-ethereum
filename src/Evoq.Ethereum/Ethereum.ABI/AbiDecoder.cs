@@ -206,8 +206,35 @@ public class AbiDecoder : IAbiDecoder
             throw new InvalidOperationException($"Expected array type, got {parameter.ClrType}");
         }
 
-        // for static arrays, all the values are in contiguous slots, so we can just decode them
-        // into the array, or array of arrays, etc.
+        // e.g. uint8[2], bytes32[4][2], (bool, bool)[2]
+
+        // for static arrays, due to their fixed size and values, all their values are in sequential
+        // slots, so we can just decode them into the array, or array of arrays, etc.
+
+        // the first slot should be the first element and all the values are contiguous
+
+        if (parameter.IsTuple)
+        {
+            // array of static tuples, these are also laid out in contiguous slots, but
+            // since each element has many values, we need to multiply the multiple!
+
+            multiLength *= parameter.Components!.Count;
+        }
+
+        List<Slot> subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList(); ;
+        List<object?> subValues;
+
+        subValues = subSlots
+            .Select(s => this.DecodeStaticSlotValue(baseType!, parameter.BaseClrType, s))
+            .ToList();
+
+        var (array, skip) = getArray(parameter.AbiType, parameter.ClrType, 0, subValues);
+
+        parameter.Value = array;
+
+        return skip;
+
+        //
 
         // define recursive function to decode the array (see note, top)
 
@@ -260,35 +287,6 @@ public class AbiDecoder : IAbiDecoder
                 return (array, skip + length);
             }
         }
-
-        // the first slot should be the first element and all the values are contiguous
-
-        var subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList();
-        List<object?> subValues;
-
-        if (parameter.IsTuple)
-        {
-            // array of static tuples, these are also laid out in contiguous slots
-
-            subValues = new();
-
-            throw new NotImplementedException("Static array of tuples not implemented");
-        }
-        else
-        {
-            // array of single slot values, laid out contiguously, so we can just decode them
-            // all into a list
-
-            subValues = subSlots
-                .Select(s => this.DecodeStaticSlotValue(baseType!, parameter.BaseClrType, s))
-                .ToList();
-        }
-
-        var (array, skip) = getArray(parameter.AbiType, parameter.ClrType, 0, subValues);
-
-        parameter.Value = array;
-
-        return skip;
     }
 
     private int DecodeStaticTuple(AbiParam parameter, Slot firstValueSlot, SlotCollection allSlots)
