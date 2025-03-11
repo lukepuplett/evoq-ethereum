@@ -304,8 +304,8 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)", typeof(IReadOnlyList<AbiParam>))]
-    [DataRow("(uint8,string,address)", typeof(IReadOnlyList<AbiParam>))]
+    [DataRow("(uint256,bool)", typeof(AbiParameters))]
+    [DataRow("(uint8,string,address)", typeof(AbiParameters))]
     public void TryGetDefaultClrType_TupleTypes_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act
@@ -674,10 +674,10 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)[]", typeof(IReadOnlyList<AbiParam>[]))]
-    [DataRow("(address,uint256)[5]", typeof(IReadOnlyList<AbiParam>[]))]
-    [DataRow("(string,bytes32)[][]", typeof(IReadOnlyList<AbiParam>[][]))]
-    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(IReadOnlyList<AbiParam>[][]))]
+    [DataRow("(uint256,bool)[]", typeof(AbiParameters[]))]
+    [DataRow("(address,uint256)[5]", typeof(AbiParameters[]))]
+    [DataRow("(string,bytes32)[][]", typeof(AbiParameters[][]))]
+    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(AbiParameters[][]))]
     public void TryGetDefaultClrType_SimpleTupleArrays_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act

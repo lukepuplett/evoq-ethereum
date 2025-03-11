@@ -199,28 +199,19 @@ public class AbiParam
 
     internal Type ClrType { get; init; } = typeof(object);
     internal Type BaseClrType { get; init; } = typeof(object);
-    internal object? Value { get; set; } // TODO / add type checking to setter
+    internal object? Value { get; set; }
 
     //
 
-    internal T? GetAs<T>()
+    /// <summary>
+    /// Returns a clone of the parameter.
+    /// </summary>
+    /// <returns>A clone of the parameter.</returns>
+    public AbiParam GetClone()
     {
-        if (this.Value == null)
-        {
-            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
-            {
-                throw new InvalidCastException($"Cannot cast null to non-nullable value type {typeof(T)}");
-            }
+        var clonedComponents = this.Components?.Select(c => c.GetClone()).ToList();
 
-            return default; // null for reference types or Nullable<T>
-        }
-
-        if (!typeof(T).IsAssignableFrom(this.ClrType))
-        {
-            throw new InvalidCastException($"Cannot cast {this.ClrType} to {typeof(T)}");
-        }
-
-        return (T)this.Value;
+        return new AbiParam(this.Position, this.Name, this.AbiType, this.ArrayLengths, clonedComponents);
     }
 
     /// <summary>
@@ -256,6 +247,28 @@ public class AbiParam
                 return $"{componentType}";
             }
         }
+    }
+
+    //
+
+    internal T? GetAs<T>()
+    {
+        if (this.Value == null)
+        {
+            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
+            {
+                throw new InvalidCastException($"Cannot cast null to non-nullable value type {typeof(T)}");
+            }
+
+            return default; // null for reference types or Nullable<T>
+        }
+
+        if (!typeof(T).IsAssignableFrom(this.ClrType))
+        {
+            throw new InvalidCastException($"Cannot cast {this.ClrType} to {typeof(T)}");
+        }
+
+        return (T)this.Value;
     }
 
     /// <summary>

@@ -264,90 +264,25 @@ public class AbiDecoder : IAbiDecoder
             }
             else if (AbiTypes.TryGetTupleLength(innerType!, out var tupleLength))
             {
-                // The inner type is a tuple, which is expansive! A function might return a param
-                // which is an array of 10 tuples like (bool, uint8)[10] and that means 20 values,   
-                // which is 20 AbiParams
+                // all arrays have their values stored in the Value property of the parameter
 
-                // For a non-array tuple, its components are decoded into the parameter's components
-                // and nested non-array tuples are decoded into their parameter's components and so
-                // there already exists an AbiParam for each component
+                var array = Array.CreateInstance(clrType.GetElementType(), outerArrayLength);
 
-                // But for an array of tuples, its parameter has components which describe the tuple
-                // as well as array length information, but we cannot decode into the parameter's
-                // components because we don't know how many there are! Actually, we do because this
-                // is a static array, but in the dynamic array case (bool, bool)[], we don't know how
-                // many there are, and I am trying to keep things the same.
+                int consumedSlots = 0;
+                for (int i = 0; i < outerArrayLength; i++)
+                {
+                    // decode into a clone of the components, one clone per element of the array
 
-                // I could redesign the AbiParam to have an array of components, and upon signature
-                // parsing, we could create/expand an array of AbiParameters in readiness for holding
-                // the decoded values, and then we could decode into that.
+                    var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
 
-                // But we still have the problem for dynamic arrays, so we may as well solve it the
-                // same way.
+                    var slot = subSlots.Skip(skip).First(); // skip used here
+                    int c = DecodeComponents(clonedComponents, slot, allSlots);
+                    consumedSlots += c; // advance
 
-                // So I will treat each tuple element as its own signature.
+                    array.SetValue(new AbiParameters(clonedComponents), i);
+                }
 
-
-
-
-
-
-
-
-
-
-
-                // inner type is a tuple; these decode into some kind of .NET collection and
-                // the complexity is that they are expansive! A function might return a param
-                // which is an array of 10 tuples like (bool, bool)[10] and that means 20 values,   
-                // which is 20 AbiParams
-
-                // the key point is that since our design is to decode values into their respective 
-                // AbiParams from the signature, for arrays, we need to instantiate an array of
-                // AbiParams, each of which will have a default CLR type for the inner ABI type... wait!
-                // the inner type will be a tuple (mixed types) and we need the AbiParam to have
-                // the component type, which we depends on which component we are processing, which
-                // we don't know because we're processing it in one go!
-
-
-
-                // var array = Array.CreateInstance(clrType.GetElementType(), outerArrayLength);
-
-                // int consumedSlots = 0;
-                // for (int i = 0; i < outerArrayLength; i++)
-                // {
-                //     int ord = 0;
-                //     var tupleValues = decodedValues.Skip(skip).Take(tupleLength);
-                //     var tupleComponents = tupleValues.Select(obj =>
-                //     {
-                //         var p = new AbiParam(ord++, $"{parameter.Name}.{i}.{ord}", innerType!);
-                //         p.Value = obj;
-                //         return p;
-
-                //     }).ToList();
-
-                //     if (clrType.GetElementType() == typeof(AbiParameters))
-                //     {
-                //         var tuple = new AbiParameters(tupleComponents);
-
-                //         array.SetValue(tuple, i);
-
-                //         consumedSlots += tupleLength;
-                //     }
-                //     else
-                //     {
-                //         throw new NotImplementedException("The CLR type of the array of tuplesis not supported");
-                //     }
-                // }
-
-
-
-
-
-
-
-
-                throw new NotImplementedException("Static array of tuples not implemented");
+                return (array, skip + consumedSlots);
             }
             else
             {
@@ -402,14 +337,8 @@ public class AbiDecoder : IAbiDecoder
                 }
                 else if (param.IsTuple)
                 {
-                    // do nothing; all inner params will be visited
+                    // the tuple itself is vacant, so do nothing; all inner params will be visited
                 }
-                // else if (param.IsTuple)
-                // {
-                //     int c = DecodeParameters(param.Components!, valueSlot, allSlots);
-                //     slotsConsumed += c;
-                //     skip = c - 1;
-                // }
                 else
                 {
                     int c = DecodeSingleSlotStaticValue(param, valueSlot);
@@ -558,19 +487,14 @@ public class AbiDecoder : IAbiDecoder
 
                     if (parameter.IsTuple)
                     {
-                        // BUG!?
-                        //
-                        // Decoding into the parameter's components is not correct because the
-                        // there is only one set of them, so their values will be overwritten
-                        // on each iteration.
-                        //
-                        // We need to decode into a new set of components for each iteration, and
-                        // add them to the array, or add them to the parameter's components.
+                        // decode into a clone of the components, one clone per element of the array
 
-                        DecodeComponents(parameter.Components!, slot, allSlots);
+                        var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
+
+                        DecodeComponents(clonedComponents, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer
 
-                        array.SetValue(parameter.Components, i); // the element of the decoded tuple is a list of AbiParam
+                        array.SetValue(new AbiParameters(clonedComponents), i);
                     }
                     else
                     {
@@ -586,10 +510,14 @@ public class AbiDecoder : IAbiDecoder
 
                     if (parameter.IsTuple)
                     {
-                        int c = DecodeComponents(parameter.Components!, slot, allSlots);
+                        // decode into a clone of the components, one clone per element of the array
+
+                        var clonedComponents = parameter.Components!.Select(c => c.GetClone()).ToList();
+
+                        int c = DecodeComponents(clonedComponents, slot, allSlots);
                         consumedSlots += c;
 
-                        array.SetValue(parameter.Components, i); // the element of the decoded tuple is a list of AbiParam
+                        array.SetValue(new AbiParameters(clonedComponents), i);
                     }
                     else
                     {

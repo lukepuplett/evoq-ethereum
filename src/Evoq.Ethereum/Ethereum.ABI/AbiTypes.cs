@@ -160,7 +160,7 @@ public static class AbiTypes
         }
         else if (IsTuple(abiType))
         {
-            clrType = typeof(IReadOnlyList<AbiParam>);
+            clrType = typeof(AbiParameters);
             return true;
         }
         else
