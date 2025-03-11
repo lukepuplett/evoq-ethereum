@@ -185,7 +185,7 @@ public class AbiDecoderTests
         // Start with a subset of test cases to focus on basic functionality
         return AbiEncoderDecoderTestCases.Cases
             // .Where(numberCase => numberCase.Key > 0 && numberCase.Key <= 20)              // IMPORTANT / filter
-            // .Where(numberCase => numberCase.Key == 10)                                    // IMPORTANT / filter
+            // .Where(numberCase => numberCase.Key == 16)                                    // IMPORTANT / filter
             .Select(numberCase => new object[] { numberCase.Key, numberCase.Value });
     }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Security.Cryptography;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
@@ -78,23 +79,33 @@ public class AbiDecoder : IAbiDecoder
     {
         var allSlots = SlotCollection.FromBytes("slot", data);
 
-        DecodeParameters(parameters, allSlots.First(), allSlots);
+        DecodeComponents(parameters, allSlots.First(), allSlots);
 
         return new AbiDecodingResult(parameters);
     }
 
     // routers
 
-    private int DecodeParameters(IReadOnlyList<AbiParam> parameters, Slot firstValueSlot, SlotCollection allSlots)
+    private int DecodeComponents(IReadOnlyList<AbiParam> parameters, Slot firstValueOrPointer, SlotCollection allSlots)
     {
-        var subSlots = allSlots.SkipTo(firstValueSlot);
+        SlotCollection subSlots;
+
+        if (firstValueOrPointer.IsPointer)
+        {
+            subSlots = allSlots.SkipToPoint(firstValueOrPointer);
+        }
+        else
+        {
+            subSlots = allSlots.SkipTo(firstValueOrPointer);
+        }
+
         int consumedSlots = 0;
 
-        foreach (var parameter in parameters)
+        foreach (var p in parameters)
         {
             var slot = subSlots[consumedSlots];
 
-            if (parameter.IsDynamic)
+            if (p.IsDynamic)
             {
                 // expect a pointer to the next slot, though we cannot check IsPointer on
                 // the slot because the slot doesn't yet know, i.e. it has no PointsTo
@@ -103,16 +114,16 @@ public class AbiDecoder : IAbiDecoder
                 // the first pointer is relative to the root slots, and points to a slot that
                 // contains the data for the parameter
 
-                slot.DecodePointer(relativeTo: allSlots);
+                slot.DecodePointer(relativeTo: subSlots);
 
                 // then what?
 
-                int c = this.DecodeDynamicParameter(parameter, slot, allSlots);
-                consumedSlots += c;
+                this.DecodeDynamicComponent(p, slot, allSlots);
+                consumedSlots += 1; // advance +1 past the pointer
             }
             else
             {
-                int c = this.DecodeStaticParameter(parameter, slot, allSlots);
+                int c = this.DecodeStaticComponent(p, slot, allSlots);
                 consumedSlots += c;
             }
         }
@@ -120,7 +131,7 @@ public class AbiDecoder : IAbiDecoder
         return consumedSlots;
     }
 
-    private int DecodeStaticParameter(AbiParam parameter, Slot valueSlot, SlotCollection allSlots)
+    private int DecodeStaticComponent(AbiParam parameter, Slot valueSlot, SlotCollection allSlots)
     {
         // check for array first, because it may be an array of tuples
 
@@ -144,26 +155,20 @@ public class AbiDecoder : IAbiDecoder
         }
     }
 
-    private int DecodeDynamicParameter(AbiParam parameter, Slot pointer, SlotCollection allSlots)
+    private int DecodeDynamicComponent(AbiParam parameter, Slot pointer, SlotCollection allSlots)
     {
         // check for array first, because it may be an array of tuples
 
         if (parameter.IsArray)
         {
-            // slot points to data
-
             return DecodeDynamicArray(parameter, pointer, allSlots);
         }
         else if (parameter.IsTuple)
         {
-            // slot points to data
-
-            return DecodeDynamicTuple(parameter, pointer, allSlots);
+            return DecodeComponents(parameter.Components!, pointer, allSlots);
         }
         else
         {
-            // slot points to data
-
             return DecodeDynamicValue(parameter, pointer, allSlots);
         }
     }
@@ -295,7 +300,7 @@ public class AbiDecoder : IAbiDecoder
         // we need to fast forward through its slots to catch up to where we are in the tuple
 
         int skip = 0;
-        int slotsConsumed = 0;
+        int consumedSlots = 0;
         var valueSlot = firstValueSlot;
         parameter.DeepVisit((param) =>
         {
@@ -309,7 +314,7 @@ public class AbiDecoder : IAbiDecoder
                 if (param.IsArray)
                 {
                     int c = this.DecodeStaticArray(param, valueSlot, allSlots);
-                    slotsConsumed += c;
+                    consumedSlots += c;
                     skip = c - 1;
                 }
                 else if (param.IsTuple)
@@ -325,7 +330,7 @@ public class AbiDecoder : IAbiDecoder
                 else
                 {
                     int c = DecodeSingleSlotStaticValue(param, valueSlot);
-                    slotsConsumed += c;
+                    consumedSlots += c;
                 }
             }
             else
@@ -343,7 +348,7 @@ public class AbiDecoder : IAbiDecoder
 
         // ^ if this deep visit idea fails, then we can check IsTuple and recurse DecodeStaticTuple
 
-        return slotsConsumed;
+        return consumedSlots;
     }
 
     // dyn
@@ -428,8 +433,8 @@ public class AbiDecoder : IAbiDecoder
 
                     slot.DecodePointer(dataSlots);
 
-                    int c = this.DecodeDynamicArray(stuntParam, slot, allSlots); // recurse
-                    consumedSlots += c; // advance past all array slots
+                    this.DecodeDynamicArray(stuntParam, slot, allSlots); // recurse
+                    consumedSlots += 1; // advanced +1 past the pointer
 
                     array.SetValue(stuntParam.Value, i); // stick the value from our stunt parameter into the array
                 }
@@ -464,44 +469,42 @@ public class AbiDecoder : IAbiDecoder
 
                 if (hasDynamicBase)
                 {
+                    // e.g. string, bytes, (string, bool) demand a pointer
+
                     slot.DecodePointer(dataSlots);
 
                     if (parameter.IsTuple)
                     {
-                        // make a stunt parameter for the dynamic tuple and decode into it
+                        DecodeComponents(parameter.Components!, slot, allSlots);
+                        consumedSlots += 1; // advance +1 past the pointer
 
-                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                        int c = this.DecodeDynamicTuple(p, slot, allSlots);
-                        consumedSlots += c;
-
-                        array.SetValue(p.Value, i);
+                        array.SetValue(parameter.Components, i); // the element of the decoded tuple is a list of AbiParam
                     }
                     else
                     {
                         var obj = this.DecodeDynamicSlotValue(baseType!, baseClrType, slot, allSlots);
-                        consumedSlots += 1; // single pointer slot to data slots
+                        consumedSlots += 1; // advance +1 past the pointer to data
 
                         array.SetValue(obj, i);
                     }
                 }
                 else
                 {
+                    // e.g. uint8, bool, (bool, bool) are laid out sequentially
+
                     if (parameter.IsTuple)
                     {
-                        // make a stunt parameter for the static tuple and decode into it
-
-                        var p = new AbiParam(0, $"{parameter.Name}.stunt", baseType!, components: parameter.Components);
-                        int c = this.DecodeStaticTuple(p, slot, allSlots);
+                        int c = DecodeComponents(parameter.Components!, slot, allSlots);
                         consumedSlots += c;
 
-                        array.SetValue(p.Value, i);
+                        array.SetValue(parameter.Components, i); // the element of the decoded tuple is a list of AbiParam
                     }
                     else
                     {
                         var obj = this.DecodeStaticSlotValue(baseType!, baseClrType, slot);
                         array.SetValue(obj, i);
 
-                        consumedSlots += 1; // single static
+                        consumedSlots += 1; // advance +1 past the static value
                     }
                 }
             }
@@ -527,33 +530,7 @@ public class AbiDecoder : IAbiDecoder
         // fixed length, size information in the tuple, read forward through the slots
         // which will either be static values or pointers to the next level of dynamic data
 
-        int slotsConsumed = 0;
-        int length = parameter.Components!.Count;
-        var tupleSlots = allSlots.SkipToPoint(pointer);
-
-        for (int i = 0; i < length; i++)
-        {
-            var component = parameter.Components[i];
-            var s = tupleSlots[i];
-
-            if (component.IsDynamic)
-            {
-                s.DecodePointer(tupleSlots);
-
-                this.DecodeDynamicParameter(component, s, allSlots);
-            }
-            else
-            {
-                // if this tuple component is a static array, then all its elements
-                // are laid out sequentially, so we'll need to skip those slots
-
-                int c = this.DecodeStaticParameter(component, s, allSlots);
-                slotsConsumed += c;
-                i += c;
-            }
-        }
-
-        return slotsConsumed;
+        return DecodeComponents(parameter.Components!, pointer, allSlots);
     }
 
     //

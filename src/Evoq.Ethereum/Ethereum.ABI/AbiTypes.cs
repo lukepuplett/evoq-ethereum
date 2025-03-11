@@ -160,7 +160,7 @@ public static class AbiTypes
         }
         else if (IsTuple(abiType))
         {
-            clrType = typeof(List<object?>); // supports nested tuples via object
+            clrType = typeof(IReadOnlyList<AbiParam>);
             return true;
         }
         else
