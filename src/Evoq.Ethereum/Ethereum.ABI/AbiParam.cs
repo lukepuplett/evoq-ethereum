@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
+using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 /*
@@ -354,6 +357,72 @@ public class AbiParam
         }
 
         return vc.ValuesVisitedCount;
+    }
+
+    /// <summary>
+    /// Converts the parameter to a key-value pair.
+    /// </summary>
+    /// <returns>The key-value pair.</returns>
+    internal KeyValuePair<string, object?> ToKeyValuePair(bool forStringification)
+    {
+        string name = string.IsNullOrWhiteSpace(this.Name) ? this.Position.ToString() : this.Name;
+        object? value = forStringification ? getValue(this.Value) : this.Value;
+
+        return new KeyValuePair<string, object?>(name, value);
+
+        //
+
+        object? getValue(object? value)
+        {
+            // if (this.IsTupleStrict)
+            // {
+            //     if (this.Value is IDictionary<string, object?> dict)
+            //     {
+            //         value = dict;
+            //     }
+            // }
+            // else if (this.IsTupleArray)
+            // {
+            //     if (this.Value is IEnumerable<IDictionary<string, object?>> list)
+            //     {
+            //         value = list.ToArray();
+            //     }
+            // }
+
+            if (value is IDictionary<string, object?> dict)
+            {
+                return dict.ToDictionary(kvp => kvp.Key, kvp => getValue(kvp.Value));
+            }
+
+            if (value is IEnumerable<object?> list)
+            {
+                return list.Select(getValue).ToArray();
+            }
+
+            if (value is Array)
+            {
+                return ((Array)value).Cast<object?>().Select(getValue).ToArray();
+            }
+
+            if (value is BigInteger big)
+            {
+                value = big.ToString(); // huge number should be stringified
+            }
+
+            if (value is byte[] bytes)
+            {
+                if (AbiTypeNames.String == this.AbiType)
+                {
+                    value = Encoding.UTF8.GetString(bytes);
+                }
+                else
+                {
+                    value = new Hex(bytes).ToString();
+                }
+            }
+
+            return value;
+        }
     }
 
     /// <summary>

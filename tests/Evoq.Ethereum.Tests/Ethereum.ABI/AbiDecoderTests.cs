@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI;
@@ -47,6 +48,10 @@ public class AbiDecoderTests
         try
         {
             result = this.decoder.DecodeParameters(signature.Inputs, encodedBytes);
+
+            string json = JsonSerializer.Serialize(result.Parameters.ToDictionary(true));
+            Console.WriteLine(caseNumber);
+            Console.WriteLine(json);
         }
         catch (Exception)
         {
@@ -65,6 +70,15 @@ public class AbiDecoderTests
     }
 
     //
+
+    private static IEnumerable<object[]> GetTestCases()
+    {
+        // Start with a subset of test cases to focus on basic functionality
+        return AbiEncoderDecoderTestCases.Cases
+            // .Where(numberCase => numberCase.Key > 0 && numberCase.Key <= 20)              // IMPORTANT / filter
+            // .Where(numberCase => numberCase.Key == 7)                                    // IMPORTANT / filter
+            .Select(numberCase => new object[] { numberCase.Key, numberCase.Value });
+    }
 
     private void ValidateDecodedParameters(
         IReadOnlyList<object?> expectedValues, IReadOnlyList<AbiParam> decodedParameters, int caseNumber, string name, string paramName)
@@ -177,15 +191,6 @@ public class AbiDecoderTests
                 Assert.AreEqual(expectedValue, actualValue, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}' - Expected {expectedValue?.GetType()}, got {actualValue?.GetType()}");
             }
         }
-    }
-
-    private static IEnumerable<object[]> GetTestCases()
-    {
-        // Start with a subset of test cases to focus on basic functionality
-        return AbiEncoderDecoderTestCases.Cases
-            // .Where(numberCase => numberCase.Key > 0 && numberCase.Key <= 20)              // IMPORTANT / filter
-            // .Where(numberCase => numberCase.Key == 21)                                    // IMPORTANT / filter
-            .Select(numberCase => new object[] { numberCase.Key, numberCase.Value });
     }
 
     private static string FormatHexLine(string hex) => hex.Trim().Substring(0, 64 + 2);

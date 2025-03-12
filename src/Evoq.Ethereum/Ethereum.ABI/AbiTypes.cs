@@ -380,7 +380,7 @@ public static class AbiTypes
         {
             if (TryGetArrayBaseType(type, out var baseDescriptor))
             {
-                return AbiParameters.Parse(baseDescriptor).Any(p => IsDynamic(p.AbiType));
+                return AbiParameters.Parse(baseDescriptor!).Any(p => IsDynamic(p.AbiType));
             }
 
             return AbiParameters.Parse(type).Any(p => IsDynamic(p.AbiType));

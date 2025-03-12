@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
@@ -29,6 +30,16 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     public string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
     {
         return AbiParam.GetCanonicalType(this, null, includeNames, includeSpaces);
+    }
+
+    /// <summary>
+    /// Converts the parameters to a dictionary.
+    /// </summary>
+    /// <param name="forStringification">Whether to stringify values like bytes and big numbers.</param>
+    /// <returns>The dictionary.</returns>
+    public IReadOnlyDictionary<string, object?> ToDictionary(bool forStringification)
+    {
+        return new Dictionary<string, object?>(this.Select(p => p.ToKeyValuePair(forStringification)));
     }
 
     /// <summary>
