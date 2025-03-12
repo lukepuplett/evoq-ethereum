@@ -177,13 +177,19 @@ public class AbiDecoder : IAbiDecoder
     {
         if (!tuple.TryParseComponents(out var components))
         {
-            throw new InvalidOperationException($"Unable to decode components. {tuple.AbiType} is not a tuple.");
+            throw new AbiTypeException(
+                $"Unable to decode components: '{tuple.AbiType}' is not a valid tuple type. " +
+                $"Please ensure the ABI type is correctly formatted.",
+                tuple.AbiType);
         }
 
         if (tuple.ClrType != typeof(List<object?>))
         {
-            throw new InvalidOperationException(
-                $"Unable to decode static tuple. {tuple.ClrType} is not supported.");
+            throw new AbiTypeMismatchException(
+                $"Unsupported tuple type: Expected List<object?> but got {tuple.ClrType.Name}. " +
+                $"Tuples must be decoded into List<object?> containers.",
+                tuple.AbiType,
+                tuple.ClrType);
         }
         var results = new List<object?>();
 
@@ -212,22 +218,35 @@ public class AbiDecoder : IAbiDecoder
     {
         if (!AbiTypes.TryGetArrayDimensions(parameter.AbiType, out var dimensions))
         {
-            throw new InvalidOperationException($"Failed to get dimensions for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine dimensions for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayBaseType(parameter.AbiType, out var baseType))
         {
-            throw new InvalidOperationException($"Failed to get base type for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine base type for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayMultiLength(parameter.AbiType, out var multiLength))
         {
-            throw new InvalidOperationException($"Failed to get length for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine total length for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!parameter.ClrType.IsArray)
         {
-            throw new InvalidOperationException($"Expected array type, got {parameter.ClrType}");
+            throw new AbiTypeMismatchException(
+                $"Type mismatch: ABI type '{parameter.AbiType}' requires an array CLR type, but got {parameter.ClrType.Name}. " +
+                $"Please ensure the parameter is configured with the correct CLR type.",
+                parameter.AbiType,
+                parameter.ClrType);
         }
 
         // e.g. uint8[2], bytes32[4][2], (bool, bool)[2]
@@ -266,7 +285,10 @@ public class AbiDecoder : IAbiDecoder
         {
             if (!AbiTypes.TryGetArrayOuterLength(abiType, out var outerArrayLength))
             {
-                throw new InvalidOperationException($"Failed to get length for {abiType}");
+                throw new AbiTypeException(
+                    $"Invalid array type: Failed to determine outer array length for '{abiType}'. " +
+                    $"Please ensure the array type is correctly formatted.",
+                    abiType);
             }
 
             if (AbiTypes.TryGetArrayInnerType(abiType, out var innerType) && AbiTypes.IsArray(innerType!))
@@ -335,14 +357,19 @@ public class AbiDecoder : IAbiDecoder
     {
         if (!parameter.TryParseComponents(out var components))
         {
-            throw new InvalidOperationException(
-                $"Unable to decode static tuple. {parameter.AbiType} is not a tuple.");
+            throw new AbiTypeException(
+                $"Invalid tuple type: '{parameter.AbiType}' is not a valid tuple. " +
+                $"Please ensure the ABI type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (parameter.ClrType != typeof(List<object?>))
         {
-            throw new InvalidOperationException(
-                $"Unable to decode static tuple. {parameter.ClrType} is not supported.");
+            throw new AbiTypeMismatchException(
+                $"Unsupported tuple type: Expected List<object?> but got {parameter.ClrType.Name}. " +
+                $"Tuples must be decoded into List<object?> containers.",
+                parameter.AbiType,
+                parameter.ClrType);
         }
 
         var results = new List<object?>();
@@ -382,22 +409,34 @@ public class AbiDecoder : IAbiDecoder
 
         if (!AbiTypes.TryGetArrayOuterLength(parameter.AbiType, out var length))
         {
-            throw new InvalidOperationException($"Failed to get length for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine outer array length for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayDimensions(parameter.AbiType, out var dimensions))
         {
-            throw new InvalidOperationException($"Failed to get dimensions for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine dimensions for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayBaseType(parameter.AbiType, out var baseType))
         {
-            throw new InvalidOperationException($"Failed to get base type for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine base type for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayInnerType(parameter.AbiType, out var innerType))
         {
-            throw new InvalidOperationException($"Failed to get inner type for {parameter.AbiType}");
+            throw new AbiTypeException(
+                $"Invalid array type: Failed to determine inner type for '{parameter.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.",
+                parameter.AbiType);
         }
 
         var hasDynamicLength = length == -1;
@@ -550,7 +589,10 @@ public class AbiDecoder : IAbiDecoder
         {
             // canonical type not found; this should never happen
 
-            throw new InvalidOperationException($"Canonical type not found for {abiType}");
+            throw new AbiInternalException(
+                $"Internal error: Failed to resolve canonical type for '{abiType}'. " +
+                $"This is likely a bug in the ABI decoder implementation.",
+                abiType);
         }
 
         foreach (var decoder in this.dynamicTypeDecoders)
@@ -561,7 +603,11 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        throw new InvalidOperationException($"No decoder found for ABI type {abiType} -> CLR type {clrType}");
+        throw new AbiNotImplementedException(
+            $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
+            $"Please use a supported type combination or implement a custom decoder.",
+            abiType,
+            clrType);
     }
 
     private object? DecodeStaticSlotValue(string abiType, Type clrType, Slot slot)
@@ -577,7 +623,10 @@ public class AbiDecoder : IAbiDecoder
         {
             // canonical type not found; this should never happen
 
-            throw new InvalidOperationException($"Canonical type not found for {abiType}");
+            throw new AbiInternalException(
+                $"Internal error: Failed to resolve canonical type for '{abiType}'. " +
+                $"This is likely a bug in the ABI decoder implementation.",
+                abiType);
         }
 
         foreach (var staticDecoder in this.staticTypeDecoders)
@@ -588,7 +637,11 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        throw new InvalidOperationException($"No decoder found for ABI type {abiType} -> CLR type {clrType}");
+        throw new AbiNotImplementedException(
+            $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
+            $"Please use a supported type combination or implement a custom decoder.",
+            abiType,
+            clrType);
     }
 
     private object? DecodeDynamicSlotValue(string abiType, Type clrType, Slot pointer, SlotCollection allSlots)
@@ -612,7 +665,10 @@ public class AbiDecoder : IAbiDecoder
         }
         else
         {
-            throw new InvalidOperationException($"Unsupported dynamic type {abiType}");
+            throw new AbiTypeException(
+                $"Unsupported dynamic type: '{abiType}' is not a recognized dynamic ABI type. " +
+                $"Only 'bytes' and 'string' are supported as basic dynamic types.",
+                abiType);
         }
     }
 

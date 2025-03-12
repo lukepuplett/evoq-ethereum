@@ -10,11 +10,11 @@ import (
 )
 
 func main() {
-	testNum := flag.Int("test", 0, "Test case number (1-20)")
+	testNum := flag.Int("test", 0, "Test case number (1-21)")
 	flag.Parse()
 
-	if *testNum < 1 || *testNum > 20 {
-		fmt.Println("Please specify a test case with --test (1-20)")
+	if *testNum < 1 || *testNum > 21 {
+		fmt.Println("Please specify a test case with --test (1-21)")
 		os.Exit(1)
 	}
 
@@ -228,6 +228,38 @@ func main() {
 			[]uint32{0x456, 0x789},
 			[10]byte{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'},
 			[]byte("Hello, world!"),
+		}
+
+	case 21: // foo(uint256 orderNumber, (bool isLatte, bool hasMilk, bool hasSugar)[] coffeeOrders) - (42, [(true, false, true), (false, true, false)])
+		// Define the tuple type components
+		tupleComponents := []abi.ArgumentMarshaling{
+			{Name: "isLatte", Type: "bool"},
+			{Name: "hasMilk", Type: "bool"},
+			{Name: "hasSugar", Type: "bool"},
+		}
+
+		// Define the array of tuples type
+		coffeeOrdersArrayType, _ := abi.NewType("tuple[]", "", tupleComponents)
+
+		// Define the types for the function arguments
+		types = []abi.Type{evmUint256, coffeeOrdersArrayType}
+
+		// Create the coffee orders
+		type CoffeeOrder struct {
+			IsLatte  bool `abi:"isLatte"`
+			HasMilk  bool `abi:"hasMilk"`
+			HasSugar bool `abi:"hasSugar"`
+		}
+
+		coffeeOrders := []CoffeeOrder{
+			{IsLatte: true, HasMilk: false, HasSugar: true},
+			{IsLatte: false, HasMilk: true, HasSugar: false},
+		}
+
+		// Set the values for the function arguments
+		values = []interface{}{
+			big.NewInt(42),
+			coffeeOrders,
 		}
 	}
 

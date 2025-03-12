@@ -135,9 +135,10 @@ public class AbiEncoder : IAbiEncoder
             string type = parameters.GetCanonicalType();
             string valuesStr = string.Join(", ", values.Select(v => v?.ToString() ?? "null"));
 
-            throw new ArgumentException(
+            throw new AbiEncodingException(
                 $"Unable to encode parameters for signature {type}: expected {slotCount} values but got {values.Count}: '{valuesStr}'. " +
-                "Note that nested tuples can be a source of confusion.");
+                "Note that nested tuples can be a source of confusion.",
+                type);
         }
 
         var root = new SlotCollection(capacity: slotCount * 8);
@@ -191,7 +192,9 @@ public class AbiEncoder : IAbiEncoder
 
         if (context.IsAbiTupleStrict)
         {
-            throw new ArgumentException($"The type {context.AbiType} is a tuple, not a single slot static value");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is a tuple, not a single slot static value",
+                context.AbiType);
         }
 
         if (context.Value == null)
@@ -202,7 +205,7 @@ public class AbiEncoder : IAbiEncoder
 
         if (!this.TryFindStaticSlotEncoder(context, out var encoder))
         {
-            throw NotImplemented(context.AbiType, context.Value.GetType().ToString());
+            throw NotImplemented(context.AbiType, context.Value.GetType());
         }
 
         context.Block.Add(encoder!(context.Value));
@@ -220,17 +223,24 @@ public class AbiEncoder : IAbiEncoder
 
         if (context.IsAbiTupleStrict)
         {
-            throw new ArgumentException($"The type {context.AbiType} is a tuple, not an array");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is a tuple, not an array",
+                context.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerType))
         {
-            throw new ArgumentException($"The type {context.AbiType} is not an array");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is not an array",
+                context.AbiType);
         }
 
         if (!context.IsValueArray(out var array))
         {
-            throw new ArgumentException($"The value is not an array");
+            throw new AbiTypeMismatchException(
+                $"The value is not an array",
+                context.AbiType,
+                context.Value?.GetType());
         }
 
         // encode each element directly into the block
@@ -252,22 +262,31 @@ public class AbiEncoder : IAbiEncoder
 
         if (context.IsAbiDynamic)
         {
-            throw new ArgumentException($"The type {context.AbiType} is dynamic, not a fixed size tuple");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is dynamic, not a fixed size tuple",
+                context.AbiType);
         }
 
         if (context.IsAbiArray)
         {
-            throw new ArgumentException($"The type {context.AbiType} is an array, not a tuple");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is an array, not a tuple",
+                context.AbiType);
         }
 
         if (!context.IsAbiTupleStrict)
         {
-            throw new ArgumentException($"The type {context.AbiType} is not a tuple");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is not a tuple",
+                context.AbiType);
         }
 
         if (!context.IsValueList(out var list))
         {
-            throw new ArgumentException($"The value is not a list of values");
+            throw new AbiTypeMismatchException(
+                $"The value is not a list of values",
+                context.AbiType,
+                context.Value?.GetType());
         }
 
         var evmParams = AbiParameters.Parse(context.AbiType);
@@ -290,12 +309,16 @@ public class AbiEncoder : IAbiEncoder
 
         if (context.IsAbiTupleStrict)
         {
-            throw new ArgumentException($"The type {context.AbiType} is a tuple, not a single slot dynamic value");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is a tuple, not a single slot dynamic value",
+                context.AbiType);
         }
 
         if (context.IsAbiArray)
         {
-            throw new ArgumentException($"The type {context.AbiType} is an array, not a single slot dynamic value");
+            throw new AbiTypeException(
+                $"The type {context.AbiType} is an array, not a single slot dynamic value",
+                context.AbiType);
         }
 
         if (context.Value == null)
@@ -306,7 +329,7 @@ public class AbiEncoder : IAbiEncoder
 
         if (!this.TryFindDynamicBytesEncoder(context, out var encoder))
         {
-            throw NotImplemented(context.AbiType, context.Value.GetType().ToString());
+            throw NotImplemented(context.AbiType, context.Value.GetType());
         }
 
         byte[] paddedBytes = encoder!(context.Value);
@@ -361,19 +384,41 @@ public class AbiEncoder : IAbiEncoder
 
         // similar to the tuple case, except the type is always the same
 
-        if (context.Value is not Array array)
+        Array array;
+        if (context.Value is Array valueArray)
         {
-            throw new ArgumentException($"The type {context.AbiType} requires an array value");
+            array = valueArray;
+        }
+        else if (context.Value == null)
+        {
+            throw new AbiTypeMismatchException(
+                $"Type mismatch: ABI type '{context.AbiType}' requires an array value, but received null. " +
+                $"Please provide a compatible array type for encoding.",
+                context.AbiType,
+                null);
+        }
+        else if (!TryConvertToArray(context.Value, out array))
+        {
+            throw new AbiTypeMismatchException(
+                $"Type mismatch: ABI type '{context.AbiType}' requires an array value, but received {context.Value.GetType().Name}. " +
+                $"The value could not be converted to an array. Please provide a compatible array or collection type.",
+                context.AbiType,
+                context.Value.GetType());
         }
 
         if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerType))
         {
-            throw new NotImplementedException($"The type '{context.AbiType}' is not an array");
+            throw new AbiTypeException(
+                $"Invalid array type: '{context.AbiType}' could not be parsed as an array. " +
+                $"This may indicate a malformed ABI type string.",
+                context.AbiType);
         }
 
         if (!AbiTypes.TryGetArrayDimensions(context.AbiType, out var dimensions))
         {
-            throw new ArgumentException($"The type {context.AbiType} is not an array");
+            throw new ArgumentException(
+                $"Invalid array dimensions: Could not determine dimensions for ABI type '{context.AbiType}'. " +
+                $"Please ensure the array type is correctly formatted.");
         }
         bool isVariableLength = dimensions.First() == -1;
 
@@ -383,7 +428,9 @@ public class AbiEncoder : IAbiEncoder
 
             // what difference does it make if we're already within an array?
 
-            throw new NotImplementedException($"Waiting to support dynamic arrays within arrays");
+            throw new NotImplementedException(
+                $"Nested dynamic arrays not yet supported: Found dynamic array within another array. " +
+                $"Support for encoding nested dynamic arrays is planned for a future release.");
         }
         else
         {
@@ -618,8 +665,10 @@ public class AbiEncoder : IAbiEncoder
 
     //
 
-    private static Exception NotImplemented(string abiType, string clrType) =>
-        new NotImplementedException($"Encoding for ABI type {abiType} with .NET type {clrType} not implemented");
+    private static Exception NotImplemented(string abiType, Type clrType) =>
+        new NotImplementedException(
+            $"Encoding not implemented: ABI type '{abiType}' with .NET type '{clrType}' is not supported. " +
+            $"Please use a supported type combination or implement a custom encoder.");
 
     private bool TryFindStaticSlotEncoder(EncodingContext context, out Func<object, Slot>? encoder)
     {
@@ -635,7 +684,9 @@ public class AbiEncoder : IAbiEncoder
         {
             // canonical type not found; this should never happen
 
-            throw new InvalidOperationException($"Canonical type not found for {context.AbiType}");
+            throw new InvalidOperationException(
+                $"Internal error: Failed to resolve canonical type for '{context.AbiType}'. " +
+                $"This is likely a bug in the ABI encoder implementation.");
         }
 
         foreach (var staticEncoder in this.staticTypeEncoders)
@@ -691,5 +742,74 @@ public class AbiEncoder : IAbiEncoder
     private static string Name(EncodingContext context, string name)
     {
         return $"{context}.{name}";
+    }
+
+    /// <summary>
+    /// Tries to convert any object to an Array.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <param name="array">When this method returns, contains the Array if conversion was successful, or null if conversion failed.</param>
+    /// <returns>true if the conversion was successful; otherwise, false.</returns>
+    private static bool TryConvertToArray(object? value, out Array array)
+    {
+        if (value is Array valueArray)
+        {
+            array = valueArray;
+            return true;
+        }
+
+        if (value is not System.Collections.IEnumerable items)
+        {
+            array = Array.Empty<object>();
+            return false;
+        }
+
+        try
+        {
+            // First, collect all items into a generic list
+            var list = new List<object?>();
+            foreach (var item in items)
+            {
+                list.Add(item);
+            }
+
+            // Determine the element type
+            Type elementType = typeof(object);
+
+            // Try to infer a more specific element type if all elements are of the same type
+            if (list.Count > 0)
+            {
+                var firstNonNull = list.FirstOrDefault(x => x != null);
+                if (firstNonNull != null)
+                {
+                    elementType = firstNonNull.GetType();
+
+                    // Check if all elements are of the same type or can be converted to it
+                    bool allSameType = list.All(item => item == null || item.GetType() == elementType);
+
+                    if (!allSameType)
+                    {
+                        // Fall back to object if types are mixed
+                        elementType = typeof(object);
+                    }
+                }
+            }
+
+            // Create and populate the array
+            Array result = Array.CreateInstance(elementType, list.Count);
+            for (int i = 0; i < list.Count; i++)
+            {
+                result.SetValue(list[i], i);
+            }
+
+            array = result;
+            return true;
+        }
+        catch
+        {
+            // If any exception occurs during conversion, return false
+            array = Array.Empty<object>();
+            return false;
+        }
     }
 }
