@@ -130,6 +130,12 @@ public static class ArrayComparer
             return true;
         }
 
+        if (obj is IDictionary<string, object?> dict)
+        {
+            array = dict.Values.ToArray();
+            return true;
+        }
+
         array = null;
         return false;
     }

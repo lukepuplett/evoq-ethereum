@@ -184,13 +184,13 @@ public class AbiDecoder : IAbiDecoder
                 tuple.AbiType);
         }
 
-        var results = Activator.CreateInstance(tuple.ClrType) as IList;
+        var results = Activator.CreateInstance(tuple.ClrType) as IDictionary<string, object?>;
 
         if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected System.Collections.IList but got {tuple.ClrType.Name}. " +
-                $"Tuples must be decoded into System.Collections.IList containers.",
+                $"Unsupported tuple type: Expected IDictionary<string, object?> but got {tuple.ClrType.Name}. " +
+                $"Tuples must be decoded into IDictionary<string, object?> containers.",
                 tuple.AbiType,
                 tuple.ClrType);
         }
@@ -199,7 +199,7 @@ public class AbiDecoder : IAbiDecoder
 
         foreach (var p in components!)
         {
-            results.Add(p.Value);
+            results.Add(p.Name, p.Value);
         }
 
         tuple.Value = results;
@@ -363,13 +363,13 @@ public class AbiDecoder : IAbiDecoder
                 parameter.AbiType);
         }
 
-        var results = Activator.CreateInstance(parameter.ClrType) as IList;
+        var results = Activator.CreateInstance(parameter.ClrType) as IDictionary<string, object?>;
 
         if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected System.Collections.IList but got {parameter.ClrType.Name}. " +
-                $"Tuples must be decoded into System.Collections.IList containers.",
+                $"Unsupported tuple type: Expected IDictionary<string, object?> but got {parameter.ClrType.Name}. " +
+                $"Tuples must be decoded into IDictionary<string, object?> containers.",
                 parameter.AbiType,
                 parameter.ClrType);
         }
@@ -384,7 +384,7 @@ public class AbiDecoder : IAbiDecoder
             int c = this.DecodeStaticComponent(p, slot, allSlots);
             consumedSlots += c;
 
-            results.Add(p.Value);
+            results.Add(p.Name, p.Value);
         }
 
         parameter.Value = results;
@@ -577,14 +577,14 @@ public class AbiDecoder : IAbiDecoder
         {
             if (value is AbiParameters components)
             {
-                if (typeof(IList).IsAssignableFrom(supportedClrType))
+                if (typeof(IDictionary<string, object?>).IsAssignableFrom(supportedClrType))
                 {
-                    value = new ArrayList(components.Select(p => p.Value).ToList());
+                    value = new Dictionary<string, object?>(components.Select(p => new KeyValuePair<string, object?>(p.Name, p.Value)));
                 }
                 else
                 {
                     throw new AbiNotImplementedException(
-                        $"Tuple components cannot be converted to collections other than IList. " +
+                        $"Tuple components cannot be converted to collections other than IDictionary<string, object?>. " +
                         $"See {nameof(AbiTypes)}.{nameof(AbiTypes.TryGetDefaultClrType)} for supported " +
                         $"collection types for tuples.");
                 }

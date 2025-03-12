@@ -318,8 +318,8 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)", typeof(ArrayList))]
-    [DataRow("(uint8,string,address)", typeof(ArrayList))]
+    [DataRow("(uint256,bool)", typeof(Dictionary<string, object?>))]
+    [DataRow("(uint8,string,address)", typeof(Dictionary<string, object?>))]
     public void TryGetDefaultClrType_TupleTypes_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act
@@ -702,10 +702,10 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)[]", typeof(ArrayList[]))]
-    [DataRow("(address,uint256)[5]", typeof(ArrayList[]))]
-    [DataRow("(string,bytes32)[][]", typeof(ArrayList[][]))]
-    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(ArrayList[][]))]
+    [DataRow("(uint256,bool)[]", typeof(Dictionary<string, object?>[]))]
+    [DataRow("(address,uint256)[5]", typeof(Dictionary<string, object?>[]))]
+    [DataRow("(string,bytes32)[][]", typeof(Dictionary<string, object?>[][]))]
+    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(Dictionary<string, object?>[][]))]
     public void TryGetDefaultClrType_SimpleTupleArrays_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act

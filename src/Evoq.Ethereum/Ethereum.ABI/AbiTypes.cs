@@ -161,7 +161,7 @@ public static class AbiTypes
         }
         else if (IsTuple(abiType, includeArrays: false)) // because we check for arrays first
         {
-            clrType = typeof(ArrayList);
+            clrType = typeof(Dictionary<string, object?>);
 
             return true;
         }
