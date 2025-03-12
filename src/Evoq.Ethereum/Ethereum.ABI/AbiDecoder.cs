@@ -183,15 +183,16 @@ public class AbiDecoder : IAbiDecoder
                 tuple.AbiType);
         }
 
-        if (tuple.ClrType != typeof(List<object?>))
+        var results = Activator.CreateInstance(tuple.ClrType) as IList<object?>;
+
+        if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected List<object?> but got {tuple.ClrType.Name}. " +
-                $"Tuples must be decoded into List<object?> containers.",
+                $"Unsupported tuple type: Expected IList<object?> but got {tuple.ClrType.Name}. " +
+                $"Tuples must be decoded into IList<object?> containers.",
                 tuple.AbiType,
                 tuple.ClrType);
         }
-        var results = new List<object?>();
 
         int c = this.DecodeComponents(components!, firstValueOrPointer, allSlots);
 
@@ -264,10 +265,8 @@ public class AbiDecoder : IAbiDecoder
             multiLength *= components!.Count;
         }
 
-        List<Slot> subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList(); ;
-        List<object?> decodedSubValues;
-
-        decodedSubValues = subSlots
+        var subSlots = allSlots.SkipTo(firstValueSlot).Take(multiLength).ToList();
+        var decodedSubValues = subSlots
             .Select(s => this.DecodeStaticSlotValue(baseType!, parameter.BaseClrType, s))
             .ToList();
 
@@ -303,7 +302,7 @@ public class AbiDecoder : IAbiDecoder
 
                     skip = inner.Skip;
 
-                    arrayOfArrays.SetValue(inner.Array, i);
+                    arrayOfArrays.SetValueEx(inner.Array, i);
                 }
 
                 return (arrayOfArrays, skip);
@@ -323,7 +322,7 @@ public class AbiDecoder : IAbiDecoder
                     int c = DecodeComponents(components!, slot, allSlots);
                     consumedSlots += c; // advance
 
-                    array.SetValue(components, i);
+                    array.SetValueEx(components, i);
                 }
 
                 return (array, skip + consumedSlots);
@@ -342,7 +341,7 @@ public class AbiDecoder : IAbiDecoder
                 {
                     var value = this.DecodeStaticSlotValue(innerType!, clrType.GetElementType(), slot);
 
-                    array.SetValue(value, c++);
+                    array.SetValueEx(value, c++);
                 }
 
                 // return the filled array and a skip value that will be used by the recursive caller
@@ -363,16 +362,16 @@ public class AbiDecoder : IAbiDecoder
                 parameter.AbiType);
         }
 
-        if (parameter.ClrType != typeof(List<object?>))
+        var results = Activator.CreateInstance(parameter.ClrType) as IList<object?>;
+
+        if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected List<object?> but got {parameter.ClrType.Name}. " +
-                $"Tuples must be decoded into List<object?> containers.",
+                $"Unsupported tuple type: Expected IList<object?> but got {parameter.ClrType.Name}. " +
+                $"Tuples must be decoded into IList<object?> containers.",
                 parameter.AbiType,
                 parameter.ClrType);
         }
-
-        var results = new List<object?>();
 
         int consumedSlots = 0;
         var subSlots = allSlots.SkipTo(firstValueSlot);
@@ -489,7 +488,7 @@ public class AbiDecoder : IAbiDecoder
                     this.DecodeDynamicArray(stuntParam, slot, allSlots); // recurse
                     consumedSlots += 1; // advanced +1 past the pointer
 
-                    array.SetValue(stuntParam.Value, i); // stick the value from our stunt parameter into the array
+                    array.SetValueEx(stuntParam.Value, i); // stick the value from our stunt parameter into the array
                 }
                 else
                 {
@@ -500,7 +499,7 @@ public class AbiDecoder : IAbiDecoder
                     int c = this.DecodeStaticArray(stuntParam, slot, allSlots);
                     consumedSlots += c; // advance past all static slots
 
-                    array.SetValue(stuntParam.Value, i); // stick the value from our stunt parameter into the array
+                    array.SetValueEx(stuntParam.Value, i); // stick the value from our stunt parameter into the array
                 }
             }
 
@@ -533,14 +532,14 @@ public class AbiDecoder : IAbiDecoder
                         DecodeComponents(components!, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer
 
-                        array.SetValue(components, i);
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, components, i);
                     }
                     else
                     {
                         var obj = this.DecodeDynamicSlotValue(baseType!, baseClrType, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer to data
 
-                        array.SetValue(obj, i);
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, obj, i);
                     }
                 }
                 else
@@ -554,14 +553,14 @@ public class AbiDecoder : IAbiDecoder
                         DecodeComponents(components!, slot, allSlots);
                         consumedSlots += 1;
 
-                        array.SetValue(components, i);
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, components, i);
                     }
                     else
                     {
                         var obj = this.DecodeStaticSlotValue(baseType!, baseClrType, slot);
-                        array.SetValue(obj, i);
-
                         consumedSlots += 1; // advance +1 past the static value
+
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, obj, i);
                     }
                 }
             }
@@ -570,6 +569,28 @@ public class AbiDecoder : IAbiDecoder
         }
 
         return consumedSlots;
+
+        //
+
+        static void checkTypeAndSet(Array array, string abiType, Type supportedClrType, object? value, int index)
+        {
+            if (value is AbiParameters components)
+            {
+                if (typeof(IList<object?>).IsAssignableFrom(supportedClrType))
+                {
+                    value = components.Select(p => p.Value).ToList();
+                }
+                else
+                {
+                    throw new AbiNotImplementedException(
+                        $"Tuple components cannot be converted to collections other than List<object?>. " +
+                        $"See {nameof(AbiTypes)}.{nameof(AbiTypes.TryGetDefaultClrType)} for supported " +
+                        $"collection types for tuples.");
+                }
+            }
+
+            array.SetValueEx(value, index);
+        }
     }
 
     //

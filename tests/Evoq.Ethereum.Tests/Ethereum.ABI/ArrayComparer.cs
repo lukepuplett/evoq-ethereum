@@ -97,7 +97,7 @@ public static class ArrayComparer
 
     //
 
-    private static bool TryArray(object obj, out Array? array)
+    internal static bool TryArray(object obj, out Array? array)
     {
         if (obj is Array y)
         {

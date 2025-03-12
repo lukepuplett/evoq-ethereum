@@ -119,13 +119,13 @@ public class AbiDecoderTests
             }
             else if (p.IsArray)
             {
-                if (expectedValue is Array expectedArray)
+                if (ArrayComparer.TryArray(expectedValue!, out var expectedArray))
                 {
                     if (actualValue is Array arrayValue)
                     {
                         // compare the arrays
 
-                        ArrayComparer.AssertEqual(expectedArray, arrayValue, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
+                        ArrayComparer.AssertEqual(expectedArray!, arrayValue, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
                     }
                     else
                     {

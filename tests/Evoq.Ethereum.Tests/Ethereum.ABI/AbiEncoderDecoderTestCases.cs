@@ -373,7 +373,7 @@ public static class AbiEncoderDecoderTestCases
             "function foo(uint256 orderNumber, (bool isLatte, bool hasMilk, bool hasSugar)[] coffeeOrders)",
             new List<object> {
                 new BigInteger(42),
-                new List<(bool, bool, bool)> {
+                new (bool, bool, bool)[] {
                     (true, false, true),
                     (false, true, false)
                 }

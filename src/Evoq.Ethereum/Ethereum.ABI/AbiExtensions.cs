@@ -116,4 +116,26 @@ public static class AbiExtensions
         var signature = item.GetCanonicalSignature();
         return KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
     }
+
+    /// <summary>
+    /// Sets the value at the specified index of the array.
+    /// </summary>
+    /// <param name="array">The array to set the value on.</param>
+    /// <param name="index">The index to set the value at.</param>
+    /// <param name="value">The value to set.</param>
+    /// <exception cref="AbiTypeMismatchException">Thrown when the value is not compatible with the array element type.</exception>
+    public static void SetValueEx(this Array array, object? value, int index)
+    {
+        try
+        {
+            array.SetValue(value, index);
+        }
+        catch (InvalidCastException invalidCast)
+        {
+            throw new AbiTypeMismatchException(
+                $"Could not set value at index {index} of array '{array.GetType().Name}'. " +
+                $"Value of type '{value?.GetType().Name}' is not compatible with the array element type '{array.GetType().GetElementType()?.Name}'.",
+                invalidCast);
+        }
+    }
 }
