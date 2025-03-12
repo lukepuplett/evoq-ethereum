@@ -634,11 +634,6 @@ public class AbiDecoder : IAbiDecoder
 
     private object? DecodeStaticSlotValue(string abiType, Type clrType, Slot slot)
     {
-        if (slot.IsNull)
-        {
-            return null;
-        }
-
         // get the canonical type
 
         if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
@@ -657,6 +652,11 @@ public class AbiDecoder : IAbiDecoder
             {
                 return value;
             }
+        }
+
+        if (slot.IsNull)
+        {
+            return null;
         }
 
         throw new AbiNotImplementedException(
