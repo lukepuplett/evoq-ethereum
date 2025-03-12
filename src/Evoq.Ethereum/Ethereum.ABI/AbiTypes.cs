@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -160,7 +161,7 @@ public static class AbiTypes
         }
         else if (IsTuple(abiType, includeArrays: false)) // because we check for arrays first
         {
-            clrType = typeof(List<object?>);
+            clrType = typeof(ArrayList);
 
             return true;
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -183,13 +184,13 @@ public class AbiDecoder : IAbiDecoder
                 tuple.AbiType);
         }
 
-        var results = Activator.CreateInstance(tuple.ClrType) as IList<object?>;
+        var results = Activator.CreateInstance(tuple.ClrType) as IList;
 
         if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected IList<object?> but got {tuple.ClrType.Name}. " +
-                $"Tuples must be decoded into IList<object?> containers.",
+                $"Unsupported tuple type: Expected System.Collections.IList but got {tuple.ClrType.Name}. " +
+                $"Tuples must be decoded into System.Collections.IList containers.",
                 tuple.AbiType,
                 tuple.ClrType);
         }
@@ -362,13 +363,13 @@ public class AbiDecoder : IAbiDecoder
                 parameter.AbiType);
         }
 
-        var results = Activator.CreateInstance(parameter.ClrType) as IList<object?>;
+        var results = Activator.CreateInstance(parameter.ClrType) as IList;
 
         if (results == null)
         {
             throw new AbiTypeMismatchException(
-                $"Unsupported tuple type: Expected IList<object?> but got {parameter.ClrType.Name}. " +
-                $"Tuples must be decoded into IList<object?> containers.",
+                $"Unsupported tuple type: Expected System.Collections.IList but got {parameter.ClrType.Name}. " +
+                $"Tuples must be decoded into System.Collections.IList containers.",
                 parameter.AbiType,
                 parameter.ClrType);
         }
@@ -576,14 +577,14 @@ public class AbiDecoder : IAbiDecoder
         {
             if (value is AbiParameters components)
             {
-                if (typeof(IList<object?>).IsAssignableFrom(supportedClrType))
+                if (typeof(IList).IsAssignableFrom(supportedClrType))
                 {
-                    value = components.Select(p => p.Value).ToList();
+                    value = new ArrayList(components.Select(p => p.Value).ToList());
                 }
                 else
                 {
                     throw new AbiNotImplementedException(
-                        $"Tuple components cannot be converted to collections other than List<object?>. " +
+                        $"Tuple components cannot be converted to collections other than IList. " +
                         $"See {nameof(AbiTypes)}.{nameof(AbiTypes.TryGetDefaultClrType)} for supported " +
                         $"collection types for tuples.");
                 }

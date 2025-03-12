@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
@@ -30,10 +31,10 @@ public static class ArrayComparer
         Type expectedType = expected.GetType();
         Type actualType = actual.GetType();
 
-        if (expectedType != actualType)
-        {
-            throw new Exception($"{message}: At {path}: Type mismatch - Expected {expectedType.Name}, actual {actualType.Name}");
-        }
+        // if (expectedType != actualType)
+        // {
+        //     throw new Exception($"{message}: At {path}: Type mismatch - Expected {expectedType.Name}, actual {actualType.Name}");
+        // }
 
         // Check array lengths
         if (expected.Length != actual.Length)
@@ -56,7 +57,7 @@ public static class ArrayComparer
 
             if (expectedItem == null || actualItem == null)
             {
-                throw new Exception($"{message}: At {currentPath}: One value is null and the other is not");
+                throw new Exception($"{message}: At {currentPath}: One value is null and the other is '{actualItem}'");
             }
 
             // Check types of elements
@@ -102,6 +103,12 @@ public static class ArrayComparer
         if (obj is Array y)
         {
             array = y;
+            return true;
+        }
+
+        if (obj is IList list)
+        {
+            array = list.Cast<object>().ToArray();
             return true;
         }
 

@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace Evoq.Ethereum.ABI;
 
 [TestClass]
@@ -316,8 +318,8 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)", typeof(List<object?>))]
-    [DataRow("(uint8,string,address)", typeof(List<object?>))]
+    [DataRow("(uint256,bool)", typeof(ArrayList))]
+    [DataRow("(uint8,string,address)", typeof(ArrayList))]
     public void TryGetDefaultClrType_TupleTypes_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act
@@ -700,10 +702,10 @@ public class AbiTypesTests
     }
 
     [TestMethod]
-    [DataRow("(uint256,bool)[]", typeof(List<object?>[]))]
-    [DataRow("(address,uint256)[5]", typeof(List<object?>[]))]
-    [DataRow("(string,bytes32)[][]", typeof(List<object?>[][]))]
-    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(List<object?>[][]))]
+    [DataRow("(uint256,bool)[]", typeof(ArrayList[]))]
+    [DataRow("(address,uint256)[5]", typeof(ArrayList[]))]
+    [DataRow("(string,bytes32)[][]", typeof(ArrayList[][]))]
+    [DataRow("(uint8,uint16,uint32)[3][2]", typeof(ArrayList[][]))]
     public void TryGetDefaultClrType_SimpleTupleArrays_ReturnsExpectedType(string abiType, Type expectedType)
     {
         // Act

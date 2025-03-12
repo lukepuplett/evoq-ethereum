@@ -89,17 +89,11 @@ public class AbiDecoderTests
             {
                 // we expect either a tuple, or a list for the expected value, and a list for the actual value
 
-                if (actualValue is List<object?> actualList)
+                if (ArrayComparer.TryArray(actualValue!, out var actualList))
                 {
-                    if (expectedValue is ITuple expectedTuple)
+                    if (ArrayComparer.TryArray(expectedValue!, out var expectedValues))
                     {
-                        var expectedValues = expectedTuple.ToList().ToArray();
-
-                        ArrayComparer.AssertEqual(expectedValues, actualList.ToArray(), $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
-                    }
-                    else if (expectedValue is List<object?> expectedList)
-                    {
-                        ArrayComparer.AssertEqual(expectedList.ToArray(), actualList.ToArray(), $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
+                        ArrayComparer.AssertEqual(expectedValues!, actualList!, $"Case {caseNumber}: {name}, Param: {i} '{paramName}.{p.Name}'", $"{paramName}.{p.Name}");
                     }
                     else
                     {
