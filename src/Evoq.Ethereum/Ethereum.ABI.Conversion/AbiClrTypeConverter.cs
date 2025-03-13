@@ -102,7 +102,7 @@ public class AbiClrTypeConverter
     /// Handles conversion from various numeric types and strings to BigInteger.
     /// This is particularly useful for Ethereum uint/int types which can be larger than standard .NET numeric types.
     /// </remarks>
-    public bool TryConvertToBigInteger(object value, out object? result)
+    private bool TryConvertToBigInteger(object value, out object? result)
     {
         result = null;
 
@@ -173,7 +173,7 @@ public class AbiClrTypeConverter
     /// Handles conversion from hex strings and Hex objects to byte arrays.
     /// This is particularly useful for Ethereum bytes types.
     /// </remarks>
-    public bool TryConvertToByteArray(object value, out object? result)
+    private bool TryConvertToByteArray(object value, out object? result)
     {
         result = null;
 
@@ -217,7 +217,7 @@ public class AbiClrTypeConverter
     /// Handles conversion from strings and byte arrays to Hex objects.
     /// This is useful for representing binary data in hexadecimal format.
     /// </remarks>
-    public bool TryConvertToHex(object value, out object? result)
+    private bool TryConvertToHex(object value, out object? result)
     {
         result = null;
 
@@ -260,7 +260,7 @@ public class AbiClrTypeConverter
     /// Handles conversion from strings and byte arrays to EthereumAddress objects.
     /// This is particularly useful for Ethereum address type.
     /// </remarks>
-    public bool TryConvertToEthereumAddress(object value, out object? result)
+    private bool TryConvertToEthereumAddress(object value, out object? result)
     {
         result = null;
 
@@ -311,7 +311,7 @@ public class AbiClrTypeConverter
     /// Handles conversion from strings and integers to enum values.
     /// This is useful for mapping numeric or string values to enum constants.
     /// </remarks>
-    public bool TryConvertToEnum(object value, Type enumType, out object? result)
+    private bool TryConvertToEnum(object value, Type enumType, out object? result)
     {
         result = null;
 
@@ -362,7 +362,7 @@ public class AbiClrTypeConverter
     /// Handles standard type conversions for common .NET types.
     /// This includes handling nullable types and direct type assignments.
     /// </remarks>
-    public bool TryStandardConversion(object value, Type targetType, out object? result)
+    private bool TryStandardConversion(object value, Type targetType, out object? result)
     {
         result = null;
 

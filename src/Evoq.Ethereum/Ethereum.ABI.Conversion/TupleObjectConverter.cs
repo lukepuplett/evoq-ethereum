@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// <summary>
 /// Converts tuples to strongly-typed objects by mapping tuple elements to properties in order.
 /// </summary>
-public class TupleObjectConverter
+internal class TupleObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
 
@@ -28,6 +28,8 @@ public class TupleObjectConverter
     {
         this.typeConverter = typeConverter ?? throw new ArgumentNullException(nameof(typeConverter));
     }
+
+    //
 
     /// <summary>
     /// Converts a tuple of values to a strongly-typed object by mapping tuple elements to properties in order.

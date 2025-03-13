@@ -7,9 +7,11 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// <summary>
 /// Converts arrays to strongly-typed objects by mapping array elements to properties in order.
 /// </summary>
-public class ArrayObjectConverter
+internal class ArrayObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
+
+    //
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ArrayObjectConverter"/> class.
@@ -27,6 +29,8 @@ public class ArrayObjectConverter
     {
         this.typeConverter = typeConverter ?? throw new ArgumentNullException(nameof(typeConverter));
     }
+
+    //
 
     /// <summary>
     /// Converts an array of values to a strongly-typed object by mapping array elements to properties in order.

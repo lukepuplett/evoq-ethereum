@@ -9,10 +9,12 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// <summary>
 /// Converts dictionaries to strongly-typed objects.
 /// </summary>
-public class DictionaryObjectConverter
+internal class DictionaryObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
     private readonly DefaultValueChecker defaultValueChecker = new DefaultValueChecker();
+
+    //
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DictionaryObjectConverter"/> class.
@@ -30,6 +32,8 @@ public class DictionaryObjectConverter
     {
         this.typeConverter = typeConverter ?? throw new ArgumentNullException(nameof(typeConverter));
     }
+
+    //
 
     /// <summary>
     /// Converts a dictionary of values to a strongly-typed object.
@@ -75,12 +79,6 @@ public class DictionaryObjectConverter
 
     //
 
-    /// <summary>
-    /// Maps dictionary values to object properties based on AbiParameterAttribute.
-    /// </summary>
-    /// <param name="obj">The target object.</param>
-    /// <param name="properties">The properties to map.</param>
-    /// <param name="dictionary">The dictionary containing values.</param>
     private void MapPropertiesByAttribute(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
     {
         // Get properties that have the AbiParameterAttribute
@@ -119,15 +117,71 @@ public class DictionaryObjectConverter
         }
     }
 
-    /// <summary>
-    /// Maps a value to a property based on the property type.
-    /// </summary>
-    /// <param name="obj">The target object.</param>
-    /// <param name="property">The property to set.</param>
-    /// <param name="value">The value to set.</param>
-    /// <param name="abiType">Optional ABI type hint for conversion.</param>
+    private void MapPropertiesByName(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
+    {
+        // Get properties that don't have a value yet
+        var unmappedProperties = properties
+            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
+            .ToList();
+
+        if (!unmappedProperties.Any())
+        {
+            return;
+        }
+
+        foreach (var property in unmappedProperties)
+        {
+            // Try to get value by property name (case-sensitive first, then case-insensitive)
+            if (TryGetValue(dictionary, property.Name, out var value))
+            {
+                MapValueToProperty(obj, property, value);
+            }
+        }
+    }
+
+    private void MapPropertiesByPosition(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
+    {
+        // Use the key as a positional index only if all keys look like positional indices
+        List<object?> positionMappedValues;
+        if (dictionary.All(kvp => int.TryParse(kvp.Key, out _)))
+        {
+            positionMappedValues = dictionary
+                .OrderBy(kvp => int.Parse(kvp.Key))
+                .Select(kvp => kvp.Value)
+                .ToList();
+        }
+        else
+        {
+            positionMappedValues = dictionary
+                .Select(kvp => kvp.Value)
+                .ToList();
+        }
+
+        var propCount = Math.Min(properties.Count, positionMappedValues.Count);
+
+        for (int i = 0; i < propCount; i++)
+        {
+            if (defaultValueChecker.HasNonDefaultValue(obj, properties[i]))
+            {
+                continue;
+            }
+
+            var property = properties[i];
+            var value = positionMappedValues[i];
+
+            MapValueToProperty(obj, property, value);
+        }
+    }
+
     private void MapValueToProperty(object obj, PropertyInfo property, object? value, string? abiType = null)
     {
+        var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
+
+        if (attribute != null && attribute.Ignore)
+        {
+            return;
+        }
+
         if (value == null)
         {
             property.SetValue(obj, null);
@@ -135,7 +189,9 @@ public class DictionaryObjectConverter
         }
 
         // If we have an ABI type hint, try to convert using it
-        if (!string.IsNullOrEmpty(abiType) && typeConverter.TryConvert(value, property.PropertyType, out var convertedValue, abiType))
+        if (
+            !string.IsNullOrEmpty(abiType) &&
+            this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue, abiType))
         {
             property.SetValue(obj, convertedValue);
             return;
@@ -182,115 +238,6 @@ public class DictionaryObjectConverter
         }
     }
 
-    private void MapPropertiesByName(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
-    {
-        // Get properties that don't have a value yet
-        var unmappedProperties = properties
-            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
-            .ToList();
-
-        if (!unmappedProperties.Any())
-        {
-            return;
-        }
-
-        foreach (var property in unmappedProperties)
-        {
-            // Try to get value by property name (case-sensitive first, then case-insensitive)
-            if (TryGetValue(dictionary, property.Name, out var value))
-            {
-                SetValue(obj, property, value);
-            }
-        }
-    }
-
-    private void MapPropertiesByPosition(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
-    {
-        // Use the key as a positional index only if all keys look like positional indices
-        List<object?> positionMappedValues;
-        if (dictionary.All(kvp => int.TryParse(kvp.Key, out _)))
-        {
-            positionMappedValues = dictionary
-                .OrderBy(kvp => int.Parse(kvp.Key))
-                .Select(kvp => kvp.Value)
-                .ToList();
-        }
-        else
-        {
-            positionMappedValues = dictionary
-                .Select(kvp => kvp.Value)
-                .ToList();
-        }
-
-        var propCount = Math.Min(properties.Count, positionMappedValues.Count);
-
-        for (int i = 0; i < propCount; i++)
-        {
-            if (defaultValueChecker.HasNonDefaultValue(obj, properties[i]))
-            {
-                continue;
-            }
-
-            var property = properties[i];
-            var value = positionMappedValues[i];
-
-            SetValue(obj, property, value);
-        }
-    }
-
-    private void SetValue(object obj, PropertyInfo property, object? value)
-    {
-        var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
-
-        if (attribute != null && attribute.Ignore)
-        {
-            return;
-        }
-
-        if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
-        {
-            var nestedObj = DictionaryToObject(nestedDic, property.PropertyType); // recursive call
-
-            property.SetValue(obj, nestedObj);
-        }
-        else if (value is IDictionary<object, object> objDict && IsComplexType(property.PropertyType))
-        {
-            var stringDict = ConvertObjectDictionaryToStringDictionary(objDict);
-            var nestedObj = DictionaryToObject(stringDict, property.PropertyType); // recursive call
-
-            property.SetValue(obj, nestedObj);
-        }
-        else if (value is IEnumerable<object> enumerableValue && IsCollectionType(property.PropertyType))
-        {
-            Type elementType = GetElementType(property.PropertyType);
-
-            if (IsComplexType(elementType))
-            {
-                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-
-                PopulateListFromEnumerable(bucket, enumerableValue, elementType);
-
-                if (property.PropertyType.IsArray)
-                {
-                    var array = CreateArrayFromList(bucket, elementType);
-                    property.SetValue(obj, array);
-                }
-                else
-                {
-                    property.SetValue(obj, bucket);
-                }
-            }
-            else
-            {
-                SetPropertyValue(obj, property, value);
-            }
-        }
-        else
-        {
-            SetPropertyValue(obj, property, value);
-        }
-    }
-
     private bool TryGetValue(IDictionary<string, object?> dictionary, string key, out object? value)
     {
         // Try exact match first
@@ -313,9 +260,6 @@ public class DictionaryObjectConverter
         return false;
     }
 
-    /// <summary>
-    /// Converts a dictionary with object keys to a dictionary with string keys.
-    /// </summary>
     private Dictionary<string, object?> ConvertObjectDictionaryToStringDictionary(IDictionary<object, object> objDict)
     {
         var stringDict = new Dictionary<string, object?>();
@@ -326,9 +270,6 @@ public class DictionaryObjectConverter
         return stringDict;
     }
 
-    /// <summary>
-    /// Populates a list with converted items from an enumerable.
-    /// </summary>
     private void PopulateListFromEnumerable(IList destination, IEnumerable<object> source, Type elementType)
     {
         foreach (var item in source)
@@ -346,16 +287,13 @@ public class DictionaryObjectConverter
 
                 destination.Add(nestedObj);
             }
-            else if (typeConverter.TryConvert(item, elementType, out var convertedItem))
+            else if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
             {
                 destination.Add(convertedItem);
             }
         }
     }
 
-    /// <summary>
-    /// Creates an array from a list.
-    /// </summary>
     private Array CreateArrayFromList(IList list, Type elementType)
     {
         var array = Array.CreateInstance(elementType, list.Count);
@@ -363,26 +301,17 @@ public class DictionaryObjectConverter
         return array;
     }
 
-    /// <summary>
-    /// Determines if a type is a complex type (not primitive, string, or value type).
-    /// </summary>
     private bool IsComplexType(Type type)
     {
         return !type.IsPrimitive && type != typeof(string) && !type.IsValueType;
     }
 
-    /// <summary>
-    /// Determines if a type is a collection type (array or generic list).
-    /// </summary>
     private bool IsCollectionType(Type type)
     {
         return type.IsArray ||
                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>));
     }
 
-    /// <summary>
-    /// Gets the element type of a collection type.
-    /// </summary>
     private Type GetElementType(Type collectionType)
     {
         if (collectionType.IsArray)
@@ -397,7 +326,7 @@ public class DictionaryObjectConverter
 
     private void SetPropertyValue(object obj, PropertyInfo property, object? value)
     {
-        if (typeConverter.TryConvert(value, property.PropertyType, out var convertedValue))
+        if (this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue))
         {
             property.SetValue(obj, convertedValue);
         }

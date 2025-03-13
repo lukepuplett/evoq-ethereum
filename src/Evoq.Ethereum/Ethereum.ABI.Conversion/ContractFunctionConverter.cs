@@ -8,17 +8,11 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// <summary>
 /// Converts contract function outputs to strongly-typed objects.
 /// </summary>
-public class ContractFunctionConverter
+internal class ContractFunctionConverter
 {
     private readonly DictionaryObjectConverter dictionaryConverter;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ContractFunctionConverter"/> class.
-    /// </summary>
-    public ContractFunctionConverter()
-        : this(new DictionaryObjectConverter())
-    {
-    }
+    //
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ContractFunctionConverter"/> class with a custom dictionary converter.
@@ -28,6 +22,8 @@ public class ContractFunctionConverter
     {
         this.dictionaryConverter = dictionaryConverter ?? throw new ArgumentNullException(nameof(dictionaryConverter));
     }
+
+    //
 
     /// <summary>
     /// Converts contract function output values to a strongly-typed object using the contract ABI.
