@@ -87,5 +87,7 @@ public class ExampleEAS
         var result = await contract.CallAsync("getSchema", account, schemaIdHex);
 
         Assert.IsNotNull(result);
+
+        result.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
     }
 }

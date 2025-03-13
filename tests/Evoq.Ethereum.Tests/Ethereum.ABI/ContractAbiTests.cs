@@ -42,6 +42,7 @@ public class ContractAbiTests
 
         // Assert
         Assert.IsTrue(found);
+        Assert.IsNotNull(function);
         Assert.AreEqual("function", function.Type);
         Assert.AreEqual("transfer", function.Name);
     }
