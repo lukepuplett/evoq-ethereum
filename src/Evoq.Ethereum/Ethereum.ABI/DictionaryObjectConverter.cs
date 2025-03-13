@@ -81,6 +81,62 @@ public class DictionaryObjectConverter
 
     private void MapPropertiesByName(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
     {
+        // Get properties that don't have a value yet
+        var unmappedProperties = properties
+            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
+            .ToList();
+
+        if (!unmappedProperties.Any())
+        {
+            return;
+        }
+
+        foreach (var property in unmappedProperties)
+        {
+            // Try to get value by property name (case-sensitive first, then case-insensitive)
+            if (TryGetValue(dictionary, property.Name, out var value))
+            {
+                if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
+                {
+                    var nestedObj = DictionaryToObject(nestedDic, property.PropertyType); // recursive call
+                    property.SetValue(obj, nestedObj);
+                }
+                else if (value is IDictionary<object, object> objDict && IsComplexType(property.PropertyType))
+                {
+                    var stringDict = ConvertObjectDictionaryToStringDictionary(objDict);
+                    var nestedObj = DictionaryToObject(stringDict, property.PropertyType); // recursive call
+                    property.SetValue(obj, nestedObj);
+                }
+                else if (value is IEnumerable<object> enumerableValue && IsCollectionType(property.PropertyType))
+                {
+                    Type elementType = GetElementType(property.PropertyType);
+
+                    if (IsComplexType(elementType))
+                    {
+                        var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+                        PopulateListFromEnumerable(bucket, enumerableValue, elementType);
+
+                        if (property.PropertyType.IsArray)
+                        {
+                            var array = CreateArrayFromList(bucket, elementType);
+                            property.SetValue(obj, array);
+                        }
+                        else
+                        {
+                            property.SetValue(obj, bucket);
+                        }
+                    }
+                    else
+                    {
+                        SetPropertyValue(obj, property, value);
+                    }
+                }
+                else
+                {
+                    SetPropertyValue(obj, property, value);
+                }
+            }
+        }
     }
 
     private void MapPropertiesByPosition(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
@@ -155,6 +211,77 @@ public class DictionaryObjectConverter
             {
                 SetPropertyValue(obj, property, value);
             }
+        }
+    }
+
+    private bool TryGetValue(IDictionary<string, object?> dictionary, string key, out object? value)
+    {
+        // Try exact match first
+        if (dictionary.TryGetValue(key, out value))
+        {
+            return true;
+        }
+
+        // Try case-insensitive match
+        var caseInsensitiveMatch = dictionary.Keys
+            .FirstOrDefault(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+
+        if (caseInsensitiveMatch != null)
+        {
+            value = dictionary[caseInsensitiveMatch];
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private void SetPropertyValueBasedOnType(object obj, PropertyInfo property, object? value)
+    {
+        if (value == null)
+        {
+            property.SetValue(obj, null);
+            return;
+        }
+
+        if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
+        {
+            var nestedObj = DictionaryToObject(nestedDic, property.PropertyType);
+            property.SetValue(obj, nestedObj);
+        }
+        else if (value is IDictionary<object, object> objDict && IsComplexType(property.PropertyType))
+        {
+            var stringDict = ConvertObjectDictionaryToStringDictionary(objDict);
+            var nestedObj = DictionaryToObject(stringDict, property.PropertyType);
+            property.SetValue(obj, nestedObj);
+        }
+        else if (value is IEnumerable<object> enumerableValue && IsCollectionType(property.PropertyType))
+        {
+            Type elementType = GetElementType(property.PropertyType);
+
+            if (IsComplexType(elementType))
+            {
+                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+                PopulateListFromEnumerable(bucket, enumerableValue, elementType);
+
+                if (property.PropertyType.IsArray)
+                {
+                    var array = CreateArrayFromList(bucket, elementType);
+                    property.SetValue(obj, array);
+                }
+                else
+                {
+                    property.SetValue(obj, bucket);
+                }
+            }
+            else
+            {
+                SetPropertyValue(obj, property, value);
+            }
+        }
+        else
+        {
+            SetPropertyValue(obj, property, value);
         }
     }
 

@@ -371,6 +371,67 @@ public class AbiConverterTests
         Assert.IsTrue(user.IsActive);
     }
 
-    // Note: The AbiConverter and AbiParameter attribute classes are not implemented yet
-    // These are placeholder tests to help design the API
+    [TestMethod]
+    public void NameMapping_TakesPriorityOverPosition_WhenKeysOutOfOrder()
+    {
+        // Arrange - Dictionary with keys in different order than POCO properties
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Age", BigInteger.Parse("30") },      // This is the second property in the POCO
+            { "Name", "John Doe" },                 // This is the first property in the POCO
+            { "IsActive", true }                    // This is the third property in the POCO
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<SimpleUser>(dictionary);
+
+        // Assert - Properties should be mapped by name, not position
+        Assert.IsNotNull(user);
+        Assert.AreEqual("John Doe", user.Name);     // Should match "Name" key, not first position
+        Assert.AreEqual(BigInteger.Parse("30"), user.Age); // Should match "Age" key, not second position
+        Assert.IsTrue(user.IsActive);               // Should match "IsActive" key, not third position
+    }
+
+    [TestMethod]
+    public void NameMapping_WorksWithMixedCasing()
+    {
+        // Arrange - Dictionary with keys that have different casing than POCO properties
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "AGE", BigInteger.Parse("30") },      // Uppercase vs. PascalCase in POCO
+            { "name", "John Doe" },                 // Lowercase vs. PascalCase in POCO
+            { "isActive", true }                    // Camel case vs. PascalCase in POCO
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<SimpleUser>(dictionary);
+
+        // Assert - Properties should be mapped by name case-insensitively
+        Assert.IsNotNull(user);
+        Assert.AreEqual("John Doe", user.Name);
+        Assert.AreEqual(BigInteger.Parse("30"), user.Age);
+        Assert.IsTrue(user.IsActive);
+    }
+
+    [TestMethod]
+    public void PositionalMapping_UsedWhenNoNameMatch()
+    {
+        // Arrange - Dictionary with no name matches but valid positional values
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "0", "John Doe" },                    // First position
+            { "1", BigInteger.Parse("30") },        // Second position
+            { "2", true },                          // Third position
+            { "UnrelatedKey", "Ignored value" }     // Unrelated key
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<SimpleUser>(dictionary);
+
+        // Assert - Properties should be mapped by position when no name matches
+        Assert.IsNotNull(user);
+        Assert.AreEqual("John Doe", user.Name);
+        Assert.AreEqual(BigInteger.Parse("30"), user.Age);
+        Assert.IsTrue(user.IsActive);
+    }
 }
