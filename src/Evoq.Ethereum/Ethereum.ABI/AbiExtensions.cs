@@ -80,30 +80,25 @@ public static class AbiExtensions
         }
 
         // Format the inputs and outputs using FormatParameterSignature
-        string inputsSignature = FormatParameterSignature(item.Inputs);
-        string outputsSignature = FormatParameterSignature(item.Outputs);
+        string inputsSignature = format(item.Inputs);
+        string outputsSignature = format(item.Outputs);
 
         // Create a new FunctionSignature using the string representations
         return new FunctionSignature(item.Name, inputsSignature, outputsSignature);
-    }
 
-    /// <summary>
-    /// Formats a list of parameters into a signature string.
-    /// </summary>
-    /// <param name="parameters">The parameters to format.</param>
-    /// <returns>A formatted signature string.</returns>
-    private static string FormatParameterSignature(IEnumerable<ContractAbiParameter>? parameters)
-    {
-        if (parameters == null || !parameters.Any())
+        //
+
+        static string format(IEnumerable<ContractAbiParameter>? parameters)
         {
-            return string.Empty;
+            if (parameters == null || !parameters.Any())
+            {
+                return string.Empty;
+            }
+
+            var formattedParams = AbiParameterFormatter.FormatParameters(parameters, includeNames: true);
+
+            return formattedParams;
         }
-
-        // var formattedParams = string.Join(",", parameters.Select(AbiParameterFormatter.FormatParameter));
-
-        var formattedParams = AbiParameterFormatter.FormatParameters(parameters);
-
-        return formattedParams;
     }
 
     /// <summary>

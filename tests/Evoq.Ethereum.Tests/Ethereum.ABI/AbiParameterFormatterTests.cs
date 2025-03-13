@@ -332,7 +332,7 @@ public class AbiParameterFormatterTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
         // Act
-        var result = method.Invoke(null, new object[] { new List<ContractAbiParameter>() }) as string;
+        var result = method.Invoke(null, new object[] { new List<ContractAbiParameter>(), false }) as string;
 
         // Assert
         Assert.AreEqual("", result);
@@ -346,7 +346,7 @@ public class AbiParameterFormatterTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
         // Act
-        var result = method.Invoke(null, new object[] { null }) as string;
+        var result = method.Invoke(null, new object[] { null, false }) as string;
 
         // Assert
         Assert.AreEqual("", result);
@@ -417,5 +417,127 @@ public class AbiParameterFormatterTests
         // Assert
         // This test doesn't involve arrays, so the format should remain the same
         Assert.AreEqual("((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_WithName_ShouldIncludeNameInOutput()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "uint256",
+            Name = "amount"
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(param, includeNames: true);
+
+        // Assert
+        Assert.AreEqual("uint256 amount", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_WithNameAndIncludeNamesTrue_IncludesNameInOutput()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "uint256",
+            Name = "amount"
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(param, includeNames: true);
+
+        // Assert
+        Assert.AreEqual("uint256 amount", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_WithNameAndIncludeNamesFalse_ExcludesNameFromOutput()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "uint256",
+            Name = "amount"
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(param, includeNames: false);
+
+        // Assert
+        Assert.AreEqual("uint256", result);
+    }
+
+    [TestMethod]
+    public void FormatParameters_WithNamesAndIncludeNamesTrue_IncludesNamesInOutput()
+    {
+        // Arrange
+        var parameters = new List<ContractAbiParameter>
+        {
+            new ContractAbiParameter { Type = "address", Name = "recipient" },
+            new ContractAbiParameter { Type = "uint256", Name = "amount" }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameters(parameters, includeNames: true);
+
+        // Assert
+        Assert.AreEqual("(address recipient,uint256 amount)", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_TupleWithNames_IncludesNamesWhenRequested()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "tuple",
+            Name = "person",
+            Components = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter { Type = "string", Name = "name" },
+                new ContractAbiParameter { Type = "uint256", Name = "age" },
+                new ContractAbiParameter { Type = "address", Name = "wallet" }
+            }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(param, includeNames: true);
+
+        // Assert
+        Assert.AreEqual("(string name,uint256 age,address wallet) person", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_NestedTupleWithNames_IncludesNamesWhenRequested()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "tuple",
+            Name = "userData",
+            Components = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter { Type = "uint256", Name = "id" },
+                new ContractAbiParameter
+                {
+                    Type = "tuple",
+                    Name = "fullName",
+                    Components = new List<ContractAbiParameter>
+                    {
+                        new ContractAbiParameter { Type = "string", Name = "firstName" },
+                        new ContractAbiParameter { Type = "string", Name = "lastName" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(param, includeNames: true);
+
+        // Assert
+        Assert.AreEqual("(uint256 id,(string firstName,string lastName) fullName) userData", result);
     }
 }

@@ -374,4 +374,107 @@ public class FunctionSignatureTests
         Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(uint256,(bool,string)[],(address,bytes32)[3])", signature.GetCanonicalOutputsSignature());
     }
+
+    [TestMethod]
+    public void FunctionSignature_CapturesParameterNames_ForBasicTypes()
+    {
+        // Arrange
+        var signature = FunctionSignature.Parse("transfer(address recipient, uint256 amount)");
+
+        // Act
+        var inputs = signature.Inputs;
+
+        // Assert
+        Assert.AreEqual(2, inputs.Count);
+        Assert.AreEqual("recipient", inputs[0].Name);
+        Assert.AreEqual("amount", inputs[1].Name);
+        Assert.AreEqual("address", inputs[0].AbiType);
+        Assert.AreEqual("uint256", inputs[1].AbiType);
+    }
+
+    [TestMethod]
+    public void FunctionSignature_CapturesParameterNames_ForTupleTypes()
+    {
+        // Arrange
+        var signature = FunctionSignature.Parse("setPerson((string name, uint256 age, address wallet) person)");
+
+        // Act
+        var inputs = signature.Inputs;
+
+        // Assert
+        Assert.AreEqual(1, inputs.Count);
+        Assert.AreEqual("person", inputs[0].Name);
+        Assert.AreEqual("(string,uint256,address)", inputs[0].AbiType);
+
+        // Verify we can access the tuple components
+        Assert.IsTrue(inputs[0].TryParseComponents(out var components));
+        Assert.IsNotNull(components);
+        Assert.AreEqual(3, components.Count);
+        Assert.AreEqual("name", components[0].Name);
+        Assert.AreEqual("age", components[1].Name);
+        Assert.AreEqual("wallet", components[2].Name);
+    }
+
+    [TestMethod]
+    public void FunctionSignature_CapturesParameterNames_ForOutputParameters()
+    {
+        // Arrange
+        var signature = FunctionSignature.Parse("getValues(address account) returns (uint256 balance, bool active)");
+
+        // Act
+        var outputs = signature.Outputs;
+
+        // Assert
+        Assert.IsNotNull(outputs);
+        Assert.AreEqual(2, outputs.Count);
+        Assert.AreEqual("balance", outputs[0].Name);
+        Assert.AreEqual("active", outputs[1].Name);
+        Assert.AreEqual("uint256", outputs[0].AbiType);
+        Assert.AreEqual("bool", outputs[1].AbiType);
+    }
+
+    [TestMethod]
+    public void FunctionSignature_CapturesParameterNames_ForNestedTuples()
+    {
+        // Arrange
+        var signature = FunctionSignature.Parse("complexFunction((uint256 id, (string firstName, string lastName) fullName) userData)");
+
+        // Act
+        var inputs = signature.Inputs;
+
+        // Assert
+        Assert.AreEqual(1, inputs.Count);
+        Assert.AreEqual("userData", inputs[0].Name);
+
+        // Verify outer tuple components
+        Assert.IsTrue(inputs[0].TryParseComponents(out var outerComponents));
+        Assert.IsNotNull(outerComponents);
+        Assert.AreEqual(2, outerComponents.Count);
+        Assert.AreEqual("id", outerComponents[0].Name);
+        Assert.AreEqual("fullName", outerComponents[1].Name);
+
+        // Verify inner tuple components
+        Assert.IsTrue(outerComponents[1].TryParseComponents(out var innerComponents));
+        Assert.IsNotNull(innerComponents);
+        Assert.AreEqual(2, innerComponents.Count);
+        Assert.AreEqual("firstName", innerComponents[0].Name);
+        Assert.AreEqual("lastName", innerComponents[1].Name);
+    }
+
+    [TestMethod]
+    public void FunctionSignature_CapturesParameterNames_ForArraysWithNames()
+    {
+        // Arrange
+        var signature = FunctionSignature.Parse("batchTransfer(address[] recipients, uint256[] amounts)");
+
+        // Act
+        var inputs = signature.Inputs;
+
+        // Assert
+        Assert.AreEqual(2, inputs.Count);
+        Assert.AreEqual("recipients", inputs[0].Name);
+        Assert.AreEqual("amounts", inputs[1].Name);
+        Assert.AreEqual("address[]", inputs[0].AbiType);
+        Assert.AreEqual("uint256[]", inputs[1].AbiType);
+    }
 }

@@ -316,6 +316,184 @@ public class AbiExtensionsTests
         // Assert
         Assert.AreEqual("(uint256,address)", result);
     }
+
+    [TestMethod]
+    public void GetFunctionSignature_PreservesParameterNames_ForBasicTypes()
+    {
+        // Arrange
+        var item = new ContractAbiItem
+        {
+            Type = "function",
+            Name = "transfer",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new() { Type = "address", Name = "recipient" },
+                new() { Type = "uint256", Name = "amount" }
+            }
+        };
+
+        // Act
+        var signature = item.GetFunctionSignature();
+
+        // Assert
+        Assert.AreEqual(2, signature.Inputs.Count);
+        Assert.AreEqual("recipient", signature.Inputs[0].Name);
+        Assert.AreEqual("amount", signature.Inputs[1].Name);
+        Assert.AreEqual("address", signature.Inputs[0].AbiType);
+        Assert.AreEqual("uint256", signature.Inputs[1].AbiType);
+    }
+
+    [TestMethod]
+    public void GetFunctionSignature_PreservesParameterNames_ForTupleTypes()
+    {
+        // Arrange
+        var item = new ContractAbiItem
+        {
+            Type = "function",
+            Name = "setPerson",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter
+                {
+                    Type = "tuple",
+                    Name = "person",
+                    Components = new List<ContractAbiParameter>
+                    {
+                        new() { Type = "string", Name = "name" },
+                        new() { Type = "uint256", Name = "age" },
+                        new() { Type = "address", Name = "wallet" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var signature = item.GetFunctionSignature();
+
+        // Assert
+        Assert.AreEqual(1, signature.Inputs.Count);
+        Assert.AreEqual("person", signature.Inputs[0].Name);
+        Assert.AreEqual("(string,uint256,address)", signature.Inputs[0].AbiType);
+
+        // Verify tuple components have correct names
+        Assert.IsTrue(signature.Inputs[0].TryParseComponents(out var components));
+        Assert.IsNotNull(components);
+        Assert.AreEqual(3, components.Count);
+        Assert.AreEqual("name", components[0].Name);
+        Assert.AreEqual("age", components[1].Name);
+        Assert.AreEqual("wallet", components[2].Name);
+    }
+
+    [TestMethod]
+    public void GetFunctionSignature_PreservesParameterNames_ForNestedTuples()
+    {
+        // Arrange
+        var item = new ContractAbiItem
+        {
+            Type = "function",
+            Name = "complexFunction",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter
+                {
+                    Type = "tuple",
+                    Name = "userData",
+                    Components = new List<ContractAbiParameter>
+                    {
+                        new() { Type = "uint256", Name = "id" },
+                        new ContractAbiParameter
+                        {
+                            Type = "tuple",
+                            Name = "fullName",
+                            Components = new List<ContractAbiParameter>
+                            {
+                                new() { Type = "string", Name = "firstName" },
+                                new() { Type = "string", Name = "lastName" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var signature = item.GetFunctionSignature();
+
+        // Assert
+        Assert.AreEqual(1, signature.Inputs.Count);
+        Assert.AreEqual("userData", signature.Inputs[0].Name);
+
+        // Verify outer tuple components
+        Assert.IsTrue(signature.Inputs[0].TryParseComponents(out var outerComponents));
+        Assert.IsNotNull(outerComponents);
+        Assert.AreEqual(2, outerComponents.Count);
+        Assert.AreEqual("id", outerComponents[0].Name);
+        Assert.AreEqual("fullName", outerComponents[1].Name);
+
+        // Verify inner tuple components
+        Assert.IsTrue(outerComponents[1].TryParseComponents(out var innerComponents));
+        Assert.IsNotNull(innerComponents);
+        Assert.AreEqual(2, innerComponents.Count);
+        Assert.AreEqual("firstName", innerComponents[0].Name);
+        Assert.AreEqual("lastName", innerComponents[1].Name);
+    }
+
+    [TestMethod]
+    public void GetFunctionSignature_PreservesParameterNames_ForOutputParameters()
+    {
+        // Arrange
+        var item = new ContractAbiItem
+        {
+            Type = "function",
+            Name = "getValues",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new() { Type = "address", Name = "account" }
+            },
+            Outputs = new List<ContractAbiParameter>
+            {
+                new() { Type = "uint256", Name = "balance" },
+                new() { Type = "bool", Name = "active" }
+            }
+        };
+
+        // Act
+        var signature = item.GetFunctionSignature();
+
+        // Assert
+        Assert.IsNotNull(signature.Outputs);
+        Assert.AreEqual(2, signature.Outputs.Count);
+        Assert.AreEqual("balance", signature.Outputs[0].Name);
+        Assert.AreEqual("active", signature.Outputs[1].Name);
+        Assert.AreEqual("uint256", signature.Outputs[0].AbiType);
+        Assert.AreEqual("bool", signature.Outputs[1].AbiType);
+    }
+
+    [TestMethod]
+    public void GetFunctionSignature_PreservesParameterNames_ForArrayTypes()
+    {
+        // Arrange
+        var item = new ContractAbiItem
+        {
+            Type = "function",
+            Name = "batchTransfer",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new() { Type = "address[]", Name = "recipients" },
+                new() { Type = "uint256[]", Name = "amounts" }
+            }
+        };
+
+        // Act
+        var signature = item.GetFunctionSignature();
+
+        // Assert
+        Assert.AreEqual(2, signature.Inputs.Count);
+        Assert.AreEqual("recipients", signature.Inputs[0].Name);
+        Assert.AreEqual("amounts", signature.Inputs[1].Name);
+        Assert.AreEqual("address[]", signature.Inputs[0].AbiType);
+        Assert.AreEqual("uint256[]", signature.Inputs[1].AbiType);
+    }
 }
 
 // Helper class to access private methods for testing
