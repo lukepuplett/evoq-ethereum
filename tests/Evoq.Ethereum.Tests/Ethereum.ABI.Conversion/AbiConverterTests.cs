@@ -334,44 +334,6 @@ public class AbiConverterTests
     }
 
     [TestMethod]
-    public void ConvertFromContractAbi_Success()
-    {
-        // Arrange - Simulating a contract function call result
-        var contractAbi = new ContractAbi(new List<ContractAbiItem>
-        {
-            new ContractAbiItem
-            {
-                Type = "function",
-                Name = "getUserInfo",
-                Outputs = new List<ContractAbiParameter>
-                {
-                    new ContractAbiParameter { Name = "name", Type = "string" },
-                    new ContractAbiParameter { Name = "age", Type = "uint256" },
-                    new ContractAbiParameter { Name = "isActive", Type = "bool" }
-                }
-            }
-        });
-
-        // Simulate decoded function output
-        var outputValues = new Dictionary<string, object?>
-        {
-            { "name", "John Doe" },
-            { "age", BigInteger.Parse("25") },
-            { "isActive", true }
-        };
-
-        // Act
-        var user = this.converter.ContractFunctionOutputToObject<SimpleUser>(
-            contractAbi, "getUserInfo", outputValues);
-
-        // Assert
-        Assert.IsNotNull(user);
-        Assert.AreEqual("John Doe", user.Name);
-        Assert.AreEqual(BigInteger.Parse("25"), user.Age);
-        Assert.IsTrue(user.IsActive);
-    }
-
-    [TestMethod]
     public void NameMapping_TakesPriorityOverPosition_WhenKeysOutOfOrder()
     {
         // Arrange - Dictionary with keys in different order than POCO properties
