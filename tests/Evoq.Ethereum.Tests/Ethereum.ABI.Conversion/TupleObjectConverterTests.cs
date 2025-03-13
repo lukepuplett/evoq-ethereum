@@ -126,14 +126,6 @@ public class TupleObjectConverterTests
     }
 }
 
-// Test classes
-public class PositionalUser
-{
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    public BigInteger Age { get; set; }
-}
-
 public class NullablePositionalUser
 {
     public string FirstName { get; set; }

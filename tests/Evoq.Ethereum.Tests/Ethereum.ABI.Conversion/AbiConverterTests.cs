@@ -434,4 +434,55 @@ public class AbiConverterTests
         Assert.AreEqual(BigInteger.Parse("30"), user.Age);
         Assert.IsTrue(user.IsActive);
     }
+
+    [TestMethod]
+    public void AttributeMappedUser_ComplexMapping_Success()
+    {
+        // Arrange - Dictionary with keys that don't match property names and are out of order
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "customName", "John Doe" },                   // 0 / Maps to .Name by attribute name
+            { "someRandomKey", "This should be ignored" },  // 1 / Should be ignored (no matching attribute)
+            { "active_in_pos_2", true },                    // 2 / Maps to .IsActive by position (3rd property)
+            { "years", BigInteger.Parse("30") },            // 3 / Maps to .Age by attribute name
+            { "0", "This should be ignored too" },          // 4 / Should be ignored (.Name mapped by customName)
+            { "wallet", "0xabcdef1234567890abcdef1234567890abcdef12" } // 5 / Maps to .Address by attribute name
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<ComplexAttributeMappedUser>(dictionary);
+
+        // Assert
+        Assert.IsNotNull(user, "User should not be null");
+        Assert.AreEqual("John Doe", user.Name, "Name should match");
+        Assert.AreEqual(BigInteger.Parse("30"), user.Age, "Age should match");
+        Assert.IsTrue(user.IsActive, "IsActive should match");
+        Assert.IsTrue(string.Equals(
+            "0xabcdef1234567890abcdef1234567890abcdef12",
+            user.Address.ToString(),
+            StringComparison.OrdinalIgnoreCase));
+        Assert.IsNull(user.IgnoredProperty, $"IgnoredProperty should remain null, contains '{user.IgnoredProperty}'");
+    }
+
+    // Test class with complex attribute mapping
+    public class ComplexAttributeMappedUser
+    {
+        [AbiParameter("customName", Position = 0)]
+        public string? Name { get; set; }
+
+        [AbiParameter("years", Position = 1, AbiType = "uint256")]
+        public BigInteger Age { get; set; }
+
+        [AbiParameter("active", Position = 2)]
+        public bool IsActive { get; set; }
+
+        [AbiParameter("wallet", AbiType = "address")]
+        public EthereumAddress Address { get; set; }
+
+        [AbiParameter("ignoredProperty", Ignore = true)]
+        public string? IgnoredProperty { get; set; }
+
+        // No attribute - should not be mapped by attribute
+        public string? UnmappedProperty { get; set; }
+    }
 }

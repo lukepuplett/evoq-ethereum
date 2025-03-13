@@ -1,7 +1,7 @@
 using System.Numerics;
 using Evoq.Blockchain;
 
-namespace Evoq.Ethereum.ABI;
+namespace Evoq.Ethereum.ABI.Conversion;
 
 
 // Simple POCO with basic types

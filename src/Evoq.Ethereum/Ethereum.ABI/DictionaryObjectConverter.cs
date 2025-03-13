@@ -75,8 +75,111 @@ public class DictionaryObjectConverter
 
     //
 
+    /// <summary>
+    /// Maps dictionary values to object properties based on AbiParameterAttribute.
+    /// </summary>
+    /// <param name="obj">The target object.</param>
+    /// <param name="properties">The properties to map.</param>
+    /// <param name="dictionary">The dictionary containing values.</param>
     private void MapPropertiesByAttribute(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
     {
+        // Get properties that have the AbiParameterAttribute
+        var attributeMappedProperties = properties
+            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
+            .Select(p => new
+            {
+                Property = p,
+                Attribute = p.GetCustomAttribute<AbiParameterAttribute>()
+            })
+            .Where(x => x.Attribute != null && !x.Attribute.Ignore)
+            .ToList();
+
+        if (!attributeMappedProperties.Any())
+        {
+            return;
+        }
+
+        foreach (var propInfo in attributeMappedProperties)
+        {
+            var property = propInfo.Property;
+            var attribute = propInfo.Attribute;
+
+            // Try to map by attribute name
+            if (!string.IsNullOrEmpty(attribute.Name) && dictionary.TryGetValue(attribute.Name, out var valueByName))
+            {
+                MapValueToProperty(obj, property, valueByName, attribute.AbiType);
+                continue;
+            }
+
+            // Try to map by attribute position
+            if (attribute.Position >= 0 && dictionary.Values.ElementAt(attribute.Position) is var valueByPosition)
+            {
+                MapValueToProperty(obj, property, valueByPosition, attribute.AbiType);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Maps a value to a property based on the property type.
+    /// </summary>
+    /// <param name="obj">The target object.</param>
+    /// <param name="property">The property to set.</param>
+    /// <param name="value">The value to set.</param>
+    /// <param name="abiType">Optional ABI type hint for conversion.</param>
+    private void MapValueToProperty(object obj, PropertyInfo property, object? value, string? abiType = null)
+    {
+        if (value == null)
+        {
+            property.SetValue(obj, null);
+            return;
+        }
+
+        // If we have an ABI type hint, try to convert using it
+        if (!string.IsNullOrEmpty(abiType) && typeConverter.TryConvert(value, property.PropertyType, out var convertedValue, abiType))
+        {
+            property.SetValue(obj, convertedValue);
+            return;
+        }
+
+        if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
+        {
+            var nestedObj = DictionaryToObject(nestedDic, property.PropertyType); // recursive call
+            property.SetValue(obj, nestedObj);
+        }
+        else if (value is IDictionary<object, object> objDict && IsComplexType(property.PropertyType))
+        {
+            var stringDict = ConvertObjectDictionaryToStringDictionary(objDict);
+            var nestedObj = DictionaryToObject(stringDict, property.PropertyType); // recursive call
+            property.SetValue(obj, nestedObj);
+        }
+        else if (value is IEnumerable<object> enumerableValue && IsCollectionType(property.PropertyType))
+        {
+            Type elementType = GetElementType(property.PropertyType);
+
+            if (IsComplexType(elementType))
+            {
+                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+                PopulateListFromEnumerable(bucket, enumerableValue, elementType);
+
+                if (property.PropertyType.IsArray)
+                {
+                    var array = CreateArrayFromList(bucket, elementType);
+                    property.SetValue(obj, array);
+                }
+                else
+                {
+                    property.SetValue(obj, bucket);
+                }
+            }
+            else
+            {
+                SetPropertyValue(obj, property, value);
+            }
+        }
+        else
+        {
+            SetPropertyValue(obj, property, value);
+        }
     }
 
     private void MapPropertiesByName(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
@@ -96,7 +199,7 @@ public class DictionaryObjectConverter
             // Try to get value by property name (case-sensitive first, then case-insensitive)
             if (TryGetValue(dictionary, property.Name, out var value))
             {
-                Map(obj, property, value);
+                SetValue(obj, property, value);
             }
         }
     }
@@ -131,12 +234,19 @@ public class DictionaryObjectConverter
             var property = properties[i];
             var value = positionMappedValues[i];
 
-            Map(obj, property, value);
+            SetValue(obj, property, value);
         }
     }
 
-    private void Map(object obj, PropertyInfo property, object? value)
+    private void SetValue(object obj, PropertyInfo property, object? value)
     {
+        var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
+
+        if (attribute != null && attribute.Ignore)
+        {
+            return;
+        }
+
         if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
         {
             var nestedObj = DictionaryToObject(nestedDic, property.PropertyType); // recursive call

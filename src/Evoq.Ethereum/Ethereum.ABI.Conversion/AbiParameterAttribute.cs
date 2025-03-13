@@ -1,6 +1,6 @@
 using System;
 
-namespace Evoq.Ethereum.ABI;
+namespace Evoq.Ethereum.ABI.Conversion;
 
 /// <summary>
 /// Attribute for specifying the name of an ABI parameter.
