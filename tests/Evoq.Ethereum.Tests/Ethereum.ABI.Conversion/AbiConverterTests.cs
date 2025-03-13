@@ -1,8 +1,7 @@
 using System.Numerics;
 using Evoq.Blockchain;
-using Evoq.Ethereum.ABI;
 
-namespace Evoq.Ethereum.Tests.Ethereum.ABI;
+namespace Evoq.Ethereum.ABI.Conversion;
 
 [TestClass]
 public class AbiConverterTests
@@ -99,10 +98,10 @@ public class AbiConverterTests
 
         // Assert
         Assert.IsNotNull(user);
-        Assert.AreEqual("Charlie", user.Name);
-        Assert.IsNotNull(user.Profile);
-        Assert.AreEqual("Blockchain enthusiast", user.Profile.Bio);
-        Assert.AreEqual("https://example.com/avatar.jpg", user.Profile.AvatarUrl);
+        Assert.AreEqual("Charlie", user.Name, "Name should match");
+        Assert.IsNotNull(user.Profile, "Profile should not be null");
+        Assert.AreEqual("Blockchain enthusiast", user.Profile.Bio, "Bio should match");
+        Assert.AreEqual("https://example.com/avatar.jpg", user.Profile.AvatarUrl, "AvatarUrl should match");
     }
 
     [TestMethod]

@@ -2,7 +2,7 @@ using System;
 using System.Numerics;
 using Evoq.Blockchain;
 
-namespace Evoq.Ethereum.ABI;
+namespace Evoq.Ethereum.ABI.Conversion;
 
 /// <summary>
 /// Provides conversion between various .NET types with support for Ethereum-specific types and ABI type hints.
@@ -36,7 +36,7 @@ public class AbiClrTypeConverter
     /// - Special type conversions for Ethereum-specific types
     /// - Standard type conversions for common .NET types
     /// </remarks>
-    public bool TryConvert(object value, Type targetType, out object? result, string? abiType = null)
+    public bool TryConvert(object? value, Type targetType, out object? result, string? abiType = null)
     {
         // Handle null values - return true only if target type can accept nulls
         if (value == null)

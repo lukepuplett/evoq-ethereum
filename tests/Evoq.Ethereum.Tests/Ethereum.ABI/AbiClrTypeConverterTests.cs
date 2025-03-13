@@ -1,10 +1,7 @@
-using System;
 using System.Numerics;
 using Evoq.Blockchain;
-using Evoq.Ethereum.ABI;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Evoq.Ethereum.Tests.Ethereum.ABI;
+namespace Evoq.Ethereum.ABI.Conversion;
 
 [TestClass]
 public class AbiClrTypeConverterTests
