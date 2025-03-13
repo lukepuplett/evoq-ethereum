@@ -374,21 +374,6 @@ public class AbiParam
 
         object? getValue(object? value)
         {
-            // if (this.IsTupleStrict)
-            // {
-            //     if (this.Value is IDictionary<string, object?> dict)
-            //     {
-            //         value = dict;
-            //     }
-            // }
-            // else if (this.IsTupleArray)
-            // {
-            //     if (this.Value is IEnumerable<IDictionary<string, object?>> list)
-            //     {
-            //         value = list.ToArray();
-            //     }
-            // }
-
             if (value is IDictionary<string, object?> dict)
             {
                 return dict.ToDictionary(kvp => kvp.Key, kvp => getValue(kvp.Value));

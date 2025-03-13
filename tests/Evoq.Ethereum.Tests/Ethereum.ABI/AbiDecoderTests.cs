@@ -1,11 +1,5 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Json;
 using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI;
@@ -48,10 +42,6 @@ public class AbiDecoderTests
         try
         {
             result = this.decoder.DecodeParameters(signature.Inputs, encodedBytes);
-
-            string json = JsonSerializer.Serialize(result.Parameters.ToDictionary(true));
-            Console.WriteLine(caseNumber);
-            Console.WriteLine(json);
         }
         catch (Exception)
         {

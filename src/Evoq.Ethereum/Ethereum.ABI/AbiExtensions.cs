@@ -138,4 +138,17 @@ public static class AbiExtensions
                 invalidCast);
         }
     }
+
+    /// <summary>
+    /// Converts an <see cref="AbiParameters"/> object to a strongly-typed object.
+    /// </summary>
+    /// <typeparam name="T">The type of the object to convert to.</typeparam>
+    /// <param name="parameters">The parameters to convert.</param>
+    /// <returns>A strongly-typed object.</returns>
+    public static T ToObject<T>(this AbiParameters parameters) where T : new()
+    {
+        var converter = new AbiConverter();
+
+        return converter.DictionaryToObject<T>(parameters.ToDictionary(true));
+    }
 }
