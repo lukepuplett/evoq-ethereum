@@ -19,10 +19,10 @@ public static class AbiEncoderDecoderTestCases
     public static readonly Dictionary<int, AbiTestCase> Cases = new()
     {
         [1] = new(
-            "Simple uint256",
-            "function foo(uint256)",
-            new List<object> { BigInteger.One },
-            new List<string> {
+            "Simple uint256",                        // Name
+            "function foo(uint256)",                 // Signature
+            new object[] { BigInteger.One },         // Values / can be an enumerable of objects
+            new List<string> {                       // Expected lines
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
             },
             "0x0000000000000000000000000000000000000000000000000000000000000001"

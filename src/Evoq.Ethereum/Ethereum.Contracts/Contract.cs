@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
@@ -63,7 +64,7 @@ public class Contract
     /// </summary>
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
-    /// <param name="parameters">The parameters to pass to the method.</param>
+    /// <param name="parameters">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
     public async Task<T> CallAsync<T>(
         string methodName,
@@ -79,7 +80,7 @@ public class Contract
     /// </summary>
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
-    /// <param name="parameters">The parameters to pass to the method.</param>
+    /// <param name="parameters">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <returns>The result of the method call decoded into a dictionary.</returns>
     public async Task<IDictionary<string, object?>> CallAsync(
         string methodName,
@@ -87,5 +88,44 @@ public class Contract
         params object[] parameters)
     {
         return await this.contractClient.CallAsync(this, methodName, senderAddress, parameters);
+    }
+
+    /// <summary>
+    /// Estimates the gas required to invoke a method on a contract.
+    /// </summary>
+    /// <param name="methodName">The name of the method to invoke.</param>
+    /// <param name="senderAddress">The address of the sender.</param>
+    /// <param name="value">The value to send with the transaction.</param>
+    /// <param name="parameters">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <returns>The estimated gas required to invoke the method.</returns>
+    public async Task<BigInteger> EstimateGasAsync(
+        string methodName,
+        EthereumAddress senderAddress,
+        BigInteger? value,
+        params object[] parameters)
+    {
+        var hex = await this.contractClient.EstimateGasAsync(this, methodName, senderAddress, value, parameters);
+
+        HexSignedness s = HexSignedness.Unsigned;
+        HexEndianness e = HexEndianness.BigEndian;
+
+        return hex.ToBigInteger(s, e);
+    }
+
+    /// <summary>
+    /// Invokes a method on a contract, creating a transaction.
+    /// </summary>
+    /// <param name="methodName">The name of the method to invoke.</param>
+    /// <param name="senderAddress">The address of the sender.</param>
+    /// <param name="options">The options for the transaction.</param>
+    /// <param name="parameters">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <returns>The result of the method call decoded into an object.</returns>
+    public async Task<Hex> InvokeAsync(
+        string methodName,
+        EthereumAddress senderAddress,
+        ContractInvocationOptions options,
+        params object[] parameters)
+    {
+        return await this.contractClient.InvokeAsync(this, methodName, senderAddress, options, parameters);
     }
 }

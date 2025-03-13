@@ -10,6 +10,7 @@ namespace Evoq.Ethereum;
 public class ExtensionsTests
 {
 
+
     /// <summary>
     /// Tests that BouncyCastle BigInteger ToByteArray() and ToByteArrayUnsigned() methods produce different results for a positive number with the high bit set.
     /// This is a good test because it verifies the difference between the two methods for positive numbers where the high bit is set.
@@ -448,6 +449,88 @@ public class ExtensionsTests
 
         // Assert
         Assert.AreEqual(numericsOriginal, numericsResult);
+    }
+
+    /// <summary>
+    /// Tests that a System.Numerics.BigInteger is correctly converted to a hex string
+    /// in the format expected by Ethereum (big-endian with 0x prefix).
+    /// </summary>
+    [TestMethod]
+    public void ToHexString_BigInteger_ReturnsEthereumCompatibleHexString()
+    {
+        // Arrange
+        var testCases = new Dictionary<NMath.BigInteger, string>
+        {
+            // Zero
+            [NMath.BigInteger.Zero] = "0x0",
+
+            // Small positive number
+            [new NMath.BigInteger(42)] = "0x2a",
+
+            // Larger positive number
+            [new NMath.BigInteger(123456789)] = "0x75bcd15",
+
+            // Negative number (Ethereum typically uses unsigned representation)
+            [new NMath.BigInteger(-123456789)] = "0xf8a432eb",
+
+            // Powers of 2
+            [NMath.BigInteger.Pow(2, 8)] = "0x100",
+            [NMath.BigInteger.Pow(2, 16)] = "0x10000",
+            [NMath.BigInteger.Pow(2, 64)] = "0x10000000000000000",
+
+            // Common Ethereum values
+            [NMath.BigInteger.Parse("1000000000000000000")] = "0xde0b6b3a7640000", // 1 ETH in wei
+            [NMath.BigInteger.Parse("115792089237316195423570985008687907853269984665640564039457584007913129639935")] = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" // uint256 max
+        };
+
+        foreach (var testCase in testCases)
+        {
+            // Act
+            var hexString = testCase.Key.ToHexString(trimLeadingZeroDigits: true);
+
+            // Assert
+            Console.WriteLine($"Value: {testCase.Key}, Expected: {testCase.Value}, Actual: {hexString}");
+            Assert.AreEqual(testCase.Value, hexString, $"Failed for value: {testCase.Key}");
+        }
+    }
+
+    /// <summary>
+    /// Tests that the ToHexString method correctly handles the endianness conversion
+    /// required for Ethereum (which uses big-endian representation).
+    /// </summary>
+    [TestMethod]
+    public void ToHexString_EndiannessCheck_MatchesEthereumFormat()
+    {
+        // Arrange
+        var value = new NMath.BigInteger(0x1234);
+
+        // Act
+        var hexString = value.ToHexString();
+
+        // Assert
+        // In big-endian (Ethereum format), 0x1234 should be represented as "0x1234"
+        // In little-endian, it would be "0x3412"
+        Assert.AreEqual("0x1234", hexString, "The hex string should be in big-endian format for Ethereum compatibility");
+    }
+
+    /// <summary>
+    /// Tests that the ToHexString method correctly handles leading zeros
+    /// according to Ethereum conventions.
+    /// </summary>
+    [TestMethod]
+    public void ToHexString_LeadingZeros_HandledCorrectlyForEthereum()
+    {
+        // Arrange
+        // Create a value that would have leading zeros in its hex representation
+        var value = new NMath.BigInteger(0x0012);
+
+        // Act
+        var hexString = value.ToHexString();
+
+        // Assert
+        // In Ethereum, minimal representation is typically used (no unnecessary leading zeros)
+        // So 0x0012 should be represented as "0x12"
+        Assert.AreEqual("0x12", hexString, "The hex string should not include unnecessary leading zeros");
     }
 
 }

@@ -81,9 +81,8 @@ public class ExampleEAS
         var sender = new Sender(privateKey, nonceStore!);
         var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
+        var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e"); // random, non-existent schemaId
 
-        // random, non-existent schemaId
-        var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e");
         var result = await contract.CallAsync("getSchema", account, schemaIdHex);
 
         Assert.IsNotNull(result);

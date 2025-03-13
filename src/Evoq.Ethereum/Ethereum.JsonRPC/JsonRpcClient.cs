@@ -91,7 +91,7 @@ public class JsonRpcClient : IEthereumJsonRpc
             throw new JsonRpcNullResultException("JSON-RPC response has null result");
         }
 
-        return Hex.Parse(hexString);
+        return Hex.Parse(hexString, HexParseOptions.AllowOddLength);
     }
 
     public Task<Hex> EstimateGasAsync(TransactionParamsDto transactionParams, int id = 1)
@@ -130,7 +130,7 @@ public class JsonRpcClient : IEthereumJsonRpc
             throw new JsonRpcNullResultException("JSON-RPC response has null result");
         }
 
-        return Hex.Parse(hexString);
+        return Hex.Parse(hexString, HexParseOptions.AllowOddLength);
     }
 
     public Task<Hex> SendTransactionAsync(TransactionParamsDto transactionParams, int id = 1)
