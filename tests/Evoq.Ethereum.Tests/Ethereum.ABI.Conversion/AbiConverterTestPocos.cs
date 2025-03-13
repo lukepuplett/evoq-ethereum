@@ -116,3 +116,32 @@ public class NullableUser
     public bool? IsActive { get; set; }
     public EthereumAddress? WalletAddress { get; set; }
 }
+
+// Test class with BigInteger array
+public class UserWithBigIntegerArray
+{
+    public string? Name { get; set; }
+    public BigInteger[]? Scores { get; set; }
+}
+
+// Test class with complex attribute mapping
+public class ComplexAttributeMappedUser
+{
+    [AbiParameter("customName", Position = 0)]
+    public string? Name { get; set; }
+
+    [AbiParameter("years", Position = 1, AbiType = "uint256")]
+    public BigInteger Age { get; set; }
+
+    [AbiParameter("active", Position = 2)]
+    public bool IsActive { get; set; }
+
+    [AbiParameter("wallet", AbiType = "address")]
+    public EthereumAddress Address { get; set; }
+
+    [AbiParameter("ignoredProperty", Ignore = true)]
+    public string? IgnoredProperty { get; set; }
+
+    // No attribute - should not be mapped by attribute
+    public string? UnmappedProperty { get; set; }
+}

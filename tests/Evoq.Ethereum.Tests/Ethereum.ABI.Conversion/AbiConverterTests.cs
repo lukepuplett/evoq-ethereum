@@ -464,25 +464,27 @@ public class AbiConverterTests
         Assert.IsNull(user.IgnoredProperty, $"IgnoredProperty should remain null, contains '{user.IgnoredProperty}'");
     }
 
-    // Test class with complex attribute mapping
-    public class ComplexAttributeMappedUser
+    [TestMethod]
+    public void ArrayWithTypeConversion_ConvertFromDictionary_Success()
     {
-        [AbiParameter("customName", Position = 0)]
-        public string? Name { get; set; }
+        // Arrange - Array of integers that should be converted to BigInteger[]
+        var dictionary = new Dictionary<string, object?>
+    {
+        { "Name", "TypeConversionUser" },
+        { "Scores", new[] { 95, 87, 92 } } // Array of integers, not BigIntegers
+    };
 
-        [AbiParameter("years", Position = 1, AbiType = "uint256")]
-        public BigInteger Age { get; set; }
+        // Act
+        var user = this.converter.DictionaryToObject<UserWithBigIntegerArray>(dictionary);
 
-        [AbiParameter("active", Position = 2)]
-        public bool IsActive { get; set; }
-
-        [AbiParameter("wallet", AbiType = "address")]
-        public EthereumAddress Address { get; set; }
-
-        [AbiParameter("ignoredProperty", Ignore = true)]
-        public string? IgnoredProperty { get; set; }
-
-        // No attribute - should not be mapped by attribute
-        public string? UnmappedProperty { get; set; }
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("TypeConversionUser", user.Name);
+        Assert.IsNotNull(user.Scores);
+        Assert.AreEqual(3, user.Scores.Length);
+        Assert.AreEqual(BigInteger.Parse("95"), user.Scores[0]);
+        Assert.AreEqual(BigInteger.Parse("87"), user.Scores[1]);
+        Assert.AreEqual(BigInteger.Parse("92"), user.Scores[2]);
     }
+
 }
