@@ -79,13 +79,13 @@ public class ExampleEAS
         var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
         var sender = new Sender(privateKey, nonceStore!);
-        var contract = new Contract(abiStream, schemaRegistryAddress);
         var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
+        var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
         // random, non-existent schemaId
         var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e");
-        var schemaId = await contractClient.CallAsync(contract, "getSchema", account, schemaIdHex);
+        var result = await contract.CallAsync("getSchema", account, schemaIdHex);
 
-        Assert.IsNotNull(schemaId);
+        Assert.IsNotNull(result);
     }
 }

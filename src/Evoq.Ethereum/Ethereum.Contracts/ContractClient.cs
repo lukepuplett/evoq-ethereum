@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
@@ -7,21 +8,6 @@ using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Contracts;
-
-// A hypothetical Contract class would be able to produce function
-// signatures for the methods in the ABI, and hold the address of
-// the contract.
-//
-// contract.CallAsync("GetSchema", schemaId);
-//
-// contractCaller.CallAsync(contract, "GetSchema", schemaId);
-//
-// ContractCaller is a class that can be used to call methods on a
-// contract. Is is configured with a IEthereumJsonRpc, IAbiEncoder,
-// IAbiDecode, and a ITransactionSigner, and a INonceStore.
-//
-// !! We need something to compute the gas price.
-//
 
 /// <summary>
 /// A class that can be used to call methods on a contract.
@@ -62,15 +48,7 @@ public class ContractClient
 
     //
 
-    /// <summary>
-    /// Calls a method on a contract, off-chain, without creating a transaction.
-    /// </summary>
-    /// <param name="contract">The contract.</param>
-    /// <param name="methodName">The name of the method to call.</param>
-    /// <param name="senderAddress">The address of the sender.</param>
-    /// <param name="parameters">The parameters to pass to the method.</param>
-    /// <returns>The result of the method call.</returns>
-    public async Task<Hex> CallAsync(
+    internal async Task<(Hex Results, FunctionSignature Function)> ExecuteCallAsync(
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
@@ -86,7 +64,36 @@ public class ContractClient
             Input = new Hex(encoded).ToString(),
         };
 
-        return await this.jsonRpc.CallAsync(ethCallParams, id: this.GetRandomId());
+        var result = await this.jsonRpc.CallAsync(ethCallParams, id: this.GetRandomId());
+
+        return (result, signature);
+    }
+
+    internal async Task<T> CallAsync<T>(
+        Contract contract,
+        string methodName,
+        EthereumAddress senderAddress,
+        params object[] parameters)
+    where T : new()
+    {
+        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
+
+        var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
+
+        return decoded.Parameters.ToObject<T>();
+    }
+
+    internal async Task<IDictionary<string, object?>> CallAsync(
+        Contract contract,
+        string methodName,
+        EthereumAddress senderAddress,
+        params object[] parameters)
+    {
+        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
+
+        var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
+
+        return decoded.Parameters.ToDictionary(false);
     }
 
     //

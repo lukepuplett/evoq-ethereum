@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 
 namespace Evoq.Ethereum.Contracts;
@@ -11,17 +14,20 @@ namespace Evoq.Ethereum.Contracts;
 public class Contract
 {
     private readonly ContractAbi abi;
+    private readonly ContractClient contractClient;
 
     //
 
     /// <summary>
     /// Initializes a new instance of the Contract class.   
     /// </summary>
-    /// <param name="stream">The stream containing the ABI.</param>
+    /// <param name="contractClient">The contract client.</param>
+    /// <param name="abiDocument">The stream containing the ABI.</param>
     /// <param name="address">The address of the contract.</param>
-    public Contract(Stream stream, EthereumAddress address)
+    public Contract(ContractClient contractClient, Stream abiDocument, EthereumAddress address)
     {
-        this.abi = ContractAbiReader.Read(stream);
+        this.abi = ContractAbiReader.Read(abiDocument);
+        this.contractClient = contractClient;
         this.Address = address;
     }
 
@@ -50,5 +56,36 @@ public class Contract
 
             throw new Exception($"Function {methodName} not found in ABI. Available functions: {string.Join(", ", functions)}");
         }
+    }
+
+    /// <summary>
+    /// Calls a method on a contract, off-chain, without creating a transaction.
+    /// </summary>
+    /// <param name="methodName">The name of the method to call.</param>
+    /// <param name="senderAddress">The address of the sender.</param>
+    /// <param name="parameters">The parameters to pass to the method.</param>
+    /// <returns>The result of the method call decoded into an object.</returns>
+    public async Task<T> CallAsync<T>(
+        string methodName,
+        EthereumAddress senderAddress,
+        params object[] parameters)
+    where T : new()
+    {
+        return await this.contractClient.CallAsync<T>(this, methodName, senderAddress, parameters);
+    }
+
+    /// <summary>
+    /// Calls a method on a contract, off-chain, without creating a transaction.
+    /// </summary>
+    /// <param name="methodName">The name of the method to call.</param>
+    /// <param name="senderAddress">The address of the sender.</param>
+    /// <param name="parameters">The parameters to pass to the method.</param>
+    /// <returns>The result of the method call decoded into a dictionary.</returns>
+    public async Task<IDictionary<string, object?>> CallAsync(
+        string methodName,
+        EthereumAddress senderAddress,
+        params object[] parameters)
+    {
+        return await this.contractClient.CallAsync(this, methodName, senderAddress, parameters);
     }
 }

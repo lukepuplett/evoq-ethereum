@@ -184,9 +184,9 @@ public class AbiDecoder : IAbiDecoder
                 tuple.AbiType);
         }
 
-        var results = Activator.CreateInstance(tuple.ClrType) as IDictionary<string, object?>;
+        var dic = Activator.CreateInstance(tuple.ClrType) as IDictionary<string, object?>;
 
-        if (results == null)
+        if (dic == null)
         {
             throw new AbiTypeMismatchException(
                 $"Unsupported tuple type: Expected IDictionary<string, object?> but got {tuple.ClrType.Name}. " +
@@ -199,10 +199,10 @@ public class AbiDecoder : IAbiDecoder
 
         foreach (var p in components!)
         {
-            results.Add(p.Name, p.Value);
+            dic.Add(p.SafeName, p.Value);
         }
 
-        tuple.Value = results;
+        tuple.Value = dic;
 
         return c;
     }
@@ -363,9 +363,9 @@ public class AbiDecoder : IAbiDecoder
                 parameter.AbiType);
         }
 
-        var results = Activator.CreateInstance(parameter.ClrType) as IDictionary<string, object?>;
+        var dic = Activator.CreateInstance(parameter.ClrType) as IDictionary<string, object?>;
 
-        if (results == null)
+        if (dic == null)
         {
             throw new AbiTypeMismatchException(
                 $"Unsupported tuple type: Expected IDictionary<string, object?> but got {parameter.ClrType.Name}. " +
@@ -384,10 +384,10 @@ public class AbiDecoder : IAbiDecoder
             int c = this.DecodeStaticComponent(p, slot, allSlots);
             consumedSlots += c;
 
-            results.Add(p.Name, p.Value);
+            dic.Add(p.SafeName, p.Value);
         }
 
-        parameter.Value = results;
+        parameter.Value = dic;
 
         return consumedSlots;
     }

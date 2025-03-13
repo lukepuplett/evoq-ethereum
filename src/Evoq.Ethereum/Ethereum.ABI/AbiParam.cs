@@ -49,7 +49,7 @@ public class AbiParam
     /// <param name="descriptor">The type descriptor of the param.</param>
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
     /// <exception cref="ArgumentException">Thrown when the components contain nested params.</exception>
-    public AbiParam(
+    internal AbiParam(
         int position, string name, string descriptor,
         IReadOnlyList<int>? arrayLengths = null)
     {
@@ -81,6 +81,7 @@ public class AbiParam
 
         this.Position = position;
         this.Name = name;
+        this.SafeName = string.IsNullOrWhiteSpace(name) ? position.ToString() : name;
         this.ArrayLengths = arrayLengths;
 
         // set the default CLR type for the ABI type
@@ -116,7 +117,7 @@ public class AbiParam
     /// <param name="name">The name of the param.</param>
     /// <param name="descriptor">The type descriptor of the param.</param>
     /// <exception cref="ArgumentException">Thrown when the type is a tuple.</exception>
-    public AbiParam(int position, string name, string descriptor)
+    internal AbiParam(int position, string name, string descriptor)
         : this(position, name, descriptor, null)
     {
 
@@ -176,6 +177,7 @@ public class AbiParam
 
     //
 
+    internal string SafeName { get; }
     internal Type ClrType { get; init; } = typeof(object);
     internal Type BaseClrType { get; init; } = typeof(object);
     internal object? Value { get; set; }
@@ -205,134 +207,6 @@ public class AbiParam
             return false;
         }
     }
-
-    internal T? GetAs<T>()
-    {
-        if (this.Value == null)
-        {
-            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
-            {
-                throw new InvalidCastException($"Cannot cast null to non-nullable value type {typeof(T)}");
-            }
-
-            return default; // null for reference types or Nullable<T>
-        }
-
-        if (!typeof(T).IsAssignableFrom(this.ClrType))
-        {
-            throw new InvalidCastException($"Cannot cast {this.ClrType} to {typeof(T)}");
-        }
-
-        return (T)this.Value;
-    }
-
-    private string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
-    {
-        if (this.TryParseComponents(out var components))
-        {
-            var componentType = GetCanonicalType(components!, this.ArrayLengths, includeNames, includeSpaces);
-
-            if (includeNames && !string.IsNullOrEmpty(this.Name))
-            {
-                return $"{componentType} {this.Name}";
-            }
-            else
-            {
-                return $"{componentType}";
-            }
-        }
-        else
-        {
-            if (includeNames && !string.IsNullOrEmpty(this.Name))
-            {
-                return $"{this.AbiType} {this.Name}";
-            }
-            else
-            {
-                return this.AbiType;
-            }
-        }
-    }
-
-    //
-
-    /// <summary>
-    /// Returns the canonical type of a list of parameters.
-    /// </summary>
-    /// <param name="parameters">The parameters to get the canonical type of.</param>
-    /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
-    /// <param name="includeNames">Whether to include the names of the components.</param>
-    /// <param name="includeSpaces">Whether to include spaces between the components.</param>
-    /// <returns>The canonical type of the parameters.</returns>
-    public static string GetCanonicalType(
-        IReadOnlyList<AbiParam> parameters, IReadOnlyList<int>? arrayLengths = null,
-        bool includeNames = false, bool includeSpaces = false)
-    {
-        if (parameters.Count == 0)
-        {
-            return "()";
-        }
-        else
-        {
-            var suffix = FormatArrayLengthsSuffix(arrayLengths);
-
-            if (includeSpaces)
-            {
-                return $"({string.Join(", ", parameters.Select(p => p.GetCanonicalType(includeNames, includeSpaces)))}){suffix}";
-            }
-            else
-            {
-                return $"({string.Join(",", parameters.Select(p => p.GetCanonicalType(includeNames, includeSpaces)))}){suffix}";
-            }
-        }
-    }
-
-    private static (string, string) SetCanonicalTypes(string type, IReadOnlyList<int>? arrayLengths = null)
-    {
-        if (AbiTypes.IsTuple(type, includeArrays: true))
-        {
-            var components = AbiParameters.Parse(type);
-
-            var bare = components.GetCanonicalType(false, false);
-            var named = components.GetCanonicalType(true, true);
-
-            bare = $"{bare}{FormatArrayLengthsSuffix(arrayLengths)}";
-            named = $"{named}{FormatArrayLengthsSuffix(arrayLengths)}";
-
-            return (bare, named);
-        }
-
-        // single type
-
-        if (!AbiTypes.TryGetCanonicalType(type, out var singleType))
-        {
-            throw new ArgumentException($"Invalid ABI type: {type}", nameof(type));
-        }
-
-        singleType = $"{singleType}{FormatArrayLengthsSuffix(arrayLengths)}";
-
-        return (singleType, singleType);
-    }
-
-    //
-
-    private static string FormatArrayLengthsSuffix(IReadOnlyList<int>? arrayLengths)
-    {
-        if (arrayLengths != null && arrayLengths.Count > 0)
-        {
-            return $"{string.Join("", arrayLengths.Select(l => $"[{l}]"))}".Replace("-1", "");
-        }
-
-        return "";
-    }
-
-    //
-
-    /// <summary>
-    /// Returns the string representation of the parameter.
-    /// </summary>
-    /// <returns>The string representation of the parameter.</returns>
-    public override string ToString() => this.GetCanonicalType(includeNames: true, includeSpaces: true);
 
     /// <summary>
     /// Validates that a value is compatible with this parameter's type.
@@ -430,27 +304,31 @@ public class AbiParam
 
     //
 
-    private class ValidationContext
+    private string GetCanonicalType(bool includeNames = false, bool includeSpaces = false)
     {
-        public const string Sep = " -> ";
-
-        public string ExpectedType { get; private set; } = "";
-        public object? ValueProvided { get; private set; }
-        public string Path { get; private set; } = "";
-        public string Message { get; private set; } = "";
-        public int ValuesVisitedCount { get; private set; } = 0;
-
-        public void IncrementVisitorCounter()
+        if (this.TryParseComponents(out var components))
         {
-            this.ValuesVisitedCount++;
+            var componentType = GetCanonicalType(components!, this.ArrayLengths, includeNames, includeSpaces);
+
+            if (includeNames && !string.IsNullOrEmpty(this.Name))
+            {
+                return $"{componentType} {this.Name}";
+            }
+            else
+            {
+                return $"{componentType}";
+            }
         }
-
-        public void SetFailed(string expectedType, object? valueProvided, string path, string message)
+        else
         {
-            this.ExpectedType = expectedType;
-            this.ValueProvided = valueProvided;
-            this.Path = path[Sep.Length..];
-            this.Message = message;
+            if (includeNames && !string.IsNullOrEmpty(this.Name))
+            {
+                return $"{this.AbiType} {this.Name}";
+            }
+            else
+            {
+                return this.AbiType;
+            }
         }
     }
 
@@ -509,5 +387,111 @@ public class AbiParam
 
         vc.SetFailed(this.AbiType, value, currentPath, "unexpected param state");
         return false;
+    }
+
+    //
+
+    /// <summary>
+    /// Returns the canonical type of a list of parameters.
+    /// </summary>
+    /// <param name="parameters">The parameters to get the canonical type of.</param>
+    /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
+    /// <param name="includeNames">Whether to include the names of the components.</param>
+    /// <param name="includeSpaces">Whether to include spaces between the components.</param>
+    /// <returns>The canonical type of the parameters.</returns>
+    public static string GetCanonicalType(
+        IReadOnlyList<AbiParam> parameters, IReadOnlyList<int>? arrayLengths = null,
+        bool includeNames = false, bool includeSpaces = false)
+    {
+        if (parameters.Count == 0)
+        {
+            return "()";
+        }
+        else
+        {
+            var suffix = FormatArrayLengthsSuffix(arrayLengths);
+
+            if (includeSpaces)
+            {
+                return $"({string.Join(", ", parameters.Select(p => p.GetCanonicalType(includeNames, includeSpaces)))}){suffix}";
+            }
+            else
+            {
+                return $"({string.Join(",", parameters.Select(p => p.GetCanonicalType(includeNames, includeSpaces)))}){suffix}";
+            }
+        }
+    }
+
+    //
+
+    private static (string, string) SetCanonicalTypes(string type, IReadOnlyList<int>? arrayLengths = null)
+    {
+        if (AbiTypes.IsTuple(type, includeArrays: true))
+        {
+            var components = AbiParameters.Parse(type);
+
+            var bare = components.GetCanonicalType(false, false);
+            var named = components.GetCanonicalType(true, true);
+
+            bare = $"{bare}{FormatArrayLengthsSuffix(arrayLengths)}";
+            named = $"{named}{FormatArrayLengthsSuffix(arrayLengths)}";
+
+            return (bare, named);
+        }
+
+        // single type
+
+        if (!AbiTypes.TryGetCanonicalType(type, out var singleType))
+        {
+            throw new ArgumentException($"Invalid ABI type: {type}", nameof(type));
+        }
+
+        singleType = $"{singleType}{FormatArrayLengthsSuffix(arrayLengths)}";
+
+        return (singleType, singleType);
+    }
+
+    private static string FormatArrayLengthsSuffix(IReadOnlyList<int>? arrayLengths)
+    {
+        if (arrayLengths != null && arrayLengths.Count > 0)
+        {
+            return $"{string.Join("", arrayLengths.Select(l => $"[{l}]"))}".Replace("-1", "");
+        }
+
+        return "";
+    }
+
+    //
+
+    /// <summary>
+    /// Returns the string representation of the parameter.
+    /// </summary>
+    /// <returns>The string representation of the parameter.</returns>
+    public override string ToString() => this.GetCanonicalType(includeNames: true, includeSpaces: true);
+
+    //
+
+    private class ValidationContext
+    {
+        public const string Sep = " -> ";
+
+        public string ExpectedType { get; private set; } = "";
+        public object? ValueProvided { get; private set; }
+        public string Path { get; private set; } = "";
+        public string Message { get; private set; } = "";
+        public int ValuesVisitedCount { get; private set; } = 0;
+
+        public void IncrementVisitorCounter()
+        {
+            this.ValuesVisitedCount++;
+        }
+
+        public void SetFailed(string expectedType, object? valueProvided, string path, string message)
+        {
+            this.ExpectedType = expectedType;
+            this.ValueProvided = valueProvided;
+            this.Path = path[Sep.Length..];
+            this.Message = message;
+        }
     }
 };
