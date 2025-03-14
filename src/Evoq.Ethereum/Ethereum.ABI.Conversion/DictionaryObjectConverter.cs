@@ -211,46 +211,72 @@ internal class DictionaryObjectConverter
             var nestedObj = DictionaryToObject(stringDict, property.PropertyType); // recursive call
             property.SetValue(obj, nestedObj);
         }
-        else if (value is IEnumerable<object> enumerableValue && IsCollectionType(property.PropertyType))
+        else if (CollectionTypeDetector.IsCollectionValue(value) &&
+                 CollectionTypeDetector.IsCollectionType(property.PropertyType))
         {
-            Type elementType = GetElementType(property.PropertyType);
+            // Handle collection values
+            Type elementType = CollectionTypeDetector.GetElementType(property.PropertyType);
 
-            var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-            PopulateListFromEnumerable(bucket, enumerableValue, elementType);
+            if (value is IEnumerable<object> enumerableValue)
+            {
+                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+                PopulateListFromEnumerable(bucket, enumerableValue, elementType);
 
-            if (property.PropertyType.IsArray)
-            {
-                var array = CreateArrayFromList(bucket, elementType);
-                property.SetValue(obj, array);
-            }
-            else
-            {
-                property.SetValue(obj, bucket);
-            }
-        }
-        // Add a specific case for arrays that aren't IEnumerable<object>
-        else if (value.GetType().IsArray && IsCollectionType(property.PropertyType))
-        {
-            Type elementType = GetElementType(property.PropertyType);
-            var sourceArray = (Array)value;
-            var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-
-            foreach (var item in sourceArray)
-            {
-                if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
+                if (property.PropertyType.IsArray)
                 {
-                    bucket.Add(convertedItem);
+                    var array = CreateArrayFromList(bucket, elementType);
+                    property.SetValue(obj, array);
+                }
+                else
+                {
+                    property.SetValue(obj, bucket);
                 }
             }
-
-            if (property.PropertyType.IsArray)
+            else if (value is Array sourceArray)
             {
-                var array = CreateArrayFromList(bucket, elementType);
-                property.SetValue(obj, array);
+                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+
+                foreach (var item in sourceArray)
+                {
+                    if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
+                    {
+                        bucket.Add(convertedItem);
+                    }
+                }
+
+                if (property.PropertyType.IsArray)
+                {
+                    var array = CreateArrayFromList(bucket, elementType);
+                    property.SetValue(obj, array);
+                }
+                else
+                {
+                    property.SetValue(obj, bucket);
+                }
             }
             else
             {
-                property.SetValue(obj, bucket);
+                // For other IEnumerable types
+                var enumerable = (IEnumerable)value;
+                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+
+                foreach (var item in enumerable)
+                {
+                    if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
+                    {
+                        bucket.Add(convertedItem);
+                    }
+                }
+
+                if (property.PropertyType.IsArray)
+                {
+                    var array = CreateArrayFromList(bucket, elementType);
+                    property.SetValue(obj, array);
+                }
+                else
+                {
+                    property.SetValue(obj, bucket);
+                }
             }
         }
         else
@@ -325,95 +351,6 @@ internal class DictionaryObjectConverter
     private bool IsComplexType(Type type)
     {
         return !type.IsPrimitive && type != typeof(string) && !type.IsValueType;
-    }
-
-    private bool IsCollectionType(Type type)
-    {
-        if (type == null)
-        {
-            return false;
-        }
-
-        // Check for array
-        if (type.IsArray)
-        {
-            return true;
-        }
-
-        // Check for common generic collection types
-        if (type.IsGenericType)
-        {
-            Type genericTypeDef = type.GetGenericTypeDefinition();
-
-            // Check for common generic collections
-            if (genericTypeDef == typeof(List<>) ||
-                genericTypeDef == typeof(IList<>) ||
-                genericTypeDef == typeof(ICollection<>) ||
-                genericTypeDef == typeof(IEnumerable<>) ||
-                genericTypeDef == typeof(HashSet<>) ||
-                genericTypeDef == typeof(ISet<>))
-            {
-                return true;
-            }
-        }
-
-        // Check for collection interfaces
-        foreach (Type interfaceType in type.GetInterfaces())
-        {
-            if (interfaceType == typeof(ICollection) ||
-                interfaceType == typeof(IEnumerable) ||
-                (interfaceType.IsGenericType &&
-                 (interfaceType.GetGenericTypeDefinition() == typeof(ICollection<>) ||
-                  interfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>) ||
-                  interfaceType.GetGenericTypeDefinition() == typeof(IList<>))))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private Type GetElementType(Type collectionType)
-    {
-        if (collectionType == null)
-        {
-            throw new ArgumentNullException(nameof(collectionType));
-        }
-
-        // Handle array types
-        if (collectionType.IsArray)
-        {
-            return collectionType.GetElementType();
-        }
-
-        // Handle generic collections
-        if (collectionType.IsGenericType)
-        {
-            Type[] genericArgs = collectionType.GetGenericArguments();
-            if (genericArgs.Length > 0)
-            {
-                return genericArgs[0];
-            }
-        }
-
-        // Handle non-generic collections by looking at interfaces
-        foreach (Type interfaceType in collectionType.GetInterfaces())
-        {
-            if (interfaceType.IsGenericType)
-            {
-                Type genericDef = interfaceType.GetGenericTypeDefinition();
-                if (genericDef == typeof(IEnumerable<>) ||
-                    genericDef == typeof(ICollection<>) ||
-                    genericDef == typeof(IList<>))
-                {
-                    return interfaceType.GetGenericArguments()[0];
-                }
-            }
-        }
-
-        // Default to object if we can't determine the element type
-        return typeof(object);
     }
 
     private void SetPropertyValue(object obj, PropertyInfo property, object? value)

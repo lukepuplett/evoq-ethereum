@@ -11,6 +11,7 @@ namespace Evoq.Ethereum.ABI.Conversion;
 internal class TupleObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
+    private readonly InstanceFactory instanceFactory = new InstanceFactory();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TupleObjectConverter"/> class.
@@ -53,7 +54,7 @@ internal class TupleObjectConverter
         if (tuple == null)
             throw new ArgumentNullException(nameof(tuple));
 
-        var result = Activator.CreateInstance(type);
+        var result = instanceFactory.CreateInstance(type);
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite)
             .ToArray();

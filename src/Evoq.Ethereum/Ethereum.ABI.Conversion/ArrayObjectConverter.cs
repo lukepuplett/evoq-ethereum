@@ -10,6 +10,7 @@ namespace Evoq.Ethereum.ABI.Conversion;
 internal class ArrayObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
+    private readonly InstanceFactory instanceFactory = new InstanceFactory();
 
     //
 
@@ -53,7 +54,7 @@ internal class ArrayObjectConverter
         if (values == null)
             throw new ArgumentNullException(nameof(values));
 
-        var result = Activator.CreateInstance(type);
+        var result = instanceFactory.CreateInstance(type);
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite)
             .ToArray();
