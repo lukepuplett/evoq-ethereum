@@ -5,99 +5,126 @@ namespace Evoq.Ethereum.Contracts;
 /// <summary>
 /// Represents a complete transaction fee estimate for EIP-1559 transactions.
 /// </summary>
+/// <remarks>
+/// EIP-1559 introduced a new fee market in Ethereum (London fork, August 2021) that uses a base fee 
+/// which is burned and a priority fee which goes to miners/validators.
+/// </remarks>
 public class TransactionFeeEstimate
 {
     /// <summary>
     /// The estimated gas limit for the transaction.
     /// </summary>
+    /// <remarks>
+    /// Gas is the unit of computation in Ethereum. Each operation costs a certain amount of gas.
+    /// The gas limit is the maximum amount of gas you're willing to use for your transaction.
+    /// If your transaction requires more gas than this limit, it will fail with an "out of gas" error.
+    /// </remarks>
     public BigInteger GasLimit { get; set; }
 
     /// <summary>
     /// The suggested maximum fee per gas (in wei).
     /// </summary>
-    public BigInteger MaxFeePerGas { get; set; }
+    /// <remarks>
+    /// This is the absolute maximum amount you're willing to pay per unit of gas, including both
+    /// the base fee (burned) and the priority fee (to miners). Typically calculated as:
+    /// maxFeePerGas = baseFeePerGas * 2 + maxPriorityFeePerGas
+    /// The multiplier accounts for potential base fee increases between blocks.
+    /// </remarks>
+    public EthereumAmount MaxFeePerGas { get; set; }
 
     /// <summary>
     /// The suggested maximum priority fee per gas (in wei).
     /// </summary>
-    public BigInteger MaxPriorityFeePerGas { get; set; }
+    /// <remarks>
+    /// This is the "tip" you're willing to pay to miners/validators per unit of gas.
+    /// Higher priority fees can result in faster transaction processing during network congestion.
+    /// </remarks>
+    public EthereumAmount MaxPriorityFeePerGas { get; set; }
 
     /// <summary>
     /// The current base fee per gas (in wei).
     /// </summary>
-    public BigInteger BaseFeePerGas { get; set; }
+    /// <remarks>
+    /// The base fee is determined by the network based on demand for block space.
+    /// It's the minimum fee required for inclusion and is burned (removed from circulation).
+    /// The base fee automatically adjusts based on network congestion.
+    /// </remarks>
+    public EthereumAmount BaseFeePerGas { get; set; }
 
     /// <summary>
     /// The estimated total transaction fee in wei.
     /// </summary>
-    public BigInteger EstimatedFeeInWei { get; set; }
+    /// <remarks>
+    /// Calculated as: (baseFeePerGas + maxPriorityFeePerGas) * gasLimit
+    /// The actual fee may be lower if the transaction uses less than the gas limit.
+    /// </remarks>
+    public EthereumAmount EstimatedFee { get; set; }
 
     /// <summary>
     /// The legacy gas price, for backward compatibility with pre-EIP-1559 transactions.
     /// </summary>
-    public BigInteger GasPrice { get; set; }
+    /// <remarks>
+    /// Before EIP-1559, transactions used a single gas price. This value combines the base fee
+    /// and priority fee to provide an equivalent gas price for legacy (Type 0) transactions.
+    /// </remarks>
+    public EthereumAmount GasPrice { get; set; }
 
     /// <summary>
-    /// The estimated maximum total fee in wei (GasLimit * MaxFeePerGas).
+    /// The estimated maximum total fee in wei.
     /// </summary>
-    public BigInteger MaxFeeInWei => GasLimit * MaxFeePerGas;
+    /// <remarks>
+    /// This is the worst-case scenario fee: GasLimit * MaxFeePerGas
+    /// You'll never pay more than this amount, regardless of base fee changes.
+    /// </remarks>
+    public EthereumAmount MaxFee => GasLimit * MaxFeePerGas;
 
     /// <summary>
-    /// The estimated minimum total fee in wei (GasLimit * BaseFeePerGas).
+    /// The estimated minimum total fee in wei.
     /// </summary>
-    public BigInteger MinFeeInWei => GasLimit * BaseFeePerGas;
+    /// <remarks>
+    /// This is the minimum possible fee if only the base fee is paid: GasLimit * BaseFeePerGas
+    /// In practice, you'll always pay at least the priority fee on top of this.
+    /// </remarks>
+    public EthereumAmount MinFee => GasLimit * BaseFeePerGas;
 
     /// <summary>
-    /// The estimated priority fee in wei (GasLimit * MaxPriorityFeePerGas).
+    /// The estimated priority fee in wei.
     /// </summary>
-    public BigInteger PriorityFeeInWei => GasLimit * MaxPriorityFeePerGas;
+    /// <remarks>
+    /// This is the portion of the fee that goes to miners/validators: GasLimit * MaxPriorityFeePerGas
+    /// </remarks>
+    public EthereumAmount PriorityFee => GasLimit * MaxPriorityFeePerGas;
 
     /// <summary>
     /// Gets the estimated fee in Ether.
     /// </summary>
-    public decimal EstimatedFeeInEther => ConvertWeiToEther(EstimatedFeeInWei);
+    /// <remarks>
+    /// Converts the EstimatedFeeInWei from wei to ether (1 ether = 10^18 wei).
+    /// </remarks>
+    public decimal EstimatedFeeInEther => EstimatedFee.ToEther();
 
     /// <summary>
     /// Gets the maximum fee in Ether.
     /// </summary>
-    public decimal MaxFeeInEther => ConvertWeiToEther(MaxFeeInWei);
+    /// <remarks>
+    /// Converts the MaxFeeInWei from wei to ether (1 ether = 10^18 wei).
+    /// </remarks>
+    public decimal MaxFeeInEther => MaxFee.ToEther();
 
     /// <summary>
     /// Gets the minimum fee in Ether.
     /// </summary>
-    public decimal MinFeeInEther => ConvertWeiToEther(MinFeeInWei);
+    /// <remarks>
+    /// Converts the MinFeeInWei from wei to ether (1 ether = 10^18 wei).
+    /// </remarks>
+    public decimal MinFeeInEther => MinFee.ToEther();
 
     /// <summary>
     /// Gets the priority fee in Ether.
     /// </summary>
-    public decimal PriorityFeeInEther => ConvertWeiToEther(PriorityFeeInWei);
+    /// <remarks>
+    /// Converts the PriorityFeeInWei from wei to ether (1 ether = 10^18 wei).
+    /// </remarks>
+    public decimal PriorityFeeInEther => PriorityFee.ToEther();
 
-    /// <summary>
-    /// Converts wei to ether.
-    /// </summary>
-    /// <param name="wei">The amount in wei.</param>
-    /// <returns>The amount in ether.</returns>
-    private static decimal ConvertWeiToEther(BigInteger wei)
-    {
-        // 1 Ether = 10^18 Wei
-        BigInteger divisor = BigInteger.Pow(10, 18);
-
-        // Handle potential precision loss when converting to decimal
-        decimal result = 0;
-        BigInteger remainder = wei;
-
-        if (wei >= divisor)
-        {
-            BigInteger quotient = BigInteger.DivRem(wei, divisor, out remainder);
-            result = (decimal)quotient;
-        }
-
-        if (remainder > 0)
-        {
-            decimal fractionalPart = (decimal)remainder / (decimal)divisor;
-            result += fractionalPart;
-        }
-
-        return result;
-    }
 }

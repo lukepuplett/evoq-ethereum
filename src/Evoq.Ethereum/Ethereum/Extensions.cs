@@ -92,4 +92,49 @@ public static class Extensions
             return false;
         }
     }
+
+    /// <summary>
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in Wei.
+    /// </summary>
+    /// <param name="wei">The amount in Wei as a BigInteger.</param>
+    /// <returns>An EthereumAmount representing the specified amount of Wei.</returns>
+    /// <remarks>
+    /// Wei is the smallest denomination of Ether (1 Ether = 10^18 Wei).
+    /// This method interprets the BigInteger value directly as Wei without any conversion.
+    /// </remarks>
+    public static EthereumAmount ToWeiAmount(this BigInteger wei)
+    {
+        return new EthereumAmount(wei, EthereumUnit.Wei);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in Ether.
+    /// </summary>
+    /// <param name="ether">The amount in Ether as a BigInteger.</param>
+    /// <returns>An EthereumAmount representing the specified amount of Ether.</returns>
+    /// <remarks>
+    /// Ether is the main unit of the Ethereum cryptocurrency.
+    /// This method interprets the BigInteger value directly as Ether without any conversion.
+    /// Note that since BigInteger is an integer type, this represents whole Ether units.
+    /// For fractional Ether amounts, consider using the FromEther method with a decimal value.
+    /// </remarks>
+    public static EthereumAmount ToEtherAmount(this BigInteger ether)
+    {
+        return new EthereumAmount(ether, EthereumUnit.Ether);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in the specified unit.
+    /// </summary>
+    /// <param name="amount">The amount as a BigInteger.</param>
+    /// <param name="unit">The Ethereum unit that the amount represents (Wei, Gwei, or Ether).</param>
+    /// <returns>An EthereumAmount representing the specified amount in the given unit.</returns>
+    /// <remarks>
+    /// This method interprets the BigInteger value directly as the specified unit without any conversion.
+    /// For example, if amount=5 and unit=EthereumUnit.Ether, this returns an EthereumAmount representing 5 Ether.
+    /// </remarks>
+    public static EthereumAmount ToEthereumAmount(this BigInteger amount, EthereumUnit unit)
+    {
+        return new EthereumAmount(amount, unit);
+    }
 }

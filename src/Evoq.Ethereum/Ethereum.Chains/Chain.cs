@@ -46,7 +46,7 @@ public class Chain
     /// <returns>The estimated gas usage for a simple ETH transfer.</returns>
     public Task<BigInteger> GetEthTransferGasAsync()
     {
-        return Task.FromResult(BigInteger.Parse("21000"));
+        return Task.FromResult(WeiAmounts.EthTransferGas);
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public class Chain
     /// </summary>
     /// <returns>A tuple containing the suggested maxFeePerGas and maxPriorityFeePerGas in wei.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the network doesn't support EIP-1559 (pre-London fork).</exception>
-    public async Task<(BigInteger maxFeePerGas, BigInteger maxPriorityFeePerGas)> SuggestEip1559FeesAsync()
+    public async Task<(BigInteger MaxFeePerGasInWei, BigInteger MaxPriorityFeePerGasInWei)> SuggestEip1559FeesAsync()
     {
         // This will throw if the network doesn't support EIP-1559
         var baseFee = await this.GetBaseFeeAsync();

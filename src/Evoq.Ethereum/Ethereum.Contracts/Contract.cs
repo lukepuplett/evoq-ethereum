@@ -111,15 +111,14 @@ public class Contract
     }
 
     /// <summary>
-    /// Provides a complete transaction fee estimate for EIP-1559 transactions.
+    /// Estimates the transaction fee for calling a contract method.
     /// </summary>
-    /// <param name="chain">The chain.</param>
-    /// <param name="methodName">The name of the method to invoke.</param>
-    /// <param name="senderAddress">The address of the sender.</param>
-    /// <param name="value">The amount of ETH to send (in wei).</param>
-    /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
-    /// <returns>A complete fee estimate including gas limit and EIP-1559 fee parameters.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the network doesn't support EIP-1559 (pre-London fork).</exception>
+    /// <param name="chain">The blockchain to interact with.</param>
+    /// <param name="methodName">The name of the contract method to call.</param>
+    /// <param name="senderAddress">The address that will send the transaction.</param>
+    /// <param name="value">The amount of Ether to send with the transaction (in wei).</param>
+    /// <param name="arguments">The arguments to pass to the method.</param>
+    /// <returns>A detailed estimate of the transaction fees.</returns>
     public async Task<TransactionFeeEstimate> EstimateTransactionFeeAsync(
         Chain chain,
         string methodName,
@@ -127,25 +126,61 @@ public class Contract
         BigInteger? value,
         IDictionary<string, object?> arguments)
     {
+        // Step 1: Estimate the gas limit - the maximum amount of computational work
+        // the transaction is allowed to use
         var gasLimit = await this.EstimateGasAsync(methodName, senderAddress, value, arguments);
-        var (maxFeePerGas, maxPriorityFeePerGas) = await chain.SuggestEip1559FeesAsync();
 
-        // This will throw if the network doesn't support EIP-1559
-        var baseFee = await chain.GetBaseFeeAsync();
+        // Step 2: Get the current fee market conditions for EIP-1559 transactions
+        // This includes suggested values for maxFeePerGas and maxPriorityFeePerGas
+        var suggestion = await chain.SuggestEip1559FeesAsync();
 
+        // Step 3: Get the current base fee from the network
+        // This will throw if the network doesn't support EIP-1559 (pre-London fork)
+        var baseFeeInWei = await chain.GetBaseFeeAsync();
+
+        // Step 4: Calculate the estimated total transaction fee
+        // Formula: (baseFee + priorityFee) * gasLimit
+        // 
+        // The total fee consists of two parts:
+        // 1. Base fee: This is burned (removed from circulation) - baseFeeInWei * gasLimit
+        // 2. Priority fee: This goes to miners/validators as an incentive - maxPriorityFeePerGasInWei * gasLimit
+        //
+        // Note: We use gasLimit as a worst-case estimate. The actual gas used may be less,
+        // in which case the unused gas fee is refunded.
+        BigInteger baseFeeComponent = baseFeeInWei * gasLimit;
+        BigInteger priorityFeeComponent = suggestion.MaxPriorityFeePerGasInWei * gasLimit;
+        BigInteger totalFeeInWei = baseFeeComponent + priorityFeeComponent;
+
+        // Step 5: Calculate the equivalent legacy gas price
+        // In pre-EIP-1559 transactions, there was a single gas price that combined
+        // what is now separated into base fee and priority fee
+        BigInteger legacyGasPrice = baseFeeInWei + suggestion.MaxPriorityFeePerGasInWei;
+
+        // Step 6: Return the complete fee estimate with all components
         return new TransactionFeeEstimate
         {
+            // The maximum amount of gas the transaction can consume
             GasLimit = gasLimit,
-            MaxFeePerGas = maxFeePerGas,
-            MaxPriorityFeePerGas = maxPriorityFeePerGas,
-            BaseFeePerGas = baseFee,
-            // The actual fee consists of:
-            // 1. The base fee (burned) multiplied by the gas used
-            // 2. The priority fee (tip to validators) multiplied by the gas used
-            // Note: We use gasLimit as a worst-case estimate of gas used
-            EstimatedFeeInWei = baseFee * gasLimit + (maxPriorityFeePerGas * gasLimit),
-            // Legacy gas price equivalent (for informational purposes only)
-            GasPrice = baseFee + maxPriorityFeePerGas
+
+            // The maximum fee per gas unit the user is willing to pay (base fee + priority fee)
+            // This is the absolute maximum that could be charged per gas unit
+            MaxFeePerGas = suggestion.MaxFeePerGasInWei.ToWeiAmount(),
+
+            // The priority fee (tip) per gas unit offered to validators
+            // This is what incentivizes miners to include the transaction
+            MaxPriorityFeePerGas = suggestion.MaxPriorityFeePerGasInWei.ToWeiAmount(),
+
+            // The network's current base fee per gas unit
+            // This is determined by network congestion and is burned when paid
+            BaseFeePerGas = baseFeeInWei.ToWeiAmount(),
+
+            // The estimated total transaction fee (worst case if all gas is used)
+            // Formula: (baseFee + priorityFee) * gasLimit
+            EstimatedFee = totalFeeInWei.ToWeiAmount(),
+
+            // The equivalent legacy gas price (for compatibility with pre-EIP-1559 tools)
+            // Formula: baseFee + priorityFee
+            GasPrice = legacyGasPrice.ToWeiAmount()
         };
     }
 
