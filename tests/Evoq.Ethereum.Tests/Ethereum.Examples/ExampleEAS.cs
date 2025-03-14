@@ -106,7 +106,7 @@ public class ExampleEAS
 }
 
 public record SchemaRecordDto(
-    string Uid,
-    string Resolver,
+    Hex Uid,
+    EthereumAddress Resolver,
     bool Revocable,
-    string Schema);
+    Hex Schema);

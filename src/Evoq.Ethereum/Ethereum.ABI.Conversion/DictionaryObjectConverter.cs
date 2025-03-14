@@ -363,18 +363,20 @@ internal class DictionaryObjectConverter
             }
             else
             {
-                property.SetValue(obj, value);
+                // Don't try to set the property if conversion failed
+                throw new ConversionException(
+                    $"Cannot convert value '{FormatValueForDisplay(value)}' of type '{value?.GetType().Name ?? "<null>"}' to type '{property.PropertyType.Name}'");
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is ConversionException))
         {
             // Create a more detailed exception with context about the conversion
             var message = $"Error setting property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
-                          $"Value type: {(value?.GetType().Name ?? "null")}\n" +
+                          $"Value type: {(value?.GetType().Name ?? "<null>")}\n" +
                           $"Target type: {property.PropertyType.Name}\n" +
                           $"Value: {FormatValueForDisplay(value)}";
 
-            throw new ArgumentException(message, ex);
+            throw new ConversionException(message, ex);
         }
     }
 
@@ -382,7 +384,21 @@ internal class DictionaryObjectConverter
     private string FormatValueForDisplay(object? value)
     {
         if (value == null)
-            return "null";
+            return "<null>";
+
+        if (value is string strValue)
+        {
+            if (string.IsNullOrEmpty(strValue))
+                return "<empty string>";
+
+            if (string.IsNullOrWhiteSpace(strValue))
+                return $"<whitespace string: '{strValue}'>";
+
+            if (strValue.Length > 100)
+                return $"\"{strValue.Substring(0, 97)}...\" (length: {strValue.Length})";
+
+            return $"\"{strValue}\"";
+        }
 
         if (value is byte[] bytes)
             return $"byte[{bytes.Length}]: 0x{BitConverter.ToString(bytes).Replace("-", "")}";
@@ -390,9 +406,6 @@ internal class DictionaryObjectConverter
         if (value is Array array)
             return $"{value.GetType().Name}[{array.Length}]";
 
-        if (value is string str && str.Length > 100)
-            return $"\"{str.Substring(0, 97)}...\" (length: {str.Length})";
-
-        return value.ToString() ?? "null";
+        return value.ToString() ?? "<toString returned null>";
     }
 }

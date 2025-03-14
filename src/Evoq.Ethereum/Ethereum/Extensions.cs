@@ -49,4 +49,25 @@ public static class Extensions
         // Use the same logic as ToHexString to handle leading zero bytes
         return value.Value.ToHexString(true);
     }
+
+    /// <summary>
+    /// Tries to parse a hex string.
+    /// </summary>
+    /// <param name="hexString">The hex string to parse.</param>
+    /// <param name="options">The options to use for parsing.</param>
+    /// <param name="hex">The parsed hex value.</param>
+    /// <returns>True if the hex string was parsed successfully, false otherwise.</returns>
+    public static bool TryParseHex(this string hexString, HexParseOptions options, out Hex? hex)
+    {
+        try
+        {
+            hex = Hex.Parse(hexString, options);
+            return true;
+        }
+        catch
+        {
+            hex = null;
+            return false;
+        }
+    }
 }

@@ -221,12 +221,12 @@ public class AbiClrTypeConverter
     {
         result = null;
 
-        // Try to convert from string
         if (value is string hexString)
         {
             try
             {
-                result = Hex.Parse(hexString);
+                var options = HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString;
+                result = Hex.Parse(hexString, options);
                 return true;
             }
             catch
@@ -234,13 +234,11 @@ public class AbiClrTypeConverter
                 return false;
             }
         }
-        // Convert from byte array
         else if (value is byte[] byteArray)
         {
             result = new Hex(byteArray);
             return true;
         }
-        // If already a Hex, just return it
         else if (value is Hex hex)
         {
             result = hex;

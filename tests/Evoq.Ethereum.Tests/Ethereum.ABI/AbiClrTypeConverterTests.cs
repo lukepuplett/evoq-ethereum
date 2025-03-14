@@ -289,6 +289,124 @@ public class AbiClrTypeConverterTests
         Assert.IsNull(result);
     }
 
+    [TestMethod]
+    public void TryConvert_Hex_FromEmptyString_Succeeds()
+    {
+        // Arrange
+        string value = "";
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Empty, result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromWhitespaceString_Fails()
+    {
+        // Arrange
+        string value = "   ";
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsFalse(success);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromStringWithout0xPrefix_Succeeds()
+    {
+        // Arrange
+        string value = "1a2b3c4d"; // Missing 0x prefix
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse("0x" + value), result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromOddLengthHexString_Succeeds()
+    {
+        // Arrange
+        string value = "0x1a2b3"; // Odd number of hex digits after 0x
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse(value, HexParseOptions.AllowOddLength), result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromPaddedOddLengthHexString_Succeeds()
+    {
+        // Arrange
+        string value = "0x01a2b3"; // Padded to even number of digits
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse(value), result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromLowercaseHexString_Succeeds()
+    {
+        // Arrange
+        string value = "0xabcdef";
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse(value), result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromUppercaseHexString_Succeeds()
+    {
+        // Arrange
+        string value = "0xABCDEF";
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse(value), result);
+    }
+
+    [TestMethod]
+    public void TryConvert_Hex_FromMixedCaseHexString_Succeeds()
+    {
+        // Arrange
+        string value = "0xaBcDeF";
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(Hex), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(Hex));
+        Assert.AreEqual(Hex.Parse(value), result);
+    }
+
     public enum TestEnum
     {
         One = 1,
