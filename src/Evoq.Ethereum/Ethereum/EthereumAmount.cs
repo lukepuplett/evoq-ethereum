@@ -45,6 +45,16 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="displayUnit">The unit to use for display.</param>
     public EthereumAmount(BigInteger weiValue, EthereumUnit displayUnit)
     {
+        if (!Enum.IsDefined(typeof(EthereumUnit), displayUnit))
+        {
+            throw new ArgumentException("Invalid Ethereum unit", nameof(displayUnit));
+        }
+
+        if (weiValue < 0)
+        {
+            throw new ArgumentException("Ethereum amounts cannot be negative", nameof(weiValue));
+        }
+
         WeiValue = weiValue;
         DisplayUnit = displayUnit;
     }
@@ -56,6 +66,11 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
     public static EthereumAmount FromWei(BigInteger wei)
     {
+        if (wei < 0)
+        {
+            throw new ArgumentException("Ethereum amounts cannot be negative", nameof(wei));
+        }
+
         return new EthereumAmount(wei, EthereumUnit.Wei);
     }
 
@@ -66,9 +81,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <returns>A new EthereumAmount with Ether as the display unit.</returns>
     public static EthereumAmount FromEther(decimal ether)
     {
-        // Convert to Wei for storage
-        BigInteger weiValue = (BigInteger)(ether * (decimal)WeiPerEther);
-        return new EthereumAmount(weiValue, EthereumUnit.Ether);
+        if (ether < 0)
+        {
+            throw new ArgumentException("Ethereum amounts cannot be negative", nameof(ether));
+        }
+
+        return new EthereumAmount(
+            (BigInteger)(ether * 1_000_000_000_000_000_000m),
+            EthereumUnit.Ether);
     }
 
     /// <summary>
@@ -108,9 +128,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="targetUnit">The target display unit.</param>
     /// <returns>A new EthereumAmount with the specified display unit.</returns>
-    public EthereumAmount ConvertTo(EthereumUnit targetUnit)
+    public EthereumAmount ConvertTo(EthereumUnit unit)
     {
-        return new EthereumAmount(WeiValue, targetUnit);
+        if (!Enum.IsDefined(typeof(EthereumUnit), unit))
+        {
+            throw new ArgumentException("Invalid Ethereum unit", nameof(unit));
+        }
+
+        return new EthereumAmount(WeiValue, unit);
     }
 
     /// <summary>
@@ -350,8 +375,16 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
 
     public static EthereumAmount operator *(EthereumAmount amount, decimal factor)
     {
-        var newWeiValue = amount.WeiValue * (BigInteger)(factor * 1_000_000_000_000_000_000m);
-        return new EthereumAmount(newWeiValue / 1_000_000_000_000_000_000, amount.DisplayUnit);
+        if (factor < 0)
+        {
+            throw new ArgumentException("Cannot multiply by negative values", nameof(factor));
+        }
+
+        // Perform multiplication with higher precision
+        var scaledWei = amount.WeiValue * (BigInteger)(factor * 1_000_000_000_000_000_000m);
+        return new EthereumAmount(
+            scaledWei / 1_000_000_000_000_000_000,
+            amount.DisplayUnit);
     }
 
     public static EthereumAmount operator /(EthereumAmount amount, decimal divisor)

@@ -358,4 +358,219 @@ public class EthereumAmountsTests
         // Assert
         Assert.AreEqual(2.5m, result.ToEther(), "1 ETH + 2 ETH - 0.5 ETH should equal 2.5 ETH");
     }
+
+    [TestMethod]
+    public void VerySmallAmount_HandledCorrectly()
+    {
+        // Arrange
+        var oneWei = EthereumAmount.FromWei(1);
+
+        // Act
+        var etherValue = oneWei.ToEther();
+        var backToWei = EthereumAmount.FromEther(etherValue);
+
+        // Assert
+        Assert.AreEqual(1, oneWei.ToWei(), "One Wei should be preserved");
+        Assert.AreEqual(0.000000000000000001m, etherValue, "One Wei should convert to 10^-18 Ether");
+        Assert.AreEqual(oneWei.ToWei(), backToWei.ToWei(), "Converting to Ether and back should preserve value");
+    }
+
+    [TestMethod]
+    public void VeryLargeAmount_HandledCorrectly()
+    {
+        // Arrange - 100 million Ether (more than currently exists)
+        var largeEtherAmount = EthereumAmount.FromEther(100_000_000m);
+        var expectedWei = new BigInteger(100_000_000) * new BigInteger(1000000000000000000);
+
+        // Act
+        var weiValue = largeEtherAmount.ToWei();
+        var backToEther = EthereumAmount.FromWei(weiValue).ToEther();
+
+        // Assert
+        Assert.AreEqual(expectedWei, weiValue, "Large Ether amount should convert to correct Wei value");
+        Assert.AreEqual(100_000_000m, backToEther, "Converting to Wei and back should preserve large values");
+    }
+
+    [TestMethod]
+    public void ZeroAmount_HandledCorrectly()
+    {
+        // Arrange
+        var zeroEther = EthereumAmount.FromEther(0);
+        var zeroWei = EthereumAmount.FromWei(0);
+        var oneEther = EthereumAmount.FromEther(1);
+
+        // Act
+        var additionResult = zeroEther + oneEther;
+        var subtractionResult = oneEther - zeroEther;
+        var weiToEtherResult = zeroWei.ToEther();
+
+        // Assert
+        Assert.AreEqual(0, zeroEther.ToWei(), "Zero Ether should be zero Wei");
+        Assert.AreEqual(0, zeroWei.ToWei(), "Zero Wei should be zero Wei");
+        Assert.AreEqual("0 ETH", zeroEther.ToString(), "Zero Ether should format correctly");
+        Assert.AreEqual("0 Wei", zeroWei.ToString(), "Zero Wei should format correctly");
+        Assert.AreEqual(oneEther, additionResult, "Adding zero should not change value");
+        Assert.AreEqual(oneEther, subtractionResult, "Subtracting zero should not change value");
+        Assert.AreEqual(0m, weiToEtherResult, "Zero Wei should convert to zero Ether");
+    }
+
+    [TestMethod]
+    public void MaximumPrecisionAmount_HandledCorrectly()
+    {
+        // Arrange - number with 18 decimal places (maximum Ether precision)
+        decimal maxPrecisionEther = 1.123456789123456789m;
+        var amount = EthereumAmount.FromEther(maxPrecisionEther);
+
+        // Act
+        var weiValue = amount.ToWei();
+        var backToEther = EthereumAmount.FromWei(weiValue).ToEther();
+
+        // Assert
+        // Note: C# decimal has maximum 28-29 significant digits, so we'll get some precision loss
+        // We'll check that we're within a single Wei of precision
+        var expectedWei = new BigInteger(1123456789123456789);
+        Assert.IsTrue(BigInteger.Abs(expectedWei - weiValue) <= 1,
+            "Maximum precision Ether should convert to Wei within 1 Wei of precision");
+
+        // For Ether representation, we expect to maintain the precision supported by decimal
+        Assert.AreEqual(
+            Math.Round(maxPrecisionEther, 18),
+            Math.Round(backToEther, 18),
+            "Should maintain precision within decimal limitations");
+    }
+
+    // Grok
+
+    [TestMethod]
+    public void HighPrecisionInput_RoundsCorrectly()
+    {
+        // Arrange - number with more than 18 decimal places
+        decimal highPrecisionEther = 1.123456789123456789123456789m;
+
+        // Act
+        var amount = EthereumAmount.FromEther(highPrecisionEther);
+
+        // Assert
+        // Should round to 18 decimal places
+        Assert.AreEqual(1.123456789123456789m, amount.ToEther(),
+            "Should round to 18 decimal places");
+    }
+
+    [TestMethod]
+    public void MultiplicationRounding_PreservesPrecision()
+    {
+        // Arrange
+        var oneThirdEther = EthereumAmount.FromEther(1m) / 3m;
+
+        // Act
+        var backToOne = oneThirdEther * 3m;
+
+        // Assert
+        // Should be very close to 1 ETH (within 1 Wei)
+        Assert.IsTrue(Math.Abs(1m - backToOne.ToEther()) < 0.000000000000000001m,
+            "Multiplication rounding should maintain precision within 1 Wei");
+    }
+
+    [TestMethod]
+    public void NegativeEtherInput_ThrowsException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            EthereumAmount.FromEther(-1m),
+            "Should reject negative Ether input");
+    }
+
+    [TestMethod]
+    public void NegativeWeiInput_ThrowsException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            EthereumAmount.FromWei(new BigInteger(-1)),
+            "Should reject negative Wei input");
+    }
+
+    [TestMethod]
+    public void VeryLargeWeiAmount_HandlesCorrectly()
+    {
+        // Arrange - approximately 1 billion ETH (far more than will ever exist)
+        var billion = new BigInteger(1000000000);
+        var weiInOneEther = new BigInteger(1000000000000000000);
+        var largeWeiAmount = billion * weiInOneEther;
+
+        // Act
+        var amount = EthereumAmount.FromWei(largeWeiAmount);
+
+        // Assert
+        Assert.AreEqual(1000000000m, amount.ToEther(),
+            "Should handle conversion of very large Wei amounts");
+        Assert.AreEqual(largeWeiAmount, amount.ToWei(),
+            "Should preserve very large Wei amounts exactly");
+    }
+
+    [TestMethod]
+    public void InvalidEthereumUnit_ThrowsException()
+    {
+        // Arrange
+        var invalidUnit = (EthereumUnit)999;
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            new EthereumAmount(BigInteger.One, invalidUnit),
+            "Should reject invalid EthereumUnit values");
+    }
+
+    [TestMethod]
+    public void ConvertToInvalidUnit_ThrowsException()
+    {
+        // Arrange
+        var amount = EthereumAmount.FromEther(1);
+        var invalidUnit = (EthereumUnit)999;
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() =>
+            amount.ConvertTo(invalidUnit),
+            "Should reject conversion to invalid unit");
+    }
+
+    [TestMethod]
+    public void MultiplicationWithSmallValues_PreservesPrecision()
+    {
+        // Arrange
+        var oneWei = EthereumAmount.FromWei(1);
+
+        // Act
+        var result = oneWei * 0.5m;
+
+        // Assert
+        Assert.AreEqual(BigInteger.Zero, result.ToWei(),
+            "Multiplying 1 Wei by 0.5 should round to zero Wei");
+    }
+
+    [TestMethod]
+    public void DivisionOfSmallValues_HandlesCorrectly()
+    {
+        // Arrange
+        var twoWei = EthereumAmount.FromWei(2);
+
+        // Act
+        var result = twoWei / 2m;
+
+        // Assert
+        Assert.AreEqual(BigInteger.One, result.ToWei(),
+            "Dividing 2 Wei by 2 should yield 1 Wei");
+    }
+
+    // [TestMethod]
+    // public void ToString_WithCustomPrecision()
+    // {
+    //     // Arrange
+    //     var amount = EthereumAmount.FromEther(1.23456789m);
+
+    //     // Act & Assert
+    //     // Note: This test assumes we implement a ToString(int decimals) method
+    //     Assert.AreEqual("1.23 ETH", amount.ToString(2),
+    //         "Should format with specified decimal places");
+    //     Assert.AreEqual("1.234568 ETH", amount.ToString(6),
+    //         "Should round to specified decimal places");
+    // }
 }
