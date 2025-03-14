@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Evoq.Blockchain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Evoq.Ethereum.Tests;
@@ -573,5 +574,43 @@ public class EthereumAmountsTests
             "Should format with specified decimal places");
         Assert.AreEqual("1.234568 ETH", amount.ToString(6),
             "Should round to specified decimal places");
+    }
+
+    [TestMethod]
+    public void FromHex_ValidHexString_CreatesCorrectAmount()
+    {
+        // Arrange
+        var hex = Hex.Parse("0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000"); // 1 Ether in Wei (1e18)
+
+        // Act
+        var amount = EthereumAmount.FromHex(hex);
+
+        // Assert
+        Assert.AreEqual(1m, amount.ToEther(), "1 Ether in hex should convert to 1 Ether");
+        Assert.AreEqual(EthereumUnit.Wei, amount.DisplayUnit, "Should default to Wei display unit");
+    }
+
+    [TestMethod]
+    public void FromHex_SmallHexValue_CreatesCorrectAmount()
+    {
+        // Arrange
+        var hex = Hex.Parse("0x0a"); // 10 Wei
+
+        // Act
+        var amount = EthereumAmount.FromHex(hex);
+
+        // Assert
+        Assert.AreEqual(new BigInteger(10), amount.ToWei(), "10 in hex should convert to 10 Wei");
+    }
+
+    [TestMethod]
+    public void FromHex_InvalidNegativeValue_ThrowsException()
+    {
+        // Arrange
+        var hex = Hex.Parse("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // -1 in two's complement
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => EthereumAmount.FromHex(hex),
+            "Should reject hex values that would result in negative amounts");
     }
 }

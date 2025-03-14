@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Numerics;
+using Evoq.Blockchain;
 
 namespace Evoq.Ethereum;
 
@@ -90,6 +91,31 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         return new EthereumAmount(
             (BigInteger)(ether * 1_000_000_000_000_000_000m),
             EthereumUnit.Ether);
+    }
+
+    /// <summary>
+    /// Creates a new amount from a hexadecimal representation.
+    /// Ethereum hex values are big-endian and unsigned.
+    /// </summary>
+    /// <param name="hex">The hexadecimal representation of the amount.</param>
+    /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
+    /// <exception cref="ArgumentException">Thrown if the hex value is invalid or represents a negative number.</exception>
+    public static EthereumAmount FromHex(Hex hex)
+    {
+        // Check the most significant byte for negative numbers in two's complement
+        byte[] bytes = hex.ToByteArray();
+        if (bytes.Length > 0 && bytes[0] >= 0x80)  // Most significant bit is set
+        {
+            throw new ArgumentException("Ethereum amounts cannot be negative", nameof(hex));
+        }
+
+        var weiValue = hex.ToBigInteger();
+        if (weiValue < 0)  // Defensive check
+        {
+            throw new ArgumentException("Ethereum amounts cannot be negative", nameof(hex));
+        }
+
+        return new EthereumAmount(weiValue, EthereumUnit.Wei);
     }
 
     /// <summary>
