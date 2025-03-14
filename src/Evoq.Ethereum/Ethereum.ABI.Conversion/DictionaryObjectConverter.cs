@@ -355,13 +355,44 @@ internal class DictionaryObjectConverter
 
     private void SetPropertyValue(object obj, PropertyInfo property, object? value)
     {
-        if (this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue))
+        try
         {
-            property.SetValue(obj, convertedValue);
+            if (this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue))
+            {
+                property.SetValue(obj, convertedValue);
+            }
+            else
+            {
+                property.SetValue(obj, value);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            property.SetValue(obj, value);
+            // Create a more detailed exception with context about the conversion
+            var message = $"Error setting property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
+                          $"Value type: {(value?.GetType().Name ?? "null")}\n" +
+                          $"Target type: {property.PropertyType.Name}\n" +
+                          $"Value: {FormatValueForDisplay(value)}";
+
+            throw new ArgumentException(message, ex);
         }
+    }
+
+    // Helper method to format values for display in error messages
+    private string FormatValueForDisplay(object? value)
+    {
+        if (value == null)
+            return "null";
+
+        if (value is byte[] bytes)
+            return $"byte[{bytes.Length}]: 0x{BitConverter.ToString(bytes).Replace("-", "")}";
+
+        if (value is Array array)
+            return $"{value.GetType().Name}[{array.Length}]";
+
+        if (value is string str && str.Length > 100)
+            return $"\"{str.Substring(0, 97)}...\" (length: {str.Length})";
+
+        return value.ToString() ?? "null";
     }
 }

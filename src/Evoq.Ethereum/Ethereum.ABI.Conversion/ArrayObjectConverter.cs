@@ -65,27 +65,58 @@ internal class ArrayObjectConverter
             var property = properties[i];
             var value = values[i];
 
-            if (value == null)
+            try
             {
-                property.SetValue(result, null);
-                continue;
-            }
+                if (value == null)
+                {
+                    property.SetValue(result, null);
+                    continue;
+                }
 
-            Type propertyType = property.PropertyType;
-            Type underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+                Type propertyType = property.PropertyType;
+                Type underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
-            // Try to convert the value to the property type
-            if (typeConverter.TryConvert(value, underlyingType, out var convertedValue))
-            {
-                property.SetValue(result, convertedValue);
+                // Try to convert the value to the property type
+                if (typeConverter.TryConvert(value, underlyingType, out var convertedValue))
+                {
+                    property.SetValue(result, convertedValue);
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot convert value of type {value.GetType().Name} to property {property.Name} of type {propertyType.Name}");
+                }
             }
-            else
+            catch (Exception ex) when (!(ex is InvalidOperationException))
             {
-                throw new InvalidOperationException(
-                    $"Cannot convert value of type {value.GetType()} to property {property.Name} of type {propertyType}");
+                // Create a more detailed exception with context about the conversion
+                var message = $"Error setting property '{property.Name}' (index {i}) on type '{type.Name}'.\n" +
+                              $"Value type: {(value?.GetType().Name ?? "null")}\n" +
+                              $"Target type: {property.PropertyType.Name}\n" +
+                              $"Value: {FormatValueForDisplay(value)}";
+
+                throw new ArgumentException(message, ex);
             }
         }
 
         return result;
+    }
+
+    // Helper method to format values for display in error messages
+    private string FormatValueForDisplay(object? value)
+    {
+        if (value == null)
+            return "null";
+
+        if (value is byte[] bytes)
+            return $"byte[{bytes.Length}]: 0x{BitConverter.ToString(bytes).Replace("-", "")}";
+
+        if (value is Array array)
+            return $"{value.GetType().Name}[{array.Length}]";
+
+        if (value is string str && str.Length > 100)
+            return $"\"{str.Substring(0, 97)}...\" (length: {str.Length})";
+
+        return value.ToString() ?? "null";
     }
 }
