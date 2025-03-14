@@ -21,7 +21,7 @@ public static class AbiEncoderDecoderTestCases
         [1] = new(
             "Simple uint256",                        // Name
             "function foo(uint256)",                 // Signature
-            AbiKeyValues.Create("anon", BigInteger.One), // Values
+            AbiKeyValues.Create("0", BigInteger.One), // Values
             new List<string> {                       // Expected lines
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
             },
@@ -31,7 +31,7 @@ public static class AbiEncoderDecoderTestCases
         [2] = new(
             "Simple bool",
             "function foo(bool)",
-            AbiKeyValues.Create("anon", true),
+            AbiKeyValues.Create("0", true),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)"
             },
@@ -41,7 +41,7 @@ public static class AbiEncoderDecoderTestCases
         [3] = new(
             "Simple uint8 and uint256",
             "function foo(uint8, uint256)",
-            AbiKeyValues.Create("anon", (byte)1, "anon2", BigInteger.One),
+            AbiKeyValues.Create("0", (byte)1, "1", BigInteger.One),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint8 value of 1",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // uint256 value of 1"
@@ -53,7 +53,7 @@ public static class AbiEncoderDecoderTestCases
         [4] = new(
             "Simple static uint8 array",
             "function foo(uint8[2])",
-            AbiKeyValues.Create("anon", new byte[] { 1, 2 }),
+            AbiKeyValues.Create("0", new byte[] { 1, 2 }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // element 0",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // element 1"
@@ -65,7 +65,7 @@ public static class AbiEncoderDecoderTestCases
         [5] = new(
             "Jagged static uint8 array",
             "function foo(uint8[4][2])",
-            AbiKeyValues.Create("anon", new byte[][] { new byte[] { 10, 20, 30, 40 }, new byte[] { 1, 2, 3, 4 } }),
+            AbiKeyValues.Create("0", new byte[][] { new byte[] { 10, 20, 30, 40 }, new byte[] { 1, 2, 3, 4 } }),
             new List<string> {
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // element 0 of uint8[4] first element of outer array",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // element 1 of uint8[4]",
@@ -89,7 +89,7 @@ public static class AbiEncoderDecoderTestCases
         [6] = new(
             "Triple jagged static uint8 array",
             "function foo(uint8[3][2][1])",
-            AbiKeyValues.Create("anon", new byte[][][] { new byte[][] { new byte[] { 1, 2, 3 }, new byte[] { 1, 2, 3 } } }),
+            AbiKeyValues.Create("0", new byte[][][] { new byte[][] { new byte[] { 1, 2, 3 }, new byte[] { 1, 2, 3 } } }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // first array: element 0",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // first array: element 1",
@@ -109,7 +109,7 @@ public static class AbiEncoderDecoderTestCases
         [7] = new(
             "Simple static tuple with two uint256",
             "function foo((uint256 id, uint256 balance) account)",
-            AbiKeyValues.Create("anon", ((BigInteger)3u, (BigInteger)10u)),
+            AbiKeyValues.Create("account", ((BigInteger)3u, (BigInteger)10u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // account.balance"
@@ -167,7 +167,7 @@ public static class AbiEncoderDecoderTestCases
         [11] = new(
             "Simple bytes",
             "function foo(bytes)",
-            AbiKeyValues.Create("anon", new byte[] { 1 }),
+            AbiKeyValues.Create("0", new byte[] { 1 }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of bytes data",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // length of bytes",
@@ -181,7 +181,7 @@ public static class AbiEncoderDecoderTestCases
         [12] = new(
             "Simple dynamic uint8 array",
             "function foo(uint8[])",
-            AbiKeyValues.Create("anon", new byte[] { 1, 2 }),
+            AbiKeyValues.Create("0", new byte[] { 1, 2 }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array data",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of array",
@@ -197,7 +197,7 @@ public static class AbiEncoderDecoderTestCases
         [13] = new(
             "Dynamic array of static uint8 arrays",
             "function foo(uint8[2][])",
-            AbiKeyValues.Create("anon", new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
+            AbiKeyValues.Create("0", new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array data",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of outer array",
@@ -217,7 +217,7 @@ public static class AbiEncoderDecoderTestCases
         [14] = new(
             "Dynamic array of dynamic uint8 arrays",
             "function foo(uint8[][])",
-            AbiKeyValues.Create("anon", new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
+            AbiKeyValues.Create("0", new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000020  // offset to start of array of arrays",
                 "0x0000000000000000000000000000000000000000000000000000000000000002  // length of outer array",
@@ -295,7 +295,7 @@ public static class AbiEncoderDecoderTestCases
         [17] = new(
             "Formal spec: Fixed array of bytes3",
             "function bar(bytes3[2])",
-            AbiKeyValues.Create("anon", new string[] { "abc", "def" }),
+            AbiKeyValues.Create("0", new string[] { "abc", "def" }),
             new List<string> {
                 "0x6162630000000000000000000000000000000000000000000000000000000000  // first bytes3 value ('abc')",
                 "0x6465660000000000000000000000000000000000000000000000000000000000  // second bytes3 value ('def')"
@@ -319,7 +319,7 @@ public static class AbiEncoderDecoderTestCases
         [19] = new(
             "Formal spec: Dynamic bytes with bool and uint array",
             "function sam(bytes,bool,uint[])",
-            AbiKeyValues.Create("anon", "dave", "anon2", true, "anon3", new BigInteger[] { 1, 2, 3 }),
+            AbiKeyValues.Create("0", "dave", "1", true, "2", new BigInteger[] { 1, 2, 3 }),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000060  // offset to start of bytes data",
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // bool value (true)",
@@ -345,7 +345,7 @@ public static class AbiEncoderDecoderTestCases
         [20] = new(
             "Formal spec: Mixed static and dynamic types",
             "function foo(uint256,uint32[],bytes10,bytes)",
-            AbiKeyValues.Create(("anon", new BigInteger(291)), ("anon2", new uint[] { 0x456u, 0x789u }), ("anon3", "1234567890"), ("anon4", "Hello, world!")),
+            AbiKeyValues.Create(("0", new BigInteger(291)), ("1", new uint[] { 0x456u, 0x789u }), ("2", "1234567890"), ("3", "Hello, world!")),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000123  // uint256 value (0x123)",
                 "0x0000000000000000000000000000000000000000000000000000000000000080  // offset to start of uint32[] data",

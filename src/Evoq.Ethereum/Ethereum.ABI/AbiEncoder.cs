@@ -167,6 +167,14 @@ public class AbiEncoder : IAbiEncoder
         {
             var parameter = parameters[i];
             var keyValue = keyValues.ElementAt(i);
+
+            if (parameter.SafeName != keyValue.Key)
+            {
+                throw new AbiEncodingException(
+                    $"Parameter name mismatch: expected '{parameter.SafeName}' but got '{keyValue.Key}'",
+                    parameter.AbiType);
+            }
+
             var context = new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, root, true, true);
 
             if (AbiTypes.IsDynamic(parameter.AbiType))
