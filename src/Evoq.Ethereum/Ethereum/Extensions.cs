@@ -8,6 +8,7 @@ namespace Evoq.Ethereum;
 /// </summary>
 public static class Extensions
 {
+
     /// <summary>
     /// Converts a <see cref="BigInteger"/> to a big endianhex string.
     /// </summary>

@@ -71,12 +71,12 @@ public class AbiDecoderTests
     }
 
     private void ValidateDecodedParameters(
-        IReadOnlyList<object?> expectedValues, IReadOnlyList<AbiParam> decodedParameters, int caseNumber, string name, string paramName)
+        IDictionary<string, object?> expectedValues, IReadOnlyList<AbiParam> decodedParameters, int caseNumber, string name, string paramName)
     {
         for (int i = 0; i < decodedParameters.Count; i++)
         {
             var p = decodedParameters[i];
-            var expectedValue = expectedValues[i];
+            var expectedValue = expectedValues.Values.ToList()[i];
 
             // compare param and expected value
 

@@ -15,6 +15,24 @@ namespace Evoq.Ethereum.ABI;
 public static class AbiExtensions
 {
     /// <summary>
+    /// Converts an ITuple of two values to a KeyValuePair.
+    /// </summary>
+    /// <param name="tuple">The tuple to convert.</param>
+    /// <returns>A KeyValuePair.</returns>
+    /// <exception cref="ArgumentException">Thrown when the tuple has more than two elements.</exception>
+    public static KeyValuePair<string, object?> ToKeyValue(this ITuple tuple)
+    {
+        if (tuple.Length != 2)
+        {
+            throw new ArgumentException("Tuple must have exactly two elements", nameof(tuple));
+        }
+
+        var elements = tuple.GetElements().ToList();
+
+        return new KeyValuePair<string, object?>(elements[0].ToString()!, elements[1]);
+    }
+
+    /// <summary>
     /// Converts an ITuple to a list of object arrays.
     /// </summary>
     /// <param name="tuple">The tuple to convert.</param>

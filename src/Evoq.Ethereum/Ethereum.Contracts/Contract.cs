@@ -69,7 +69,7 @@ public class Contract
     public async Task<T> CallAsync<T>(
         string methodName,
         EthereumAddress senderAddress,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     where T : new()
     {
         return await this.contractClient.CallAsync<T>(this, methodName, senderAddress, parameters);
@@ -85,7 +85,7 @@ public class Contract
     public async Task<IDictionary<string, object?>> CallAsync(
         string methodName,
         EthereumAddress senderAddress,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         return await this.contractClient.CallAsync(this, methodName, senderAddress, parameters);
     }
@@ -102,7 +102,7 @@ public class Contract
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         var hex = await this.contractClient.EstimateGasAsync(this, methodName, senderAddress, value, parameters);
 
@@ -124,7 +124,7 @@ public class Contract
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         return await this.contractClient.InvokeAsync(this, methodName, senderAddress, options, parameters);
     }

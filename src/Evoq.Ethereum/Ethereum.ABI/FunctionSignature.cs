@@ -87,7 +87,7 @@ public class FunctionSignature
     /// <param name="encoder">The encoder to use.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded full function signature.</returns>
-    public byte[] AbiEncodeCallValues(IAbiEncoder encoder, IReadOnlyList<object?> values)
+    public byte[] AbiEncodeCallValues(IAbiEncoder encoder, IDictionary<string, object?> values)
     {
         var result = encoder.EncodeParameters(this.Inputs, values);
 
@@ -300,10 +300,10 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature<T>(
-        this FunctionSignature signature, IAbiEncoder encoder, T value)
+        this FunctionSignature signature, IAbiEncoder encoder, string key, T value)
         where T : struct, IConvertible
     {
-        return signature.AbiEncodeCallValues(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
 
     /// <summary>
@@ -314,9 +314,9 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The string value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, string value)
+        this FunctionSignature signature, IAbiEncoder encoder, string key, string value)
     {
-        return signature.AbiEncodeCallValues(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
 
     /// <summary>
@@ -327,9 +327,9 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The BigInteger value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, BigInteger value)
+        this FunctionSignature signature, IAbiEncoder encoder, string key, BigInteger value)
     {
-        return signature.AbiEncodeCallValues(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
 
     /// <summary>
@@ -340,9 +340,9 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The byte array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, byte[] value)
+        this FunctionSignature signature, IAbiEncoder encoder, string key, byte[] value)
     {
-        return signature.AbiEncodeCallValues(encoder, new object[] { value });
+        return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
 
     /// <summary>
@@ -353,21 +353,8 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, Array value)
+        this FunctionSignature signature, IAbiEncoder encoder, string key, Array value)
     {
-        return signature.AbiEncodeCallValues(encoder, new object[] { value });
-    }
-
-    /// <summary>
-    /// Encodes a tuple parameter for a function signature.
-    /// </summary>
-    /// <param name="signature">The function signature.</param>
-    /// <param name="encoder">The encoder to use.</param>
-    /// <param name="values">The tuple to encode.</param>
-    /// <returns>The encoded full function signature.</returns>
-    public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, ITuple values)
-    {
-        return signature.AbiEncodeCallValues(encoder, values.GetElements().ToList());
+        return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
 }

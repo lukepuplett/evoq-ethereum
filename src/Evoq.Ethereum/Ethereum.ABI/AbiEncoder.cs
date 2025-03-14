@@ -9,6 +9,7 @@ namespace Evoq.Ethereum.ABI;
 
 record class EncodingContext(
     string AbiType,
+    string Key,
     object? Value,
     SlotCollection Block,
     bool HasPointer,
@@ -20,6 +21,7 @@ record class EncodingContext(
     public bool IsAbiTupleStrict => AbiTypes.IsTuple(this.AbiType, false);
     public bool IsAbiTupleArray => AbiTypes.IsTuple(this.AbiType, true);
     public bool IsAbiArray => AbiTypes.IsArray(this.AbiType);
+
     public bool IsValueArray(out Array? array)
     {
         if (this.IsAbiArray && this.Value is Array valueArray)
@@ -31,6 +33,20 @@ record class EncodingContext(
         array = null;
         return false;
     }
+
+    public bool IsValueDic(out IDictionary<string, object?>? dictionary)
+    {
+        if (this.Value is IDictionary<string, object?> valueDictionary)
+        {
+            dictionary = valueDictionary;
+            return true;
+        }
+
+        dictionary = null;
+        return false;
+    }
+
+    [Obsolete]
     public bool IsValueList(out IReadOnlyList<object?>? list)
     {
         if (this.IsAbiTupleStrict && this.Value is IReadOnlyList<object?> valueList)
@@ -48,6 +64,7 @@ record class EncodingContext(
         list = null;
         return false;
     }
+
     public EncodingContext? GetParameterContext()
     {
         if (this.IsParameter)
@@ -57,6 +74,7 @@ record class EncodingContext(
 
         return this.Parent?.GetParameterContext();
     }
+
     public override string ToString()
     {
         if (Object.ReferenceEquals(this.Parent, this))
@@ -123,20 +141,20 @@ public class AbiEncoder : IAbiEncoder
     /// Encodes the parameters.
     /// </summary>
     /// <param name="parameters">The parameters to encode.</param>
-    /// <param name="values">The values to encode.</param>
+    /// <param name="keyValues">The values to encode.</param>
     /// <returns>The encoded parameters.</returns>
     /// <exception cref="ArgumentException">Thrown if the number of values does not match the number of parameters.</exception>
-    public AbiEncodingResult EncodeParameters(AbiParameters parameters, IReadOnlyList<object?> values)
+    public AbiEncodingResult EncodeParameters(AbiParameters parameters, IDictionary<string, object?> keyValues)
     {
         var slotCount = parameters.Count;
 
-        if (slotCount != values.Count)
+        if (slotCount != keyValues.Count)
         {
             string type = parameters.GetCanonicalType();
-            string valuesStr = string.Join(", ", values.Select(v => v?.ToString() ?? "null"));
+            string valuesStr = string.Join(", ", keyValues.Select(kv => $"{kv.Key}: {kv.Value?.ToString() ?? "null"}"));
 
             throw new AbiEncodingException(
-                $"Unable to encode parameters for signature {type}: expected {slotCount} values but got {values.Count}: '{valuesStr}'. " +
+                $"Unable to encode parameters for signature {type}: expected {slotCount} values but got {keyValues.Count}: '{valuesStr}'. " +
                 "Note that nested tuples can be a source of confusion.",
                 type);
         }
@@ -148,8 +166,8 @@ public class AbiEncoder : IAbiEncoder
         for (int i = 0; i < slotCount; i++)
         {
             var parameter = parameters[i];
-            var value = values[i];
-            var context = new EncodingContext(parameter.AbiType, value, root, true, true);
+            var keyValue = keyValues.ElementAt(i);
+            var context = new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, root, true, true);
 
             if (AbiTypes.IsDynamic(parameter.AbiType))
             {
@@ -164,13 +182,13 @@ public class AbiEncoder : IAbiEncoder
                     relativeTo: heads);
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, value, tail, true, false, context));
+                this.EncodeValue(new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, tail, true, false, context));
             }
             else
             {
                 // static, so we can encode directly into the heads
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, value, heads, false, false, context));
+                this.EncodeValue(new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, heads, false, false, context));
             }
         }
 
@@ -249,7 +267,7 @@ public class AbiEncoder : IAbiEncoder
         {
             var element = array.GetValue(i);
 
-            this.EncodeValue(new EncodingContext(innerType!, element, context.Block, false, false, context));
+            this.EncodeValue(new EncodingContext(innerType!, context.Key, element, context.Block, false, false, context));
         }
     }
 
@@ -289,15 +307,15 @@ public class AbiEncoder : IAbiEncoder
                 context.Value?.GetType());
         }
 
-        var evmParams = AbiParameters.Parse(context.AbiType);
+        var abiParams = AbiParameters.Parse(context.AbiType);
 
-        for (int i = 0; i < evmParams.Count; i++)
+        for (int i = 0; i < abiParams.Count; i++)
         {
-            var parameter = evmParams[i];
+            var parameter = abiParams[i];
             var componentValue = list![i];
 
             this.EncodeValue(new EncodingContext(
-                parameter.AbiType, componentValue, context.Block, false, false, context)); // send back into the router
+                parameter.AbiType, parameter.Name, componentValue, context.Block, false, false, context)); // send back into the router
         }
     }
 
@@ -472,13 +490,13 @@ public class AbiEncoder : IAbiEncoder
 
                     heads.Add(elementPointerSlot);
 
-                    var element = array.GetValue(i);
+                    var elementValue = array.GetValue(i);
 
                     // recursive call to encode will drop back into this function
                     // with the tail as the block, if the inner type is dynamic
 
                     this.EncodeValue(new EncodingContext(
-                        innerType!, element, elementTail, true, false, context));
+                        innerType!, context.Key, elementValue, elementTail, true, false, context));
                 }
 
                 // heads then tails
@@ -492,10 +510,10 @@ public class AbiEncoder : IAbiEncoder
 
                 for (int i = 0; i < array.Length; i++)
                 {
-                    var element = array.GetValue(i);
+                    var elementValue = array.GetValue(i);
 
                     this.EncodeValue(new EncodingContext(
-                        innerType!, element, context.Block, false, false, context));
+                        innerType!, context.Key, elementValue, context.Block, false, false, context));
                 }
             }
         }
@@ -521,6 +539,7 @@ public class AbiEncoder : IAbiEncoder
         for (int i = 0; i < evmParams.Count; i++)
         {
             var componentType = evmParams[i].AbiType;
+            var componentKey = evmParams[i].Name;
             var componentValue = tuple![i];
 
             // we need a new tail for each dynamic component
@@ -540,14 +559,14 @@ public class AbiEncoder : IAbiEncoder
                 heads.Add(pointerSlot);
 
                 this.EncodeValue(new EncodingContext(
-                    componentType, componentValue, tail, true, false, context));
+                    componentType, componentKey, componentValue, tail, true, false, context));
             }
             else
             {
                 // write the value directly into the heads
 
                 this.EncodeValue(new EncodingContext(
-                    componentType, componentValue, heads, false, false, context));
+                    componentType, componentKey, componentValue, heads, false, false, context));
             }
         }
 
@@ -604,7 +623,7 @@ public class AbiEncoder : IAbiEncoder
                     context.Block.Add(pointerSlot);
 
                     this.EncodeDynamicArray(new EncodingContext(
-                        context.AbiType, context.Value, tail, true, true, context.Parent));
+                        context.AbiType, context.Key, context.Value, tail, true, true, context.Parent));
 
                     context.Block.AddRange(tail);
                 }

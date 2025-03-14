@@ -53,7 +53,7 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     where T : new()
     {
         var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
@@ -67,7 +67,7 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
 
@@ -81,7 +81,7 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         // TODO / research access list usage for the transaction
 
@@ -93,7 +93,7 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         if (value.HasValue && value.Value < 0)
         {
@@ -120,7 +120,7 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        params object[] parameters)
+        IDictionary<string, object?> parameters)
     {
         var signature = contract.GetFunctionSignature(methodName);
         var encoded = signature.AbiEncodeCallValues(this.abiEncoder, parameters);

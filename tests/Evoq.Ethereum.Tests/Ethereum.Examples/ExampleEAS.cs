@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Evoq.Blockchain;
+using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.JsonRPC;
@@ -84,7 +86,7 @@ public class ExampleEAS
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
         var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e"); // random, non-existent schemaId
 
-        var result = await contract.CallAsync("getSchema", account, schemaIdHex);
+        var result = await contract.CallAsync("getSchema", account, AbiKeyValues.Create("schemaId", schemaIdHex));
 
         if (!result.Values.TryFirst(out var first))
         {

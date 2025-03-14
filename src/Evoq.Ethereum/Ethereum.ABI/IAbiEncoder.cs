@@ -29,7 +29,7 @@ public interface IAbiEncoder
     /// <param name="parameters">The parameters to encode.</param>
     /// <param name="values">The values to encode.</param>
     /// <returns>The encoded parameters.</returns>
-    AbiEncodingResult EncodeParameters(AbiParameters parameters, IReadOnlyList<object?> values);
+    AbiEncodingResult EncodeParameters(AbiParameters parameters, IDictionary<string, object?> values);
 
     // /// <summary>
     // /// Resolves the encoder for a given type.
@@ -58,7 +58,15 @@ public static class AbiEncoderExtensions
         this IAbiEncoder encoder, AbiParameters parameters, T value)
         where T : struct, IConvertible
     {
-        return encoder.EncodeParameters(parameters, new List<object> { value });
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
     }
 
     /// <summary>
@@ -71,7 +79,15 @@ public static class AbiEncoderExtensions
     public static AbiEncodingResult EncodeParameters(
         this IAbiEncoder encoder, AbiParameters parameters, string value)
     {
-        return encoder.EncodeParameters(parameters, new List<object> { value });
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
     }
 
     /// <summary>
@@ -84,7 +100,15 @@ public static class AbiEncoderExtensions
     public static AbiEncodingResult EncodeParameters(
         this IAbiEncoder encoder, AbiParameters parameters, BigInteger value)
     {
-        return encoder.EncodeParameters(parameters, new List<object> { value });
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
     }
 
     /// <summary>
@@ -97,20 +121,15 @@ public static class AbiEncoderExtensions
     public static AbiEncodingResult EncodeParameters(
         this IAbiEncoder encoder, AbiParameters parameters, byte[] value)
     {
-        return encoder.EncodeParameters(parameters, new List<object> { value });
-    }
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
 
-    /// <summary>
-    /// Encodes a byte array parameter.
-    /// </summary>
-    /// <param name="encoder">The encoder to use.</param>
-    /// <param name="parameters">The parameters to encode.</param>
-    /// <param name="value">The array to encode.</param>
-    /// <returns>The encoded parameters.</returns>
-    public static AbiEncodingResult EncodeParameters(
-        this IAbiEncoder encoder, AbiParameters parameters, Array value)
-    {
-        return encoder.EncodeParameters(parameters, new List<object> { value });
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
     }
 
     /// <summary>
@@ -123,8 +142,22 @@ public static class AbiEncoderExtensions
     public static AbiEncodingResult EncodeParameters(
         this IAbiEncoder encoder, AbiParameters parameters, ITuple tuple)
     {
-        var list = tuple.GetElements().ToList();
+        // zip the tuple with the parameters and place into a dictionary
 
-        return encoder.EncodeParameters(parameters, list);
+        if (parameters.Count != tuple.Length)
+        {
+            throw new InvalidOperationException("Expected a tuple with the same number of parameters");
+        }
+
+        var dictionary = new Dictionary<string, object?>();
+
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            var parameter = parameters[i];
+            var value = tuple[i];
+            dictionary.Add(parameter.Name, value);
+        }
+
+        return encoder.EncodeParameters(parameters, dictionary);
     }
 }
