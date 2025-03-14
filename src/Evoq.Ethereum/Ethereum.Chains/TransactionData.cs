@@ -116,20 +116,20 @@ public class TransactionData
 
         var result = new TransactionData
         {
-            BlockHash = string.IsNullOrEmpty(dto.BlockHash) ? null : Hex.Parse(dto.BlockHash),
+            BlockHash = TryParseHex(dto.BlockHash),
             BlockNumber = string.IsNullOrEmpty(dto.BlockNumber) ? BigInteger.Zero : Hex.Parse(dto.BlockNumber).ToBigInteger(),
             From = string.IsNullOrEmpty(dto.From) ? null : new EthereumAddress(dto.From),
             Gas = string.IsNullOrEmpty(dto.Gas) ? BigInteger.Zero : Hex.Parse(dto.Gas).ToBigInteger(),
             GasPrice = string.IsNullOrEmpty(dto.GasPrice) ? BigInteger.Zero : Hex.Parse(dto.GasPrice).ToBigInteger(),
-            Hash = string.IsNullOrEmpty(dto.Hash) ? null : Hex.Parse(dto.Hash),
-            Input = string.IsNullOrEmpty(dto.Input) ? null : Hex.Parse(dto.Input),
+            Hash = TryParseHex(dto.Hash),
+            Input = TryParseHex(dto.Input),
             Nonce = string.IsNullOrEmpty(dto.Nonce) ? BigInteger.Zero : Hex.Parse(dto.Nonce).ToBigInteger(),
             To = string.IsNullOrEmpty(dto.To) ? null : new EthereumAddress(dto.To),
             TransactionIndex = string.IsNullOrEmpty(dto.TransactionIndex) ? BigInteger.Zero : Hex.Parse(dto.TransactionIndex).ToBigInteger(),
             Value = string.IsNullOrEmpty(dto.Value) ? BigInteger.Zero : Hex.Parse(dto.Value).ToBigInteger(),
-            V = string.IsNullOrEmpty(dto.V) ? null : Hex.Parse(dto.V),
-            R = string.IsNullOrEmpty(dto.R) ? null : Hex.Parse(dto.R),
-            S = string.IsNullOrEmpty(dto.S) ? null : Hex.Parse(dto.S),
+            V = TryParseHex(dto.V),
+            R = TryParseHex(dto.R),
+            S = TryParseHex(dto.S),
             Type = string.IsNullOrEmpty(dto.Type) ? BigInteger.Zero : Hex.Parse(dto.Type).ToBigInteger(),
             MaxFeePerGas = string.IsNullOrEmpty(dto.MaxFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxFeePerGas).ToBigInteger(),
             MaxPriorityFeePerGas = string.IsNullOrEmpty(dto.MaxPriorityFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxPriorityFeePerGas).ToBigInteger(),
@@ -169,6 +169,16 @@ public class TransactionData
         }
 
         return result;
+    }
+
+    //
+
+    private static Hex? TryParseHex(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return null;
+
+        return Hex.Parse(value);
     }
 }
 

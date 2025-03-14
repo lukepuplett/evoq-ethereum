@@ -140,24 +140,24 @@ public class BlockData<T>
         var result = new BlockData<T>
         {
             Number = string.IsNullOrEmpty(dto.Number) ? BigInteger.Zero : Hex.Parse(dto.Number).ToBigInteger(),
-            Hash = string.IsNullOrEmpty(dto.Hash) ? null : Hex.Parse(dto.Hash),
-            ParentHash = string.IsNullOrEmpty(dto.ParentHash) ? null : Hex.Parse(dto.ParentHash),
-            Nonce = string.IsNullOrEmpty(dto.Nonce) ? null : Hex.Parse(dto.Nonce),
-            Sha3Uncles = string.IsNullOrEmpty(dto.Sha3Uncles) ? null : Hex.Parse(dto.Sha3Uncles),
-            LogsBloom = string.IsNullOrEmpty(dto.LogsBloom) ? null : Hex.Parse(dto.LogsBloom),
-            TransactionsRoot = string.IsNullOrEmpty(dto.TransactionsRoot) ? null : Hex.Parse(dto.TransactionsRoot),
-            StateRoot = string.IsNullOrEmpty(dto.StateRoot) ? null : Hex.Parse(dto.StateRoot),
-            ReceiptsRoot = string.IsNullOrEmpty(dto.ReceiptsRoot) ? null : Hex.Parse(dto.ReceiptsRoot),
+            Hash = TryParseHex(dto.Hash),
+            ParentHash = TryParseHex(dto.ParentHash),
+            Nonce = TryParseHex(dto.Nonce),
+            Sha3Uncles = TryParseHex(dto.Sha3Uncles),
+            LogsBloom = TryParseHex(dto.LogsBloom),
+            TransactionsRoot = TryParseHex(dto.TransactionsRoot),
+            StateRoot = TryParseHex(dto.StateRoot),
+            ReceiptsRoot = TryParseHex(dto.ReceiptsRoot),
             Miner = string.IsNullOrEmpty(dto.Miner) ? null : new EthereumAddress(dto.Miner),
             Difficulty = string.IsNullOrEmpty(dto.Difficulty) ? BigInteger.Zero : Hex.Parse(dto.Difficulty).ToBigInteger(),
             TotalDifficulty = string.IsNullOrEmpty(dto.TotalDifficulty) ? BigInteger.Zero : Hex.Parse(dto.TotalDifficulty).ToBigInteger(),
-            ExtraData = string.IsNullOrEmpty(dto.ExtraData) ? null : Hex.Parse(dto.ExtraData),
+            ExtraData = TryParseHex(dto.ExtraData),
             Size = string.IsNullOrEmpty(dto.Size) ? BigInteger.Zero : Hex.Parse(dto.Size).ToBigInteger(),
             GasLimit = string.IsNullOrEmpty(dto.GasLimit) ? BigInteger.Zero : Hex.Parse(dto.GasLimit).ToBigInteger(),
             GasUsed = string.IsNullOrEmpty(dto.GasUsed) ? BigInteger.Zero : Hex.Parse(dto.GasUsed).ToBigInteger(),
             BaseFeePerGas = string.IsNullOrEmpty(dto.BaseFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.BaseFeePerGas).ToBigInteger(),
-            WithdrawalsRoot = string.IsNullOrEmpty(dto.WithdrawalsRoot) ? null : Hex.Parse(dto.WithdrawalsRoot),
-            ParentBeaconBlockRoot = string.IsNullOrEmpty(dto.ParentBeaconBlockRoot) ? null : Hex.Parse(dto.ParentBeaconBlockRoot)
+            WithdrawalsRoot = TryParseHex(dto.WithdrawalsRoot),
+            ParentBeaconBlockRoot = TryParseHex(dto.ParentBeaconBlockRoot)
         };
 
         // Convert timestamp from Unix seconds to DateTimeOffset
@@ -205,6 +205,16 @@ public class BlockData<T>
         }
 
         return result;
+    }
+
+    //
+
+    private static Hex? TryParseHex(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return null;
+
+        return Hex.Parse(value);
     }
 }
 
