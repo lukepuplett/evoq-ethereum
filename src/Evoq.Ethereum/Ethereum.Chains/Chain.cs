@@ -53,7 +53,7 @@ public class Chain
     /// <returns>The base fee per gas in wei.</returns>
     public async Task<BigInteger> GetBaseFeeAsync()
     {
-        var block = await this.chainClient.GetBlockByNumberWithTxObjectsAsync("latest");
+        var block = await this.chainClient.TryGetBlockByNumberWithTxObjectsAsync("latest");
 
         return block.BaseFeePerGas;
     }

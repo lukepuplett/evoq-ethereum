@@ -114,8 +114,9 @@ public interface IGetCode
     /// Gets the code of a contract.
     /// </summary>
     /// <param name="address">The address of the contract to get the code for.</param>
+    /// <param name="id">The request identifier</param>
     /// <returns>The code of the contract.</returns>
-    Task<Hex> GetCodeAsync(EthereumAddress address);
+    Task<Hex> GetCodeAsync(EthereumAddress address, int id = 1);
 }
 
 /// <summary>
@@ -152,12 +153,12 @@ public interface IGetBlockByNumber
     /// <summary>
     /// Gets information about a block by block number or tag with transaction hashes
     /// </summary>
-    Task<BlockDataDto<string>> GetBlockByNumberWithTxHashesAsync(int id, string blockNumberOrTag);
+    Task<BlockDataDto<string>> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1);
 
     /// <summary>
     /// Gets information about a block by block number or tag with full transaction objects
     /// </summary>
-    Task<BlockDataDto<TransactionDataDto>> GetBlockByNumberWithTxObjectsAsync(int id, string blockNumberOrTag);
+    Task<BlockDataDto<TransactionDataDto>> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1);
 }
 
 /// <summary>
@@ -173,7 +174,7 @@ public interface IFeeHistory
     /// <param name="newestBlock">The newest block to consider ("latest" or block number)</param>
     /// <param name="rewardPercentiles">Percentiles to sample for priority fees</param>
     /// <returns>Fee history data including base fees and priority fee percentiles</returns>
-    Task<FeeHistoryDto> FeeHistoryAsync(int id, Hex blockCount, string newestBlock, double[] rewardPercentiles);
+    Task<FeeHistoryDto?> FeeHistoryAsync(Hex blockCount, string newestBlock, double[] rewardPercentiles, int id = 1);
 }
 
 /// <summary>

@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
-using Evoq.Ethereum.Chains;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.JsonRPC;
@@ -181,12 +180,16 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// Gets the code of a contract at a specific Ethereum address.
     /// </summary>
     /// <param name="address">The Ethereum address.</param>
+    /// <param name="id">The request identifier.</param>
     /// <returns>The code of the contract.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> GetCodeAsync(EthereumAddress address)
+    public async Task<Hex> GetCodeAsync(EthereumAddress address, int id = 1)
     {
-        // Implements eth_getCode
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateGetCodeRequest(address.ToString(), "latest", id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
     }
 
     /// <summary>
@@ -195,10 +198,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="id">The request identifier.</param>
     /// <returns>The chain ID.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> ChainIdAsync(int id = 1)
+    public async Task<Hex> ChainIdAsync(int id = 1)
     {
-        // Implements eth_chainId
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateChainIdRequest(id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
     }
 
     /// <summary>
@@ -207,10 +213,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="id">The request identifier.</param>
     /// <returns>The block number.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> BlockNumberAsync(int id = 1)
+    public async Task<Hex> BlockNumberAsync(int id = 1)
     {
-        // Implements eth_blockNumber
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateBlockNumberRequest(id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
     }
 
     /// <summary>
@@ -220,9 +229,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <returns>The block information.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<BlockDataDto<string>> GetBlockByNumberWithTxHashesAsync(int id, string blockNumberOrTag)
+    public async Task<BlockDataDto<string>?> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1)
     {
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxHashesRequest(blockNumberOrTag, id);
+
+        var response = await this.SendAsync<BlockDataDto<string>>(request, new MethodInfo(request.Method, id));
+
+        return response.Result; // This can be null if the block doesn't exist
     }
 
     /// <summary>
@@ -231,9 +244,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="id">The request identifier.</param>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <returns>The block information.</returns>   
-    public Task<BlockDataDto<TransactionDataDto>> GetBlockByNumberWithTxObjectsAsync(int id, string blockNumberOrTag)
+    public async Task<BlockDataDto<TransactionDataDto>?> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1)
     {
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxObjectsRequest(blockNumberOrTag, id);
+
+        var response = await this.SendAsync<BlockDataDto<TransactionDataDto>>(request, new MethodInfo(request.Method, id));
+
+        return response.Result; // This can be null if the block doesn't exist
     }
 
     /// <summary>
@@ -245,10 +262,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="rewardPercentiles">The reward percentiles.</param>
     /// <returns>The fee history.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<FeeHistoryDto> FeeHistoryAsync(int id, Hex blockCount, string newestBlock, double[] rewardPercentiles)
+    public async Task<FeeHistoryDto?> FeeHistoryAsync(Hex blockCount, string newestBlock, double[] rewardPercentiles, int id = 1)
     {
-        // Implements eth_feeHistory
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateFeeHistoryRequest(blockCount.ToString(), newestBlock, rewardPercentiles, id);
+
+        var response = await this.SendAsync<FeeHistoryDto>(request, new MethodInfo(request.Method, id));
+
+        return response.Result;
     }
 
     //

@@ -56,18 +56,36 @@ public class ChainClient
         return await this.jsonRpc.BlockNumberAsync(this.GetRandomId());
     }
 
-    // implement the two flavours of getBlockByNumberAsync
-
-    public async Task<BlockData<string>> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag)
+    /// <summary>
+    /// Gets a block by number with transaction hashes.
+    /// </summary>
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <returns>The block data with transaction hashes.</returns>
+    public async Task<BlockData<string>?> TryGetBlockByNumberWithTxHashesAsync(string blockNumberOrTag)
     {
-        var dto = await this.jsonRpc.GetBlockByNumberWithTxHashesAsync(this.GetRandomId(), blockNumberOrTag);
+        var dto = await this.jsonRpc.GetBlockByNumberWithTxHashesAsync(blockNumberOrTag, this.GetRandomId());
+
+        if (dto == null)
+        {
+            return null;
+        }
 
         return BlockData<string>.FromDto(dto, hash => hash);
     }
 
-    public async Task<BlockData<TransactionData>> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag)
+    /// <summary>
+    /// Gets a block by number with transaction objects.
+    /// </summary>
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <returns>The block data with transaction objects.</returns>
+    public async Task<BlockData<TransactionData>?> TryGetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag)
     {
-        var dto = await this.jsonRpc.GetBlockByNumberWithTxObjectsAsync(this.GetRandomId(), blockNumberOrTag);
+        var dto = await this.jsonRpc.GetBlockByNumberWithTxObjectsAsync(blockNumberOrTag, this.GetRandomId());
+
+        if (dto == null)
+        {
+            return null;
+        }
 
         return BlockData<TransactionData>.FromDto(dto, TransactionData.FromDto);
     }
@@ -82,10 +100,10 @@ public class ChainClient
     public async Task<FeeHistory> GetFeeHistoryAsync(ulong blockCount, string newestBlock, double[] rewardPercentiles)
     {
         var dto = await this.jsonRpc.FeeHistoryAsync(
-            this.GetRandomId(),
             blockCount.NumberToHexStruct(),
             newestBlock,
-            rewardPercentiles);
+            rewardPercentiles,
+            this.GetRandomId());
 
         return new FeeHistory();
     }
