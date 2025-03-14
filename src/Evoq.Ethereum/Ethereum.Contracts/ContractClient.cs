@@ -76,7 +76,7 @@ public class ContractClient
         return decoded.Parameters.ToDictionary(false);
     }
 
-    internal async Task<Hex> InvokeAsync(
+    internal async Task<Hex> InvokeMethodAsync(
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
@@ -218,7 +218,7 @@ public abstract class GasOptions
     /// Initializes a new instance of the GasOptions class. 
     /// </summary>
     /// <param name="limit">Maximum gas units the transaction can consume</param>
-    protected GasOptions(ulong? limit)
+    protected GasOptions(ulong limit)
     {
         Limit = limit;
     }
@@ -226,7 +226,7 @@ public abstract class GasOptions
     /// <summary>
     /// Maximum gas units the transaction can consume
     /// </summary>
-    public ulong? Limit { get; }
+    public ulong Limit { get; }
 }
 
 /// <summary>
@@ -239,7 +239,7 @@ public class LegacyGasOptions : GasOptions
     /// </summary>
     /// <param name="limit">Maximum gas units the transaction can consume</param>
     /// <param name="price">Price per gas unit in wei (higher = faster processing)</param>
-    public LegacyGasOptions(ulong? limit, BigInteger? price) : base(limit)
+    public LegacyGasOptions(ulong limit, BigInteger price) : base(limit)
     {
         Price = price;
     }
@@ -247,7 +247,7 @@ public class LegacyGasOptions : GasOptions
     /// <summary>
     /// Price per gas unit in wei (higher = faster processing)
     /// </summary>
-    public BigInteger? Price { get; }
+    public BigInteger Price { get; }
 }
 
 /// <summary>
@@ -261,7 +261,7 @@ public class EIP1559GasOptions : GasOptions
     /// <param name="limit">Maximum gas units the transaction can consume</param>
     /// <param name="maxFeePerGas">Maximum total fee per gas unit in wei (base fee + priority fee)</param>
     /// <param name="maxPriorityFeePerGas">Maximum tip to miners per gas unit in wei</param>
-    public EIP1559GasOptions(ulong? limit, BigInteger? maxFeePerGas, BigInteger? maxPriorityFeePerGas) : base(limit)
+    public EIP1559GasOptions(ulong limit, BigInteger maxFeePerGas, BigInteger maxPriorityFeePerGas) : base(limit)
     {
         MaxFeePerGas = maxFeePerGas;
         MaxPriorityFeePerGas = maxPriorityFeePerGas;
@@ -270,10 +270,10 @@ public class EIP1559GasOptions : GasOptions
     /// <summary>
     /// Maximum total fee per gas unit in wei (base fee + priority fee)
     /// </summary>
-    public BigInteger? MaxFeePerGas { get; }
+    public BigInteger MaxFeePerGas { get; }
 
     /// <summary>
     /// Maximum tip to miners per gas unit in wei
     /// </summary>
-    public BigInteger? MaxPriorityFeePerGas { get; }
+    public BigInteger MaxPriorityFeePerGas { get; }
 }

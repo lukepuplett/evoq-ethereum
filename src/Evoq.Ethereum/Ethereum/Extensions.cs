@@ -8,6 +8,27 @@ namespace Evoq.Ethereum;
 /// </summary>
 public static class Extensions
 {
+    /// <summary>
+    /// Converts a <see cref="Hex"/> to a <see cref="BigInteger"/>.
+    /// </summary>
+    /// <param name="hex">The hex to convert.</param>
+    /// <returns>The big integer.</returns>
+    public static BigInteger ToBigInteger(this Hex hex)
+    {
+        return hex.ToBigInteger(HexSignedness.Unsigned, HexEndianness.BigEndian);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="ulong"/> to a big endian hex string.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The hex string.</returns>
+    public static Hex NumberToHexStruct(this ulong value)
+    {
+        var bigInt = (BigInteger)value;
+
+        return Hex.FromBigInteger(bigInt, HexEndianness.BigEndian);
+    }
 
     /// <summary>
     /// Converts a <see cref="BigInteger"/> to a big endianhex string.

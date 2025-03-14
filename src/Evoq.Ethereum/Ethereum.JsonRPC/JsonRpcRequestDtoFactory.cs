@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Nethereum.RPC.Eth.Transactions;
@@ -7,7 +8,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// <summary>
 /// Provides methods for creating pre-filled common Ethereum JSON-RPC requests.
 /// </summary>
-public static class JsonRpcRequestDtoFactory
+internal static class JsonRpcRequestDtoFactory
 {
     /// <summary>
     /// Creates a request for the eth_estimateGas method.
@@ -20,6 +21,19 @@ public static class JsonRpcRequestDtoFactory
         return new JsonRpcRequestDto(
             "eth_estimateGas",
             new List<object> { transactionParams },
+            id);
+    }
+
+    /// <summary>
+    /// Creates a request for the eth_gasPrice method.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>A JSON-RPC request for the eth_gasPrice method.</returns>
+    public static JsonRpcRequestDto CreateGasPriceRequest(int id)
+    {
+        return new JsonRpcRequestDto(
+            "eth_gasPrice",
+            new List<object>(),
             id);
     }
 

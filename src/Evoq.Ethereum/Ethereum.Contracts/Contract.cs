@@ -106,10 +106,7 @@ public class Contract
     {
         var hex = await this.contractClient.EstimateGasAsync(this, methodName, senderAddress, value, parameters);
 
-        HexSignedness s = HexSignedness.Unsigned;
-        HexEndianness e = HexEndianness.BigEndian;
-
-        return hex.ToBigInteger(s, e);
+        return hex.ToBigInteger();
     }
 
     /// <summary>
@@ -120,12 +117,12 @@ public class Contract
     /// <param name="options">The options for the transaction.</param>
     /// <param name="parameters">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
-    public async Task<Hex> InvokeAsync(
+    public async Task<Hex> InvokeMethodAsync(
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
         IDictionary<string, object?> parameters)
     {
-        return await this.contractClient.InvokeAsync(this, methodName, senderAddress, options, parameters);
+        return await this.contractClient.InvokeMethodAsync(this, methodName, senderAddress, options, parameters);
     }
 }

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Chains;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.JsonRPC;
@@ -103,13 +104,45 @@ public class JsonRpcClient : IEthereumJsonRpc
         return ParseHexResponse(response);
     }
 
+    /// <summary>
+    /// Gets the current gas price.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The current gas price.</returns>
+    public async Task<Hex> GasPriceAsync(int id = 1)
+    {
+        var request = JsonRpcRequestDtoFactory.CreateGasPriceRequest(id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
+    }
+
+    /// <summary>
+    /// Gets the balance of an Ethereum address at a specific block.
+    /// </summary>
+    /// <param name="address">The Ethereum address.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The balance of the Ethereum address.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public Task<Hex> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
     {
+        // Implements eth_getBalance
         throw new NotImplementedException();
     }
 
+    /// <summary>
+    /// Gets the transaction count of an Ethereum address at a specific block.
+    /// </summary>
+    /// <param name="address">The Ethereum address.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The transaction count of the Ethereum address.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
     {
+        // Implements eth_getTransactionCount
         throw new NotImplementedException();
     }
 
@@ -131,13 +164,90 @@ public class JsonRpcClient : IEthereumJsonRpc
         return ParseHexResponse(response);
     }
 
+    /// <summary>
+    /// Sends a transaction.
+    /// </summary>
+    /// <param name="transactionParams">The transaction parameters.</param>
+    /// <param name="id">The ID of the request.</param>
+    /// <returns>The hash of the transaction.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public Task<Hex> SendTransactionAsync(TransactionParamsDto transactionParams, int id = 1)
+    {
+        // Implements eth_sendTransaction
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Gets the code of a contract at a specific Ethereum address.
+    /// </summary>
+    /// <param name="address">The Ethereum address.</param>
+    /// <returns>The code of the contract.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public Task<Hex> GetCodeAsync(EthereumAddress address)
+    {
+        // Implements eth_getCode
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Gets the chain ID.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The chain ID.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public Task<Hex> ChainIdAsync(int id = 1)
+    {
+        // Implements eth_chainId
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Gets the block number.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The block number.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public Task<Hex> BlockNumberAsync(int id = 1)
+    {
+        // Implements eth_blockNumber
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Gets a block by number or tag with transaction hashes.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <returns>The block information.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public Task<BlockDataDto<string>> GetBlockByNumberWithTxHashesAsync(int id, string blockNumberOrTag)
     {
         throw new NotImplementedException();
     }
 
-    public Task<Hex> GetCodeAsync(EthereumAddress address)
+    /// <summary>
+    /// Gets a block by number or tag with full transaction objects.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <returns>The block information.</returns>   
+    public Task<BlockDataDto<TransactionDataDto>> GetBlockByNumberWithTxObjectsAsync(int id, string blockNumberOrTag)
     {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Gets the fee history.
+    /// </summary>
+    /// <param name="id">The request identifier.</param>
+    /// <param name="blockCount">The block count.</param>
+    /// <param name="newestBlock">The newest block.</param>
+    /// <param name="rewardPercentiles">The reward percentiles.</param>
+    /// <returns>The fee history.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public Task<FeeHistoryDto> FeeHistoryAsync(int id, Hex blockCount, string newestBlock, double[] rewardPercentiles)
+    {
+        // Implements eth_feeHistory
         throw new NotImplementedException();
     }
 

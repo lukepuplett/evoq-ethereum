@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
@@ -73,31 +74,38 @@ public class ExampleEAS
                 options => options.SingleLine = true).SetMinimumLevel(LogLevel.Debug));
 
         INonceStore nonceStore = new InMemoryNonceStore(loggerFactory);
-        var privateKeyBase64 = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
-        var privateKey = Hex.Parse(privateKeyBase64);
+
+        var privateKeyStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
+        var privateKeyHex = Hex.Parse(privateKeyStr);
+
+        var senderAddressStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1Address")!;
+        var senderAddress = new EthereumAddress(senderAddressStr);
 
         // Read the ABI file using our helper method
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
 
-        var account = new EthereumAddress("0x1234567890123456789012345678901234567890");
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
-        var sender = new Sender(privateKey, nonceStore!);
+        var sender = new Sender(privateKeyHex, nonceStore!);
         var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
         // guess gas price
 
-        var registerArgs = AbiKeyValues.Create("schema", "schemaDefinition", "resolver", EthereumAddress.Zero, "revocable", true);
+        var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
-        var gasPrice = await contract.EstimateGasAsync("register", account, null, registerArgs);
+        var registerGas = await contract.EstimateGasAsync("register", senderAddress, null, registerArgs);
 
-        Assert.AreEqual(100000, gasPrice); // TODO: get a real estimate
+        Assert.IsTrue(registerGas < 100_000); // just over 93_000
+
+        var registerGasOptions = new EIP1559GasOptions(100_000, BigInteger.Zero, BigInteger.Zero); // ZEROES!!
+        var registerOptions = new ContractInvocationOptions(1, registerGasOptions, null);
+        var registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
 
         // get schema
 
         var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e"); // random, non-existent schemaId
 
-        var getSchemaResult = await contract.CallAsync("getSchema", account, AbiKeyValues.Create("uid", schemaIdHex));
+        var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", schemaIdHex));
 
         if (!getSchemaResult.Values.TryFirst(out var first))
         {
