@@ -380,11 +380,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
             throw new ArgumentException("Cannot multiply by negative values", nameof(factor));
         }
 
-        // Perform multiplication with higher precision
-        var scaledWei = amount.WeiValue * (BigInteger)(factor * 1_000_000_000_000_000_000m);
-        return new EthereumAmount(
-            scaledWei / 1_000_000_000_000_000_000,
-            amount.DisplayUnit);
+        // Instead of scaling up and down, which can lose precision,
+        // we'll work directly with the decimal conversion
+        var etherValue = amount.ToEther() * factor;
+
+        // Convert back to wei, maintaining maximum precision
+        var weiValue = (BigInteger)(etherValue * 1_000_000_000_000_000_000m);
+
+        return new EthereumAmount(weiValue, amount.DisplayUnit);
     }
 
     public static EthereumAmount operator /(EthereumAmount amount, decimal divisor)
