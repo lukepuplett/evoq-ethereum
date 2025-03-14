@@ -153,12 +153,18 @@ public interface IGetBlockByNumber
     /// <summary>
     /// Gets information about a block by block number or tag with transaction hashes
     /// </summary>
-    Task<BlockDataDto<string>> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1);
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The block information.</returns>
+    Task<BlockDataDto<string>?> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1);
 
     /// <summary>
     /// Gets information about a block by block number or tag with full transaction objects
     /// </summary>
-    Task<BlockDataDto<TransactionDataDto>> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1);
+    /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The block information.</returns>
+    Task<BlockDataDto<TransactionDataDto>?> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1);
 }
 
 /// <summary>

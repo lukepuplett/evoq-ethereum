@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Numerics;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.JsonRPC;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
 
@@ -87,7 +90,7 @@ public class ChainClient
             return null;
         }
 
-        return BlockData<TransactionData>.FromDto(dto, TransactionData.FromDto);
+        return BlockData<TransactionData>.FromDto(dto, t => TransactionData.FromDto(t)!);
     }
 
     /// <summary>
@@ -108,25 +111,21 @@ public class ChainClient
         return new FeeHistory();
     }
 
-    /// <summary>
-    /// Estimates gas for a transaction with the given parameters.
-    /// </summary>
-    /// <param name="from">The sender address.</param>
-    /// <param name="to">The recipient address.</param>
-    /// <param name="value">The amount of ETH to send (in wei).</param>
-    /// <param name="data">The transaction data (for contract interactions).</param>
-    /// <returns>The estimated gas as a hexadecimal string.</returns>
-    public async Task<Hex> EstimateGasAsync(string from, string to, string? value = null, string? data = null)
-    {
-        var transactionParams = new TransactionParamsDto
-        {
-            From = from,
-            To = to,
-            Value = value,
-            Data = data
-        };
+    //
 
-        return await this.jsonRpc.EstimateGasAsync(transactionParams, this.GetRandomId());
+    /// <summary>
+    /// Creates a default chain client.
+    /// </summary>
+    /// <param name="uri">The URI of the chain.</param>
+    /// <param name="sender">The sender.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <returns>The chain client.</returns>
+    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
+    public static ChainClient CreateDefault(Uri uri, Sender sender, ILoggerFactory loggerFactory)
+    {
+        var jsonRpc = new JsonRpcClient(uri, loggerFactory);
+
+        return new ChainClient(jsonRpc);
     }
 
     //

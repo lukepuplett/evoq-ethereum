@@ -85,7 +85,7 @@ public class ContractClient
     {
         // TODO / research access list usage for the transaction
 
-        throw new NotImplementedException();
+        throw new NotImplementedException("Contract method invocation not implemented. This functionality requires transaction signing and submission capabilities. Implement this method to encode function calls, sign transactions, and submit them to the Ethereum network.");
     }
 
     internal async Task<Hex> EstimateGasAsync(
@@ -93,7 +93,7 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> parameters)
+        IDictionary<string, object?> arguments)
     {
         if (value.HasValue && value.Value < 0)
         {
@@ -101,7 +101,7 @@ public class ContractClient
         }
 
         var signature = contract.GetFunctionSignature(methodName);
-        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, parameters);
+        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
 
         var transactionParams = new TransactionParamsDto
         {
@@ -120,10 +120,10 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> parameters)
+        IDictionary<string, object?> arguments)
     {
         var signature = contract.GetFunctionSignature(methodName);
-        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, parameters);
+        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
 
         var ethCallParams = new EthCallParamObjectDto
         {

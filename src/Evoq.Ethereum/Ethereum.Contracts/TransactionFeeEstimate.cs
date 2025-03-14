@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Evoq.Ethereum.Chains;
+namespace Evoq.Ethereum.Contracts;
 
 /// <summary>
 /// Represents a complete transaction fee estimate for EIP-1559 transactions.

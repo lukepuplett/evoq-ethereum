@@ -31,7 +31,7 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Converts a <see cref="BigInteger"/> to a big endianhex string.
+    /// Converts a <see cref="BigInteger"/> to a big-endian hex string.
     /// </summary>
     /// <param name="value">The value to convert.</param>
     /// <param name="trimLeadingZeroDigits">Whether to trim leading zero digits from the hex string.</param>

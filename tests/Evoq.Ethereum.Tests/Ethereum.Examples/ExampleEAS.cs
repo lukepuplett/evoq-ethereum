@@ -3,6 +3,7 @@ using System.Numerics;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
+using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Configuration;
@@ -91,11 +92,30 @@ public class ExampleEAS
 
         // guess gas price
 
+        var chainClient = ChainClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
+        var chain = new Chain(chainClient);
+
+        var guess = await contract.EstimateTransactionFeeAsync(
+            chain,
+            "register",
+            senderAddress,
+            null,
+            AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true));
+
+        Assert.AreEqual(100_000, guess.GasLimit);
+        Assert.AreEqual(0, guess.MaxFeePerGas);
+        Assert.AreEqual(0, guess.MaxPriorityFeePerGas);
+        Assert.AreEqual(0, guess.BaseFeePerGas);
+        Assert.AreEqual(0, guess.EstimatedFeeInWei);
+        Assert.AreEqual(0, guess.EstimatedFeeInEther);
+
+        // original est
+
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
         var registerGas = await contract.EstimateGasAsync("register", senderAddress, null, registerArgs);
 
-        Assert.IsTrue(registerGas < 100_000); // just over 93_000
+        Assert.IsTrue(registerGas < 100_000, "Register gas is less than 100_000"); // just over 93_000
 
         var registerGasOptions = new EIP1559GasOptions(100_000, BigInteger.Zero, BigInteger.Zero); // ZEROES!!
         var registerOptions = new ContractInvocationOptions(1, registerGasOptions, null);
@@ -107,6 +127,8 @@ public class ExampleEAS
 
         var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", schemaIdHex));
 
+        Assert.IsNotNull(getSchemaResult, "The call to getSchema returned a null result");
+
         if (!getSchemaResult.Values.TryFirst(out var first))
         {
             throw new Exception("The call to getSchema returned an empty dictionary");
@@ -117,10 +139,10 @@ public class ExampleEAS
             throw new Exception("The call to getSchema returned an unexpected result");
         }
 
-        var x = new AbiConverter();
-        var y = x.DictionaryToObject<SchemaRecordDto>(firstDict);
+        var converter = new AbiConverter();
+        var obj = converter.DictionaryToObject<SchemaRecordDto>(firstDict);
 
-        Assert.IsNotNull(getSchemaResult);
+        Assert.IsNotNull(obj, "The call to getSchema returned an unexpected result");
 
         getSchemaResult.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
     }

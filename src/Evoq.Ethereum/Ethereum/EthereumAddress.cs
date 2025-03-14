@@ -266,7 +266,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <summary>
     /// Returns the Ethereum address in EIP-55 checksum format.
     /// </summary>
-    /// <param name="shortZero">Whether to return a short zero address</param>
+    /// <param name="shortZero">Whether to return a short zero address when the address is zero</param>
     public string ToString(bool shortZero = false)
     {
         if (this.IsEmpty)

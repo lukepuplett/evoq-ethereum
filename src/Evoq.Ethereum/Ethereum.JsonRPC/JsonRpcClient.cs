@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Numerics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -128,7 +129,7 @@ public class JsonRpcClient : IEthereumJsonRpc
     public Task<Hex> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
     {
         // Implements eth_getBalance
-        throw new NotImplementedException();
+        throw new NotImplementedException("eth_getBalance method not implemented. This method retrieves the balance of an Ethereum address.");
     }
 
     /// <summary>
@@ -142,7 +143,7 @@ public class JsonRpcClient : IEthereumJsonRpc
     public Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
     {
         // Implements eth_getTransactionCount
-        throw new NotImplementedException();
+        throw new NotImplementedException("eth_getTransactionCount method not implemented. This method retrieves the number of transactions sent from an address.");
     }
 
     /// <summary>
@@ -169,11 +170,10 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="transactionParams">The transaction parameters.</param>
     /// <param name="id">The ID of the request.</param>
     /// <returns>The hash of the transaction.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public Task<Hex> SendTransactionAsync(TransactionParamsDto transactionParams, int id = 1)
     {
         // Implements eth_sendTransaction
-        throw new NotImplementedException();
+        throw new NotImplementedException("eth_sendTransaction method not implemented. This method creates and sends a new transaction from a local account.");
     }
 
     /// <summary>
@@ -182,7 +182,6 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="address">The Ethereum address.</param>
     /// <param name="id">The request identifier.</param>
     /// <returns>The code of the contract.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public async Task<Hex> GetCodeAsync(EthereumAddress address, int id = 1)
     {
         var request = JsonRpcRequestDtoFactory.CreateGetCodeRequest(address.ToString(), "latest", id);
@@ -197,7 +196,6 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="id">The request identifier.</param>
     /// <returns>The chain ID.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public async Task<Hex> ChainIdAsync(int id = 1)
     {
         var request = JsonRpcRequestDtoFactory.CreateChainIdRequest(id);
@@ -225,12 +223,14 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <summary>
     /// Gets a block by number or tag with transaction hashes.
     /// </summary>
-    /// <param name="id">The request identifier.</param>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <param name="id">The request identifier.</param>
     /// <returns>The block information.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public async Task<BlockDataDto<string>?> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1)
     {
+        // Ensure blockNumberOrTag is properly formatted
+        blockNumberOrTag = FormatBlockParameter(blockNumberOrTag);
+
         var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxHashesRequest(blockNumberOrTag, id);
 
         var response = await this.SendAsync<BlockDataDto<string>>(request, new MethodInfo(request.Method, id));
@@ -241,11 +241,14 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <summary>
     /// Gets a block by number or tag with full transaction objects.
     /// </summary>
-    /// <param name="id">The request identifier.</param>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
+    /// <param name="id">The request identifier.</param>
     /// <returns>The block information.</returns>   
     public async Task<BlockDataDto<TransactionDataDto>?> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1)
     {
+        // Ensure blockNumberOrTag is properly formatted
+        blockNumberOrTag = FormatBlockParameter(blockNumberOrTag);
+
         var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxObjectsRequest(blockNumberOrTag, id);
 
         var response = await this.SendAsync<BlockDataDto<TransactionDataDto>>(request, new MethodInfo(request.Method, id));
@@ -256,15 +259,21 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <summary>
     /// Gets the fee history.
     /// </summary>
-    /// <param name="id">The request identifier.</param>
     /// <param name="blockCount">The block count.</param>
     /// <param name="newestBlock">The newest block.</param>
     /// <param name="rewardPercentiles">The reward percentiles.</param>
+    /// <param name="id">The request identifier.</param>
     /// <returns>The fee history.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public async Task<FeeHistoryDto?> FeeHistoryAsync(Hex blockCount, string newestBlock, double[] rewardPercentiles, int id = 1)
     {
-        var request = JsonRpcRequestDtoFactory.CreateFeeHistoryRequest(blockCount.ToString(), newestBlock, rewardPercentiles, id);
+        // Ensure newestBlock is properly formatted
+        newestBlock = FormatBlockParameter(newestBlock);
+
+        var request = JsonRpcRequestDtoFactory.CreateFeeHistoryRequest(
+            blockCount.ToString(trimLeadingZeroDigits: true),
+            newestBlock,
+            rewardPercentiles,
+            id);
 
         var response = await this.SendAsync<FeeHistoryDto>(request, new MethodInfo(request.Method, id));
 
@@ -328,5 +337,29 @@ public class JsonRpcClient : IEthereumJsonRpc
         }
 
         return this.httpClient;
+    }
+
+    private string FormatBlockParameter(string blockParameter)
+    {
+        // If it's a known tag, return it as is
+        if (blockParameter == "latest" || blockParameter == "pending" || blockParameter == "earliest" || blockParameter == "safe" || blockParameter == "finalized")
+        {
+            return blockParameter;
+        }
+
+        // If it's a number without 0x prefix, add it
+        if (!blockParameter.StartsWith("0x"))
+        {
+            // Try to parse as a number
+            if (BigInteger.TryParse(blockParameter, out var bigInteger))
+            {
+                return "0x" + bigInteger.ToHexString(true);
+            }
+
+            // If it's already a hex string without 0x prefix
+            return "0x" + blockParameter;
+        }
+
+        return blockParameter;
     }
 }
