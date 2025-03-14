@@ -561,17 +561,17 @@ public class EthereumAmountsTests
             "Dividing 2 Wei by 2 should yield 1 Wei");
     }
 
-    // [TestMethod]
-    // public void ToString_WithCustomPrecision()
-    // {
-    //     // Arrange
-    //     var amount = EthereumAmount.FromEther(1.23456789m);
+    [TestMethod]
+    public void ToString_WithCustomPrecision()
+    {
+        // Arrange
+        var amount = EthereumAmount.FromEther(1.23456789m);
 
-    //     // Act & Assert
-    //     // Note: This test assumes we implement a ToString(int decimals) method
-    //     Assert.AreEqual("1.23 ETH", amount.ToString(2),
-    //         "Should format with specified decimal places");
-    //     Assert.AreEqual("1.234568 ETH", amount.ToString(6),
-    //         "Should round to specified decimal places");
-    // }
+        // Act & Assert
+        // Note: This test assumes we implement a ToString(int decimals) method
+        Assert.AreEqual("1.23 ETH", amount.ToString(2),
+            "Should format with specified decimal places");
+        Assert.AreEqual("1.234568 ETH", amount.ToString(6),
+            "Should round to specified decimal places");
+    }
 }

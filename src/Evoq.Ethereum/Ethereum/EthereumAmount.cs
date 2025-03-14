@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Numerics;
 
 namespace Evoq.Ethereum;
@@ -167,17 +168,46 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     }
 
     /// <summary>
-    /// Returns a string representation of the amount.
+    /// Returns a string representation of the amount with the specified number of decimal places for Ether.
+    /// </summary>
+    /// <param name="decimalPlaces">The number of decimal places to display for Ether (ignored for Wei).</param>
+    /// <returns>A string representation of the amount.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if decimalPlaces is negative.</exception>
+    public string ToString(int decimalPlaces)
+    {
+        if (decimalPlaces < 0)
+            throw new ArgumentOutOfRangeException(nameof(decimalPlaces), "Decimal places must be non-negative.");
+
+        // Clamp to the maximum precision supported by decimal (28 digits)
+        decimalPlaces = Math.Min(decimalPlaces, 28);
+
+        // Special case for zero amounts
+        if (WeiValue == 0)
+        {
+            return DisplayUnit switch
+            {
+                EthereumUnit.Wei => "0 Wei",
+                EthereumUnit.Ether => "0 ETH",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        // Non-zero amounts use the specified precision
+        return DisplayUnit switch
+        {
+            EthereumUnit.Wei => $"{WeiValue} Wei",
+            EthereumUnit.Ether => $"{ToEther().ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)} ETH",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    /// <summary>
+    /// Returns a string representation of the amount with default precision (up to 18 decimal places for Ether).
     /// </summary>
     /// <returns>A string representation of the amount.</returns>
     public override string ToString()
     {
-        return DisplayUnit switch
-        {
-            EthereumUnit.Wei => $"{WeiValue} Wei",
-            EthereumUnit.Ether => $"{ToEther():0.##################} ETH",
-            _ => throw new ArgumentOutOfRangeException()
-        };
+        return ToString(18);
     }
 
     /// <summary>
