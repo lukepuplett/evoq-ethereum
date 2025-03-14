@@ -9,6 +9,7 @@ namespace Evoq.Ethereum.ABI;
 
 record class EncodingContext(
     string AbiType,
+    string Descriptor,
     string Key,
     object? Value,
     SlotCollection Block,
@@ -154,7 +155,7 @@ public class AbiEncoder : IAbiEncoder
             string valuesStr = string.Join(", ", keyValues.Select(kv => $"{kv.Key}: {kv.Value?.ToString() ?? "null"}"));
 
             throw new AbiEncodingException(
-                $"Unable to encode parameters for signature {type}: expected {slotCount} values but got {keyValues.Count}: '{valuesStr}'. " +
+                $"Unable to encode. Signature '{type}' expected {slotCount} values but got {keyValues.Count}: '{valuesStr}'. " +
                 "Note that nested tuples can be a source of confusion.",
                 type);
         }
@@ -166,16 +167,16 @@ public class AbiEncoder : IAbiEncoder
         for (int i = 0; i < slotCount; i++)
         {
             var parameter = parameters[i];
-            var keyValue = keyValues.ElementAt(i);
+            var kv = keyValues.ElementAt(i);
 
-            if (parameter.SafeName != keyValue.Key)
+            if (parameter.SafeName != kv.Key)
             {
                 throw new AbiEncodingException(
-                    $"Parameter name mismatch: expected '{parameter.SafeName}' but got '{keyValue.Key}'",
+                    $"Unable to encode. Parameter name mismatch. Expected '{parameter.SafeName}' but got '{kv.Key}'",
                     parameter.AbiType);
             }
 
-            var context = new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, root, true, true);
+            var context = new EncodingContext(parameter.AbiType, parameter.Descriptor, kv.Key, kv.Value, root, true, true);
 
             if (AbiTypes.IsDynamic(parameter.AbiType))
             {
@@ -188,15 +189,16 @@ public class AbiEncoder : IAbiEncoder
                     Name(context, "pointer_dyn_item"),
                     pointsToFirst: tail,
                     relativeTo: heads);
+
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, tail, true, false, context));
+                this.EncodeValue(new EncodingContext(parameter.AbiType, parameter.Descriptor, kv.Key, kv.Value, tail, true, false, context));
             }
             else
             {
                 // static, so we can encode directly into the heads
 
-                this.EncodeValue(new EncodingContext(parameter.AbiType, keyValue.Key, keyValue.Value, heads, false, false, context));
+                this.EncodeValue(new EncodingContext(parameter.AbiType, parameter.Descriptor, kv.Key, kv.Value, heads, false, false, context));
             }
         }
 
@@ -274,8 +276,10 @@ public class AbiEncoder : IAbiEncoder
         for (int i = 0; i < array!.Length; i++)
         {
             var element = array.GetValue(i);
+            var elementContext = new EncodingContext(
+                innerType!, context.Descriptor, context.Key, element, context.Block, false, false, context);
 
-            this.EncodeValue(new EncodingContext(innerType!, context.Key, element, context.Block, false, false, context));
+            this.EncodeValue(elementContext);
         }
     }
 
@@ -307,23 +311,27 @@ public class AbiEncoder : IAbiEncoder
                 context.AbiType);
         }
 
-        if (!context.IsValueList(out var list))
+        if (!context.IsValueDic(out var dic))
         {
             throw new AbiTypeMismatchException(
-                $"The value is not a list of values",
+                $"Unable to encode. The tuple value for '{context.Key}' is not a dictionary",
                 context.AbiType,
                 context.Value?.GetType());
         }
 
-        var abiParams = AbiParameters.Parse(context.AbiType);
-
-        for (int i = 0; i < abiParams.Count; i++)
+        foreach (var p in AbiParameters.Parse(context.Descriptor)) // use the descriptor, not the ABI type, because the descriptor has the names
         {
-            var parameter = abiParams[i];
-            var componentValue = list![i];
+            if (!dic!.TryGetValue(p.SafeName, out var componentValue))
+            {
+                throw new AbiEncodingException(
+                    $"Unable to encode. Item with key '{p.SafeName}' not found in dictionary for tuple '{context.Key}'",
+                    context.AbiType);
+            }
 
-            this.EncodeValue(new EncodingContext(
-                parameter.AbiType, parameter.Name, componentValue, context.Block, false, false, context)); // send back into the router
+            var componentContext = new EncodingContext(
+                p.AbiType, p.Descriptor, p.SafeName, componentValue, context.Block, false, false, context); // send back into the router
+
+            this.EncodeValue(componentContext);
         }
     }
 
@@ -432,10 +440,18 @@ public class AbiEncoder : IAbiEncoder
                 context.Value.GetType());
         }
 
-        if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerType))
+        if (!AbiTypes.TryGetArrayInnerType(context.AbiType, out var innerAbiType))
         {
             throw new AbiTypeException(
                 $"Invalid array type: '{context.AbiType}' could not be parsed as an array. " +
+                $"This may indicate a malformed ABI type string.",
+                context.AbiType);
+        }
+
+        if (!AbiTypes.TryGetArrayInnerType(context.Descriptor, out var innerDescriptorType))
+        {
+            throw new AbiTypeException(
+                $"Invalid array descriptor: '{context.Descriptor}' could not be parsed as an array. " +
                 $"This may indicate a malformed ABI type string.",
                 context.AbiType);
         }
@@ -479,7 +495,7 @@ public class AbiEncoder : IAbiEncoder
                 context.Block.Add(countSlot);
             }
 
-            if (AbiTypes.IsDynamic(innerType!))
+            if (AbiTypes.IsDynamic(innerAbiType!))
             {
                 // dynamic inner type, so we need new pointers and tails for each element
 
@@ -503,8 +519,10 @@ public class AbiEncoder : IAbiEncoder
                     // recursive call to encode will drop back into this function
                     // with the tail as the block, if the inner type is dynamic
 
-                    this.EncodeValue(new EncodingContext(
-                        innerType!, context.Key, elementValue, elementTail, true, false, context));
+                    var elementContext = new EncodingContext(
+                        innerAbiType!, context.Descriptor, context.Key, elementValue, elementTail, true, false, context);
+
+                    this.EncodeValue(elementContext);
                 }
 
                 // heads then tails
@@ -520,8 +538,10 @@ public class AbiEncoder : IAbiEncoder
                 {
                     var elementValue = array.GetValue(i);
 
-                    this.EncodeValue(new EncodingContext(
-                        innerType!, context.Key, elementValue, context.Block, false, false, context));
+                    var elementContext = new EncodingContext(
+                        innerAbiType!, innerDescriptorType!, context.Key, elementValue, context.Block, false, false, context);
+
+                    this.EncodeValue(elementContext);
                 }
             }
         }
@@ -534,21 +554,33 @@ public class AbiEncoder : IAbiEncoder
         // a tuple is like a fixed-size dynamic array; the size is determined by the
         // number of components in the tuple's ABI type (bool, uint256) has two
 
-        if (!context.IsValueList(out var tuple))
+        // if (!context.IsValueList(out var tuple))
+        // {
+        //     throw new ArgumentException($"The type {context.AbiType} is not a tuple");
+        // }
+        if (!context.IsValueDic(out var dic))
         {
-            throw new ArgumentException($"The type {context.AbiType} is not a tuple");
+            throw new AbiTypeMismatchException(
+                $"Unable to encode. The tuple value for '{context.Key}' is not a dictionary",
+                context.AbiType,
+                context.Value?.GetType());
         }
 
         var heads = new SlotCollection(capacity: 8); // heads for this dynamic tuple
         var tails = new List<SlotCollection>();      // tails for each dynamic component
 
-        var evmParams = AbiParameters.Parse(context.AbiType);
-
-        for (int i = 0; i < evmParams.Count; i++)
+        foreach (var p in AbiParameters.Parse(context.Descriptor)) // use the descriptor, not the ABI type, because the descriptor has the names
         {
-            var componentType = evmParams[i].AbiType;
-            var componentKey = evmParams[i].Name;
-            var componentValue = tuple![i];
+            var componentType = p.AbiType;
+            var componentKey = p.SafeName;
+            var componentDescriptor = p.Descriptor;
+
+            if (!dic!.TryGetValue(componentKey, out var componentValue))
+            {
+                throw new AbiEncodingException(
+                    $"Unable to encode. Item with key '{componentKey}' not found in dictionary for tuple '{context.Key}'",
+                    context.AbiType);
+            }
 
             // we need a new tail for each dynamic component
 
@@ -561,20 +593,25 @@ public class AbiEncoder : IAbiEncoder
                 tails.Add(tail);
 
                 var pointerSlot = new Slot(
-                    Name(context, $"pointer_dyn_comp_{i}"),
+                    Name(context, $"pointer_dyn_comp_{p.SafeName}"),
                     pointsToFirst: tail,
                     relativeTo: heads);
+
                 heads.Add(pointerSlot);
 
-                this.EncodeValue(new EncodingContext(
-                    componentType, componentKey, componentValue, tail, true, false, context));
+                var componentContext = new EncodingContext(
+                    componentType, componentDescriptor, componentKey, componentValue, tail, true, false, context);
+
+                this.EncodeValue(componentContext);
             }
             else
             {
                 // write the value directly into the heads
 
-                this.EncodeValue(new EncodingContext(
-                    componentType, componentKey, componentValue, heads, false, false, context));
+                var componentContext = new EncodingContext(
+                    componentType, componentDescriptor, componentKey, componentValue, heads, false, false, context);
+
+                this.EncodeValue(componentContext);
             }
         }
 
@@ -630,8 +667,10 @@ public class AbiEncoder : IAbiEncoder
 
                     context.Block.Add(pointerSlot);
 
-                    this.EncodeDynamicArray(new EncodingContext(
-                        context.AbiType, context.Key, context.Value, tail, true, true, context.Parent));
+                    var dynamicArrayContext = new EncodingContext(
+                        context.AbiType, context.Descriptor, context.Key, context.Value, tail, true, true, context.Parent);
+
+                    this.EncodeDynamicArray(dynamicArrayContext);
 
                     context.Block.AddRange(tail);
                 }
@@ -670,15 +709,19 @@ public class AbiEncoder : IAbiEncoder
             {
                 // a tuple can only appear within another tuple, and a tuple is paired with a parameter
 
-                if (context.IsValueList(out var list))
+                if (context.IsValueDic(out var dic))
                 {
                     this.EncodeSingleSlotTuple(context);
                 }
+                // if (context.IsValueList(out var list))
+                // {
+                //     this.EncodeSingleSlotTuple(context);
+                // }
                 else
                 {
-                    throw new ArgumentException(
-                        $"The type {context.AbiType} requires a tuple value",
-                        nameof(context.Value));
+                    throw new AbiEncodingException(
+                        $"Unable to encode. Value '{context.Key}' of type {context.AbiType} requires a dictionary",
+                        context.AbiType);
                 }
             }
             else

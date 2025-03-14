@@ -109,7 +109,7 @@ public static class AbiEncoderDecoderTestCases
         [7] = new(
             "Simple static tuple with two uint256",
             "function foo((uint256 id, uint256 balance) account)",
-            AbiKeyValues.Create("account", ((BigInteger)3u, (BigInteger)10u)),
+            AbiKeyValues.Create("account", AbiKeyValues.Create("id", (BigInteger)3u, "balance", (BigInteger)10u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
                 "0x000000000000000000000000000000000000000000000000000000000000000a  // account.balance"
@@ -121,7 +121,7 @@ public static class AbiEncoderDecoderTestCases
         [8] = new(
             "Bool and static tuple with two uint256",
             "function foo(bool isActive, (uint256 id, uint256 balance) account)",
-            AbiKeyValues.Create("isActive", true, "account", ((BigInteger)3u, (BigInteger)10u)),
+            AbiKeyValues.Create("isActive", true, "account", AbiKeyValues.Create("id", (BigInteger)3u, "balance", (BigInteger)10u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000003  // account.id",
@@ -135,7 +135,7 @@ public static class AbiEncoderDecoderTestCases
         [9] = new(
             "Two static tuples with mixed static types",
             "function foo((bool isActive, uint256 seenUnix) prof, (uint256 id, uint256 balance) account)",
-            AbiKeyValues.Create("prof", (true, (BigInteger)20u), "account", ((BigInteger)3u, (BigInteger)10u)),
+            AbiKeyValues.Create("prof", AbiKeyValues.Create("isActive", true, "seenUnix", (BigInteger)20u), "account", AbiKeyValues.Create("id", (BigInteger)3u, "balance", (BigInteger)10u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // prof.seenUnix",
@@ -151,7 +151,7 @@ public static class AbiEncoderDecoderTestCases
         [10] = new(
             "Nested static tuple with mixed static types",
             "function foo(((bool isActive, uint256 seenUnix) prof, uint256 id, uint256 balance) account)",
-            AbiKeyValues.Create("account", ((true, (BigInteger)20u), (BigInteger)3u, (BigInteger)10u)),
+            AbiKeyValues.Create("account", AbiKeyValues.Create("prof", AbiKeyValues.Create("isActive", true, "seenUnix", (BigInteger)20u), "id", (BigInteger)3u, "balance", (BigInteger)10u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // account.prof.isActive",
                 "0x0000000000000000000000000000000000000000000000000000000000000014  // account.prof.seenUnix",
@@ -245,7 +245,7 @@ public static class AbiEncoderDecoderTestCases
         [15] = new(
             "Dynamic string in tuple with bool",
             "function foo(bool isActive, (string id, uint256 balance) account)",
-            AbiKeyValues.Create("isActive", true, "account", ("abc", (BigInteger)9u)),
+            AbiKeyValues.Create("isActive", true, "account", AbiKeyValues.Create("id", "abc", "balance", (BigInteger)9u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to dynamic tuple 'account'",
@@ -265,7 +265,7 @@ public static class AbiEncoderDecoderTestCases
         [16] = new(
             "Nested tuple with two dynamic strings",
             "function foo(bool isActive, ((string id, string name) user, uint256 balance) account)",
-            AbiKeyValues.Create("isActive", true, "account", (("a", "abc"), (BigInteger)9u)),
+            AbiKeyValues.Create("isActive", true, "account", AbiKeyValues.Create("user", AbiKeyValues.Create("id", "a", "name", "abc"), "balance", (BigInteger)9u)),
             new List<string> {
                 "0x0000000000000000000000000000000000000000000000000000000000000001  // isActive true",
                 "0x0000000000000000000000000000000000000000000000000000000000000040  // offset to outer dynamic tuple 'account'",
@@ -373,7 +373,11 @@ public static class AbiEncoderDecoderTestCases
             "function foo(uint256 orderNumber, (bool isLatte, bool hasMilk, bool hasSugar)[] coffeeOrders)",
             AbiKeyValues.Create(
                 "orderNumber", new BigInteger(42),
-                "coffeeOrders", new (bool, bool, bool)[] { (true, false, true), (false, true, false) }
+                "coffeeOrders", new AbiKeyValues[]
+                {
+                    AbiKeyValues.Create("isLatte", true, "hasMilk", false, "hasSugar", true),
+                    AbiKeyValues.Create("isLatte", false, "hasMilk", true, "hasSugar", false)
+                }
             ),
             new List<string> {
                 "0x000000000000000000000000000000000000000000000000000000000000002a  // uint256 orderNumber (42)",

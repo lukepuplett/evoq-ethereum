@@ -438,17 +438,19 @@ public class AbiParam
 
             return (bare, named);
         }
-
-        // single type
-
-        if (!AbiTypes.TryGetCanonicalType(type, out var singleType))
+        else
         {
-            throw new ArgumentException($"Invalid ABI type: {type}", nameof(type));
+            // single type
+
+            if (!AbiTypes.TryGetCanonicalType(type, out var singleType))
+            {
+                throw new ArgumentException($"Invalid ABI type: {type}", nameof(type));
+            }
+
+            singleType = $"{singleType}{FormatArrayLengthsSuffix(arrayLengths)}";
+
+            return (singleType, singleType);
         }
-
-        singleType = $"{singleType}{FormatArrayLengthsSuffix(arrayLengths)}";
-
-        return (singleType, singleType);
     }
 
     private static string FormatArrayLengthsSuffix(IReadOnlyList<int>? arrayLengths)
