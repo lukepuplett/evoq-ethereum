@@ -145,3 +145,17 @@ public class ComplexAttributeMappedUser
     // No attribute - should not be mapped by attribute
     public string? UnmappedProperty { get; set; }
 }
+
+// Record struct for testing
+public record struct TokenInfo(
+    EthereumAddress ContractAddress,
+    string Symbol,
+    byte Decimals,
+    BigInteger TotalSupply);
+
+// Record struct with nullable properties
+public record struct UserStats(
+    string Username,
+    BigInteger? Reputation,
+    int TransactionCount,
+    bool IsVerified);

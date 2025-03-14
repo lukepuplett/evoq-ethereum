@@ -85,18 +85,22 @@ public class JsonRpcClient : IEthereumJsonRpc
 
         var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
 
-        var hexString = response.Result;
-        if (hexString == null)
-        {
-            throw new JsonRpcNullResultException("JSON-RPC response has null result");
-        }
-
-        return Hex.Parse(hexString, HexParseOptions.AllowOddLength);
+        return ParseHexResponse(response);
     }
 
-    public Task<Hex> EstimateGasAsync(TransactionParamsDto transactionParams, int id = 1)
+    /// <summary>
+    /// Estimates the gas required to invoke a method on a contract.
+    /// </summary>
+    /// <param name="transactionParams">The transaction parameters.</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>The estimated gas required to invoke the method.</returns>
+    public async Task<Hex> EstimateGasAsync(TransactionParamsDto transactionParams, int id = 1)
     {
-        throw new NotImplementedException();
+        var request = JsonRpcRequestDtoFactory.CreateEstimateGasRequest(transactionParams, id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
     }
 
     public Task<Hex> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
@@ -124,13 +128,7 @@ public class JsonRpcClient : IEthereumJsonRpc
 
         var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
 
-        var hexString = response.Result;
-        if (hexString == null)
-        {
-            throw new JsonRpcNullResultException("JSON-RPC response has null result");
-        }
-
-        return Hex.Parse(hexString, HexParseOptions.AllowOddLength);
+        return ParseHexResponse(response);
     }
 
     public Task<Hex> SendTransactionAsync(TransactionParamsDto transactionParams, int id = 1)
@@ -170,6 +168,17 @@ public class JsonRpcClient : IEthereumJsonRpc
         }
 
         return response;
+    }
+
+    private static Hex ParseHexResponse(JsonRpcResponseDto<string> response)
+    {
+        var hexString = response.Result;
+        if (hexString == null)
+        {
+            throw new JsonRpcNullResultException("JSON-RPC response has null result");
+        }
+
+        return Hex.Parse(hexString, HexParseOptions.AllowOddLength);
     }
 
     private HttpClient CreateHttpClient(bool fresh)

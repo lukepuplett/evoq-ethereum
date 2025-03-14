@@ -44,7 +44,7 @@ public class AbiConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="dictionary">The dictionary containing values.</param>
     /// <returns>An instance of T populated with values from the dictionary.</returns>
-    public T DictionaryToObject<T>(IDictionary<string, object?> dictionary) where T : new()
+    public T DictionaryToObject<T>(IDictionary<string, object?> dictionary)
     {
         return dictionaryConverter.DictionaryToObject<T>(dictionary);
     }
@@ -55,7 +55,7 @@ public class AbiConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="tuple">The tuple containing values.</param>
     /// <returns>An instance of T populated with values from the tuple.</returns>
-    public T TupleToObject<T>(ITuple tuple) where T : new()
+    public T TupleToObject<T>(ITuple tuple)
     {
         return tupleConverter.TupleToObject<T>(tuple);
     }
@@ -66,7 +66,7 @@ public class AbiConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="values">The array of values.</param>
     /// <returns>An instance of T populated with values from the array.</returns>
-    public T ArrayToObject<T>(object[] values) where T : new()
+    public T ArrayToObject<T>(object[] values)
     {
         return arrayConverter.ArrayToObject<T>(values);
     }

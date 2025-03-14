@@ -1,4 +1,5 @@
 using Evoq.Blockchain;
+using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Configuration;
@@ -85,8 +86,27 @@ public class ExampleEAS
 
         var result = await contract.CallAsync("getSchema", account, schemaIdHex);
 
+        if (!result.Values.TryFirst(out var first))
+        {
+            throw new Exception("The call to getSchema returned an empty dictionary");
+        }
+
+        if (first is not IDictionary<string, object?> firstDict)
+        {
+            throw new Exception("The call to getSchema returned an unexpected result");
+        }
+
+        var x = new AbiConverter();
+        var y = x.DictionaryToObject<SchemaRecordDto>(firstDict);
+
         Assert.IsNotNull(result);
 
         result.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
     }
 }
+
+public record SchemaRecordDto(
+    string Uid,
+    string Resolver,
+    bool Revocable,
+    string Schema);

@@ -31,20 +31,30 @@ internal class ArrayObjectConverter
     }
 
     //
-
     /// <summary>
     /// Converts an array of values to a strongly-typed object by mapping array elements to properties in order.
     /// </summary>
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="values">The array of values.</param>
     /// <returns>An instance of T populated with values from the array.</returns>
-    public T ArrayToObject<T>(object[] values) where T : new()
+    public T ArrayToObject<T>(object[] values)
+    {
+        return (T)ArrayToObject(typeof(T), values);
+    }
+
+    /// <summary>
+    /// Converts an array of values to a strongly-typed object by mapping array elements to properties in order.
+    /// </summary>
+    /// <param name="type">The type to convert to.</param>
+    /// <param name="values">The array of values.</param>
+    /// <returns>An instance of T populated with values from the array.</returns>
+    public object ArrayToObject(Type type, object[] values)
     {
         if (values == null)
             throw new ArgumentNullException(nameof(values));
 
-        var result = new T();
-        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+        var result = Activator.CreateInstance(type);
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite)
             .ToArray();
 

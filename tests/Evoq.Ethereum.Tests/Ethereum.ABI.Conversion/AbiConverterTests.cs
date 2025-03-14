@@ -449,4 +449,73 @@ public class AbiConverterTests
         Assert.AreEqual(BigInteger.Parse("92"), user.Scores[2]);
     }
 
+    [TestMethod]
+    public void TokenInfo_RecordStruct_ConvertFromDictionary_Success()
+    {
+        // Arrange - Simulating token information
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "ContractAddress", "0x6b175474e89094c44da98b954eedeac495271d0f" }, // DAI token
+            { "Symbol", "DAI" },
+            { "Decimals", (byte)18 },
+            { "TotalSupply", BigInteger.Parse("1000000000000000000000000000") } // 1 billion DAI
+        };
+
+        // Act
+        var tokenInfo = this.converter.DictionaryToObject<TokenInfo>(dictionary);
+
+        // Assert
+        Assert.IsTrue(string.Equals(
+            "0x6b175474e89094c44da98b954eedeac495271d0f",
+            tokenInfo.ContractAddress.ToString(),
+            StringComparison.OrdinalIgnoreCase));
+        Assert.AreEqual("DAI", tokenInfo.Symbol);
+        Assert.AreEqual(18, tokenInfo.Decimals);
+        Assert.AreEqual(BigInteger.Parse("1000000000000000000000000000"), tokenInfo.TotalSupply);
+    }
+
+    [TestMethod]
+    public void UserStats_RecordStructWithNullables_ConvertFromDictionary_Success()
+    {
+        // Arrange
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Username", "crypto_trader" },
+            { "Reputation", null }, // Testing nullable BigInteger
+            { "TransactionCount", 42 },
+            { "IsVerified", true }
+        };
+
+        // Act
+        var userStats = this.converter.DictionaryToObject<UserStats>(dictionary);
+
+        // Assert
+        Assert.AreEqual("crypto_trader", userStats.Username);
+        Assert.IsNull(userStats.Reputation); // Should handle null for nullable BigInteger
+        Assert.AreEqual(42, userStats.TransactionCount);
+        Assert.IsTrue(userStats.IsVerified);
+    }
+
+    [TestMethod]
+    public void UserStats_RecordStructWithAllValues_ConvertFromDictionary_Success()
+    {
+        // Arrange
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Username", "whale_account" },
+            { "Reputation", BigInteger.Parse("9500") },
+            { "TransactionCount", 157 },
+            { "IsVerified", true }
+        };
+
+        // Act
+        var userStats = this.converter.DictionaryToObject<UserStats>(dictionary);
+
+        // Assert
+        Assert.AreEqual("whale_account", userStats.Username);
+        Assert.AreEqual(BigInteger.Parse("9500"), userStats.Reputation);
+        Assert.AreEqual(157, userStats.TransactionCount);
+        Assert.IsTrue(userStats.IsVerified);
+    }
+
 }

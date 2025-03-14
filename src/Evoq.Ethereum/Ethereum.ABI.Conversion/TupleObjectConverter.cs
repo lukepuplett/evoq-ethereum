@@ -37,13 +37,24 @@ internal class TupleObjectConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="tuple">The tuple containing values.</param>
     /// <returns>An instance of T populated with values from the tuple.</returns>
-    public T TupleToObject<T>(ITuple tuple) where T : new()
+    public T TupleToObject<T>(ITuple tuple)
+    {
+        return (T)TupleToObject(typeof(T), tuple);
+    }
+
+    /// <summary>
+    /// Converts a tuple of values to a strongly-typed object by mapping tuple elements to properties in order.
+    /// </summary>
+    /// <param name="type">The type to convert to.</param>
+    /// <param name="tuple">The tuple containing values.</param>
+    /// <returns>An instance of T populated with values from the tuple.</returns>
+    public object TupleToObject(Type type, ITuple tuple)
     {
         if (tuple == null)
             throw new ArgumentNullException(nameof(tuple));
 
-        var result = new T();
-        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+        var result = Activator.CreateInstance(type);
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite)
             .ToArray();
 

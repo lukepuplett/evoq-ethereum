@@ -13,6 +13,7 @@ internal class DictionaryObjectConverter
 {
     private readonly AbiClrTypeConverter typeConverter;
     private readonly DefaultValueChecker defaultValueChecker = new DefaultValueChecker();
+    private readonly InstanceFactory instanceFactory = new InstanceFactory();
 
     //
 
@@ -41,7 +42,7 @@ internal class DictionaryObjectConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="dictionary">The dictionary containing values.</param>
     /// <returns>An instance of T populated with values from the dictionary.</returns>
-    public T DictionaryToObject<T>(IDictionary<string, object?> dictionary) where T : new()
+    public T DictionaryToObject<T>(IDictionary<string, object?> dictionary)
     {
         return (T)DictionaryToObject(dictionary, typeof(T));
     }
@@ -60,18 +61,21 @@ internal class DictionaryObjectConverter
             throw new ArgumentNullException(nameof(dictionary));
         }
 
-        var obj = Activator.CreateInstance(type);
+        // Create an instance of the type using our InstanceFactory
+        var obj = instanceFactory.CreateInstance(type);
+
+        // Get properties that can be written to
         var objectProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite)
             .ToList();
 
-        // First try to map by attribute
+        // Map properties by attribute
         MapPropertiesByAttribute(obj, objectProperties, dictionary);
 
-        // Then try to map by name
+        // Map properties by name
         MapPropertiesByName(obj, objectProperties, dictionary);
 
-        // Finally try to map by position for any unmapped properties
+        // Map properties by position
         MapPropertiesByPosition(obj, objectProperties, dictionary);
 
         return obj;
