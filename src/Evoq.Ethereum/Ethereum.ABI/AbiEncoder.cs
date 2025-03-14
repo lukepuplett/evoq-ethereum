@@ -233,7 +233,7 @@ public class AbiEncoder : IAbiEncoder
 
         if (!this.TryFindStaticSlotEncoder(context, out var encoder))
         {
-            throw NotImplemented(context.AbiType, context.Value.GetType());
+            throw NoEncoderException(context.AbiType, context.Value.GetType());
         }
 
         context.Block.Add(encoder!(context.Value));
@@ -363,7 +363,7 @@ public class AbiEncoder : IAbiEncoder
 
         if (!this.TryFindDynamicBytesEncoder(context, out var encoder))
         {
-            throw NotImplemented(context.AbiType, context.Value.GetType());
+            throw NoEncoderException(context.AbiType, context.Value.GetType());
         }
 
         byte[] paddedBytes = encoder!(context.Value);
@@ -735,8 +735,8 @@ public class AbiEncoder : IAbiEncoder
 
     //
 
-    private static Exception NotImplemented(string abiType, Type clrType) =>
-        new NotImplementedException(
+    private static Exception NoEncoderException(string abiType, Type clrType) =>
+        new AbiEncodingException(
             $"Encoding not implemented: ABI type '{abiType}' with .NET type '{clrType}' is not supported. " +
             $"Please use a supported type combination or implement a custom encoder.");
 

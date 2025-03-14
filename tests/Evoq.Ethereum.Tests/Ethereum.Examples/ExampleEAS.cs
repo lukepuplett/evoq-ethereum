@@ -84,11 +84,22 @@ public class ExampleEAS
         var sender = new Sender(privateKey, nonceStore!);
         var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
+
+        // guess gas price
+
+        var registerArgs = AbiKeyValues.Create("schema", "schemaDefinition", "resolver", EthereumAddress.Zero, "revocable", true);
+
+        var gasPrice = await contract.EstimateGasAsync("register", account, null, registerArgs);
+
+        Assert.AreEqual(100000, gasPrice); // TODO: get a real estimate
+
+        // get schema
+
         var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e"); // random, non-existent schemaId
 
-        var result = await contract.CallAsync("getSchema", account, AbiKeyValues.Create("uid", schemaIdHex));
+        var getSchemaResult = await contract.CallAsync("getSchema", account, AbiKeyValues.Create("uid", schemaIdHex));
 
-        if (!result.Values.TryFirst(out var first))
+        if (!getSchemaResult.Values.TryFirst(out var first))
         {
             throw new Exception("The call to getSchema returned an empty dictionary");
         }
@@ -101,9 +112,9 @@ public class ExampleEAS
         var x = new AbiConverter();
         var y = x.DictionaryToObject<SchemaRecordDto>(firstDict);
 
-        Assert.IsNotNull(result);
+        Assert.IsNotNull(getSchemaResult);
 
-        result.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
+        getSchemaResult.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
     }
 }
 
