@@ -6,7 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Evoq.Ethereum.Tests;
 
 [TestClass]
-public class EthereumAmountsTests
+public class EtherAmountsTests
 {
     [TestMethod]
     public void Constructor_SetsPropertiesCorrectly()
@@ -16,7 +16,7 @@ public class EthereumAmountsTests
         var unit = EthereumUnit.Ether;
 
         // Act
-        var amount = new EthereumAmount(weiValue, unit);
+        var amount = new EtherAmount(weiValue, unit);
 
         // Assert
         Assert.AreEqual(weiValue, amount.WeiValue);
@@ -30,7 +30,7 @@ public class EthereumAmountsTests
         var wei = new BigInteger(1000000000);
 
         // Act
-        var amount = EthereumAmount.FromWei(wei);
+        var amount = EtherAmount.FromWei(wei);
 
         // Assert
         Assert.AreEqual(wei, amount.WeiValue);
@@ -44,7 +44,7 @@ public class EthereumAmountsTests
         decimal ether = 1.23m;
 
         // Act
-        var amount = EthereumAmount.FromEther(ether);
+        var amount = EtherAmount.FromEther(ether);
 
         // Assert
         Assert.AreEqual(EthereumUnit.Ether, amount.DisplayUnit);
@@ -55,8 +55,8 @@ public class EthereumAmountsTests
     public void ToWei_ConvertsCorrectly()
     {
         // Arrange
-        var weiAmount = EthereumAmount.FromWei(1000000000000000000);
-        var etherAmount = EthereumAmount.FromEther(1);
+        var weiAmount = EtherAmount.FromWei(1000000000000000000);
+        var etherAmount = EtherAmount.FromEther(1);
 
         // Act & Assert
         Assert.AreEqual(new BigInteger(1000000000000000000), weiAmount.ToWei(), "Wei amount should convert to correct Wei value");
@@ -67,8 +67,8 @@ public class EthereumAmountsTests
     public void ToEther_ConvertsCorrectly()
     {
         // Arrange
-        var weiAmount = EthereumAmount.FromWei(1000000000000000000);
-        var etherAmount = EthereumAmount.FromEther(1);
+        var weiAmount = EtherAmount.FromWei(1000000000000000000);
+        var etherAmount = EtherAmount.FromEther(1);
 
         // Act & Assert
         Assert.AreEqual(1m, weiAmount.ToEther(), "Wei amount should convert to correct Ether value");
@@ -79,7 +79,7 @@ public class EthereumAmountsTests
     public void ConvertTo_ChangesUnitCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
+        var oneEther = EtherAmount.FromEther(1);
 
         // Act
         var inWei = oneEther.ConvertTo(EthereumUnit.Wei);
@@ -97,8 +97,8 @@ public class EthereumAmountsTests
     public void ToString_FormatsCorrectly()
     {
         // Arrange
-        var weiAmount = EthereumAmount.FromWei(123);
-        var etherAmount = EthereumAmount.FromEther(7.89m);
+        var weiAmount = EtherAmount.FromWei(123);
+        var etherAmount = EtherAmount.FromEther(7.89m);
 
         // Act
         var weiString = weiAmount.ToString();
@@ -117,7 +117,7 @@ public class EthereumAmountsTests
         decimal originalEther = 1.23456789m;
 
         // Act
-        var amount = EthereumAmount.FromEther(originalEther);
+        var amount = EtherAmount.FromEther(originalEther);
         decimal roundTrippedEther = amount.ToEther();
 
         // Assert
@@ -128,10 +128,10 @@ public class EthereumAmountsTests
     public void Equals_ComparesValuesCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneEtherAgain = EthereumAmount.FromEther(1);
-        var oneEtherInWei = EthereumAmount.FromWei(1000000000000000000);
-        var twoEther = EthereumAmount.FromEther(2);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneEtherAgain = EtherAmount.FromEther(1);
+        var oneEtherInWei = EtherAmount.FromWei(1000000000000000000);
+        var twoEther = EtherAmount.FromEther(2);
 
         // Act & Assert
         Assert.IsTrue(oneEther.Equals(oneEtherAgain), "Same Ether amounts should be equal");
@@ -145,8 +145,8 @@ public class EthereumAmountsTests
     public void GetHashCode_ReturnsSameValueForEqualAmounts()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneEtherInWei = EthereumAmount.FromWei(1000000000000000000);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneEtherInWei = EtherAmount.FromWei(1000000000000000000);
 
         // Act & Assert
         Assert.AreEqual(oneEther.GetHashCode(), oneEtherInWei.GetHashCode(),
@@ -157,9 +157,9 @@ public class EthereumAmountsTests
     public void CompareTo_OrdersAmountsCorrectly()
     {
         // Arrange
-        var smallAmount = EthereumAmount.FromWei(1000000000000000); // 0.001 Ether
-        var mediumAmount = EthereumAmount.FromWei(2000000000000000); // 0.002 Ether
-        var largeAmount = EthereumAmount.FromEther(1);
+        var smallAmount = EtherAmount.FromWei(1000000000000000); // 0.001 Ether
+        var mediumAmount = EtherAmount.FromWei(2000000000000000); // 0.002 Ether
+        var largeAmount = EtherAmount.FromEther(1);
 
         // Act & Assert
         Assert.IsTrue(smallAmount.CompareTo(mediumAmount) < 0, "Smaller amount should compare less than larger amount");
@@ -172,9 +172,9 @@ public class EthereumAmountsTests
     public void OperatorEquals_ComparesCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneEtherInWei = EthereumAmount.FromWei(1000000000000000000);
-        var twoEther = EthereumAmount.FromEther(2);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneEtherInWei = EtherAmount.FromWei(1000000000000000000);
+        var twoEther = EtherAmount.FromEther(2);
 
         // Act & Assert
         Assert.IsTrue(oneEther == oneEtherInWei, "Equal amounts should be equal with == operator");
@@ -185,9 +185,9 @@ public class EthereumAmountsTests
     public void OperatorNotEquals_ComparesCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneEtherInWei = EthereumAmount.FromWei(1000000000000000000);
-        var twoEther = EthereumAmount.FromEther(2);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneEtherInWei = EtherAmount.FromWei(1000000000000000000);
+        var twoEther = EtherAmount.FromEther(2);
 
         // Act & Assert
         Assert.IsFalse(oneEther != oneEtherInWei, "Equal amounts should not be unequal with != operator");
@@ -198,9 +198,9 @@ public class EthereumAmountsTests
     public void ComparisonOperators_CompareCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var twoEther = EthereumAmount.FromEther(2);
-        var oneEtherAgain = EthereumAmount.FromEther(1);
+        var oneEther = EtherAmount.FromEther(1);
+        var twoEther = EtherAmount.FromEther(2);
+        var oneEtherAgain = EtherAmount.FromEther(1);
 
         // Act & Assert
         Assert.IsTrue(oneEther < twoEther, "1 ETH should be less than 2 ETH");
@@ -222,10 +222,10 @@ public class EthereumAmountsTests
     public void Addition_CombinesAmountsCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var twoEther = EthereumAmount.FromEther(2);
-        var threeEther = EthereumAmount.FromEther(3);
-        var oneGwei = EthereumAmount.FromWei(1000000000); // 1 Gwei = 10^9 Wei
+        var oneEther = EtherAmount.FromEther(1);
+        var twoEther = EtherAmount.FromEther(2);
+        var threeEther = EtherAmount.FromEther(3);
+        var oneGwei = EtherAmount.FromWei(1000000000); // 1 Gwei = 10^9 Wei
 
         // Act
         var sum1 = oneEther + twoEther;
@@ -241,10 +241,10 @@ public class EthereumAmountsTests
     public void Subtraction_ReducesAmountsCorrectly()
     {
         // Arrange
-        var threeEther = EthereumAmount.FromEther(3);
-        var twoEther = EthereumAmount.FromEther(2);
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneGwei = EthereumAmount.FromWei(1000000000); // 1 Gwei = 10^9 Wei
+        var threeEther = EtherAmount.FromEther(3);
+        var twoEther = EtherAmount.FromEther(2);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneGwei = EtherAmount.FromWei(1000000000); // 1 Gwei = 10^9 Wei
 
         // Act
         var diff1 = threeEther - twoEther;
@@ -260,8 +260,8 @@ public class EthereumAmountsTests
     public void Addition_WithDifferentUnits_WorksCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneWei = EthereumAmount.FromWei(1);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneWei = EtherAmount.FromWei(1);
         var expectedWei = new BigInteger(1000000000000000001);
 
         // Act
@@ -279,8 +279,8 @@ public class EthereumAmountsTests
     public void Subtraction_WithDifferentUnits_WorksCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var oneWei = EthereumAmount.FromWei(1);
+        var oneEther = EtherAmount.FromEther(1);
+        var oneWei = EtherAmount.FromWei(1);
         var expectedWei = new BigInteger(999999999999999999);
 
         // Act
@@ -295,8 +295,8 @@ public class EthereumAmountsTests
     public void Subtraction_ResultingInNegativeAmount_ThrowsException()
     {
         // Arrange
-        var smallAmount = EthereumAmount.FromWei(1);
-        var largeAmount = EthereumAmount.FromEther(1);
+        var smallAmount = EtherAmount.FromWei(1);
+        var largeAmount = EtherAmount.FromEther(1);
 
         // Act & Assert
         Assert.ThrowsException<InvalidOperationException>(() => smallAmount - largeAmount,
@@ -307,7 +307,7 @@ public class EthereumAmountsTests
     public void MultiplyByDecimal_ScalesAmountCorrectly()
     {
         // Arrange
-        var twoEther = EthereumAmount.FromEther(2);
+        var twoEther = EtherAmount.FromEther(2);
         decimal factor = 1.5m;
 
         // Act
@@ -322,7 +322,7 @@ public class EthereumAmountsTests
     public void DivideByDecimal_ScalesAmountCorrectly()
     {
         // Arrange
-        var twoEther = EthereumAmount.FromEther(2);
+        var twoEther = EtherAmount.FromEther(2);
         decimal divisor = 4m;
 
         // Act
@@ -337,7 +337,7 @@ public class EthereumAmountsTests
     public void DivideByZero_ThrowsException()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
+        var oneEther = EtherAmount.FromEther(1);
         decimal divisor = 0m;
 
         // Act & Assert
@@ -349,9 +349,9 @@ public class EthereumAmountsTests
     public void ChainedOperations_CalculateCorrectly()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
-        var twoEther = EthereumAmount.FromEther(2);
-        var halfEther = EthereumAmount.FromEther(0.5m);
+        var oneEther = EtherAmount.FromEther(1);
+        var twoEther = EtherAmount.FromEther(2);
+        var halfEther = EtherAmount.FromEther(0.5m);
 
         // Act
         var result = oneEther + twoEther - halfEther;
@@ -364,11 +364,11 @@ public class EthereumAmountsTests
     public void VerySmallAmount_HandledCorrectly()
     {
         // Arrange
-        var oneWei = EthereumAmount.FromWei(1);
+        var oneWei = EtherAmount.FromWei(1);
 
         // Act
         var etherValue = oneWei.ToEther();
-        var backToWei = EthereumAmount.FromEther(etherValue);
+        var backToWei = EtherAmount.FromEther(etherValue);
 
         // Assert
         Assert.AreEqual(1, oneWei.ToWei(), "One Wei should be preserved");
@@ -380,12 +380,12 @@ public class EthereumAmountsTests
     public void VeryLargeAmount_HandledCorrectly()
     {
         // Arrange - 100 million Ether (more than currently exists)
-        var largeEtherAmount = EthereumAmount.FromEther(100_000_000m);
+        var largeEtherAmount = EtherAmount.FromEther(100_000_000m);
         var expectedWei = new BigInteger(100_000_000) * new BigInteger(1000000000000000000);
 
         // Act
         var weiValue = largeEtherAmount.ToWei();
-        var backToEther = EthereumAmount.FromWei(weiValue).ToEther();
+        var backToEther = EtherAmount.FromWei(weiValue).ToEther();
 
         // Assert
         Assert.AreEqual(expectedWei, weiValue, "Large Ether amount should convert to correct Wei value");
@@ -396,9 +396,9 @@ public class EthereumAmountsTests
     public void ZeroAmount_HandledCorrectly()
     {
         // Arrange
-        var zeroEther = EthereumAmount.FromEther(0);
-        var zeroWei = EthereumAmount.FromWei(0);
-        var oneEther = EthereumAmount.FromEther(1);
+        var zeroEther = EtherAmount.FromEther(0);
+        var zeroWei = EtherAmount.FromWei(0);
+        var oneEther = EtherAmount.FromEther(1);
 
         // Act
         var additionResult = zeroEther + oneEther;
@@ -420,11 +420,11 @@ public class EthereumAmountsTests
     {
         // Arrange - number with 18 decimal places (maximum Ether precision)
         decimal maxPrecisionEther = 1.123456789123456789m;
-        var amount = EthereumAmount.FromEther(maxPrecisionEther);
+        var amount = EtherAmount.FromEther(maxPrecisionEther);
 
         // Act
         var weiValue = amount.ToWei();
-        var backToEther = EthereumAmount.FromWei(weiValue).ToEther();
+        var backToEther = EtherAmount.FromWei(weiValue).ToEther();
 
         // Assert
         // Note: C# decimal has maximum 28-29 significant digits, so we'll get some precision loss
@@ -449,7 +449,7 @@ public class EthereumAmountsTests
         decimal highPrecisionEther = 1.123456789123456789123456789m;
 
         // Act
-        var amount = EthereumAmount.FromEther(highPrecisionEther);
+        var amount = EtherAmount.FromEther(highPrecisionEther);
 
         // Assert
         // Should round to 18 decimal places
@@ -461,7 +461,7 @@ public class EthereumAmountsTests
     public void MultiplicationRounding_PreservesPrecision()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1m);
+        var oneEther = EtherAmount.FromEther(1m);
         var oneThirdEther = oneEther / 3m;
 
         // Act
@@ -478,7 +478,7 @@ public class EthereumAmountsTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() =>
-            EthereumAmount.FromEther(-1m),
+            EtherAmount.FromEther(-1m),
             "Should reject negative Ether input");
     }
 
@@ -487,7 +487,7 @@ public class EthereumAmountsTests
     {
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() =>
-            EthereumAmount.FromWei(new BigInteger(-1)),
+            EtherAmount.FromWei(new BigInteger(-1)),
             "Should reject negative Wei input");
     }
 
@@ -500,7 +500,7 @@ public class EthereumAmountsTests
         var largeWeiAmount = billion * weiInOneEther;
 
         // Act
-        var amount = EthereumAmount.FromWei(largeWeiAmount);
+        var amount = EtherAmount.FromWei(largeWeiAmount);
 
         // Assert
         Assert.AreEqual(1000000000m, amount.ToEther(),
@@ -517,7 +517,7 @@ public class EthereumAmountsTests
 
         // Act & Assert
         Assert.ThrowsException<ArgumentException>(() =>
-            new EthereumAmount(BigInteger.One, invalidUnit),
+            new EtherAmount(BigInteger.One, invalidUnit),
             "Should reject invalid EthereumUnit values");
     }
 
@@ -525,7 +525,7 @@ public class EthereumAmountsTests
     public void ConvertToInvalidUnit_ThrowsException()
     {
         // Arrange
-        var amount = EthereumAmount.FromEther(1);
+        var amount = EtherAmount.FromEther(1);
         var invalidUnit = (EthereumUnit)999;
 
         // Act & Assert
@@ -538,7 +538,7 @@ public class EthereumAmountsTests
     public void MultiplicationWithSmallValues_PreservesPrecision()
     {
         // Arrange
-        var oneWei = EthereumAmount.FromWei(1);
+        var oneWei = EtherAmount.FromWei(1);
 
         // Act
         var result = oneWei * 0.5m;
@@ -552,7 +552,7 @@ public class EthereumAmountsTests
     public void DivisionOfSmallValues_HandlesCorrectly()
     {
         // Arrange
-        var twoWei = EthereumAmount.FromWei(2);
+        var twoWei = EtherAmount.FromWei(2);
 
         // Act
         var result = twoWei / 2m;
@@ -566,7 +566,7 @@ public class EthereumAmountsTests
     public void ToString_WithCustomPrecision()
     {
         // Arrange
-        var amount = EthereumAmount.FromEther(1.23456789m);
+        var amount = EtherAmount.FromEther(1.23456789m);
 
         // Act & Assert
         // Note: This test assumes we implement a ToString(int decimals) method
@@ -583,7 +583,7 @@ public class EthereumAmountsTests
         var hex = Hex.Parse("0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000"); // 1 Ether in Wei (1e18)
 
         // Act
-        var amount = EthereumAmount.FromHex(hex);
+        var amount = EtherAmount.FromHex(hex);
 
         // Assert
         Assert.AreEqual(1m, amount.ToEther(), "1 Ether in hex should convert to 1 Ether");
@@ -597,7 +597,7 @@ public class EthereumAmountsTests
         var hex = Hex.Parse("0x0a"); // 10 Wei
 
         // Act
-        var amount = EthereumAmount.FromHex(hex);
+        var amount = EtherAmount.FromHex(hex);
 
         // Assert
         Assert.AreEqual(new BigInteger(10), amount.ToWei(), "10 in hex should convert to 10 Wei");
@@ -610,7 +610,7 @@ public class EthereumAmountsTests
         var hex = Hex.Parse("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // -1 in two's complement
 
         // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => EthereumAmount.FromHex(hex),
+        Assert.ThrowsException<ArgumentException>(() => EtherAmount.FromHex(hex),
             "Should reject hex values that would result in negative amounts");
     }
 
@@ -618,7 +618,7 @@ public class EthereumAmountsTests
     public void ToLocalCurrency_OneEther_ReturnsCorrectUsdCents()
     {
         // Arrange
-        var oneEther = EthereumAmount.FromEther(1);
+        var oneEther = EtherAmount.FromEther(1);
         var etherPriceInCents = new BigInteger(193045); // $1,930.45
 
         // Act
@@ -633,7 +633,7 @@ public class EthereumAmountsTests
     public void ToLocalCurrency_SmallAmount_HandlesRoundingCorrectly()
     {
         // Arrange
-        var smallAmount = EthereumAmount.FromEther(0.0001m); // About 19 cents
+        var smallAmount = EtherAmount.FromEther(0.0001m); // About 19 cents
         var etherPriceInCents = new BigInteger(193045);
 
         // Act
@@ -652,7 +652,7 @@ public class EthereumAmountsTests
         var etherPriceInCents = new BigInteger(193045); // $1,930.45
 
         // Act
-        var amount = EthereumAmount.FromLocalCurrency(oneDollarInCents, etherPriceInCents);
+        var amount = EtherAmount.FromLocalCurrency(oneDollarInCents, etherPriceInCents);
 
         // Assert
         Assert.AreEqual(0.000518m, Math.Round(amount.ToEther(), 6),
@@ -667,7 +667,7 @@ public class EthereumAmountsTests
         var etherPriceInCents = new BigInteger(193045);
 
         // Act
-        var amount = EthereumAmount.FromLocalCurrency(originalCents, etherPriceInCents);
+        var amount = EtherAmount.FromLocalCurrency(originalCents, etherPriceInCents);
         var roundTrippedCents = amount.ToLocalCurrency(etherPriceInCents);
 
         // Assert

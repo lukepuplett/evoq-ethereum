@@ -94,7 +94,7 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in Wei.
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EtherAmount"/> in Wei.
     /// </summary>
     /// <param name="wei">The amount in Wei as a BigInteger.</param>
     /// <returns>An EthereumAmount representing the specified amount of Wei.</returns>
@@ -102,13 +102,13 @@ public static class Extensions
     /// Wei is the smallest denomination of Ether (1 Ether = 10^18 Wei).
     /// This method interprets the BigInteger value directly as Wei without any conversion.
     /// </remarks>
-    public static EthereumAmount ToWeiAmount(this BigInteger wei)
+    public static EtherAmount ToWeiAmount(this BigInteger wei)
     {
-        return new EthereumAmount(wei, EthereumUnit.Wei);
+        return new EtherAmount(wei, EthereumUnit.Wei);
     }
 
     /// <summary>
-    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in Ether.
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EtherAmount"/> in Ether.
     /// </summary>
     /// <param name="ether">The amount in Ether as a BigInteger.</param>
     /// <returns>An EthereumAmount representing the specified amount of Ether.</returns>
@@ -118,13 +118,13 @@ public static class Extensions
     /// Note that since BigInteger is an integer type, this represents whole Ether units.
     /// For fractional Ether amounts, consider using the FromEther method with a decimal value.
     /// </remarks>
-    public static EthereumAmount ToEtherAmount(this BigInteger ether)
+    public static EtherAmount ToEtherAmount(this BigInteger ether)
     {
-        return new EthereumAmount(ether, EthereumUnit.Ether);
+        return new EtherAmount(ether, EthereumUnit.Ether);
     }
 
     /// <summary>
-    /// Converts a <see cref="BigInteger"/> to an <see cref="EthereumAmount"/> in the specified unit.
+    /// Converts a <see cref="BigInteger"/> to an <see cref="EtherAmount"/> in the specified unit.
     /// </summary>
     /// <param name="amount">The amount as a BigInteger.</param>
     /// <param name="unit">The Ethereum unit that the amount represents (Wei, Gwei, or Ether).</param>
@@ -133,8 +133,8 @@ public static class Extensions
     /// This method interprets the BigInteger value directly as the specified unit without any conversion.
     /// For example, if amount=5 and unit=EthereumUnit.Ether, this returns an EthereumAmount representing 5 Ether.
     /// </remarks>
-    public static EthereumAmount ToEthereumAmount(this BigInteger amount, EthereumUnit unit)
+    public static EtherAmount ToEthereumAmount(this BigInteger amount, EthereumUnit unit)
     {
-        return new EthereumAmount(amount, unit);
+        return new EtherAmount(amount, unit);
     }
 }

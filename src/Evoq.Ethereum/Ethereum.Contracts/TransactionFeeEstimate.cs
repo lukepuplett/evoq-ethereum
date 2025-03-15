@@ -30,7 +30,7 @@ public class TransactionFeeEstimate
     /// maxFeePerGas = baseFeePerGas * 2 + maxPriorityFeePerGas
     /// The multiplier accounts for potential base fee increases between blocks.
     /// </remarks>
-    public EthereumAmount MaxFeePerGas { get; set; }
+    public EtherAmount MaxFeePerGas { get; set; }
 
     /// <summary>
     /// The suggested maximum priority fee per gas (in wei).
@@ -39,7 +39,7 @@ public class TransactionFeeEstimate
     /// This is the "tip" you're willing to pay to miners/validators per unit of gas.
     /// Higher priority fees can result in faster transaction processing during network congestion.
     /// </remarks>
-    public EthereumAmount MaxPriorityFeePerGas { get; set; }
+    public EtherAmount MaxPriorityFeePerGas { get; set; }
 
     /// <summary>
     /// The current base fee per gas (in wei).
@@ -49,7 +49,7 @@ public class TransactionFeeEstimate
     /// It's the minimum fee required for inclusion and is burned (removed from circulation).
     /// The base fee automatically adjusts based on network congestion.
     /// </remarks>
-    public EthereumAmount BaseFeePerGas { get; set; }
+    public EtherAmount BaseFeePerGas { get; set; }
 
     /// <summary>
     /// The estimated total transaction fee in wei.
@@ -58,7 +58,7 @@ public class TransactionFeeEstimate
     /// Calculated as: (baseFeePerGas + maxPriorityFeePerGas) * gasLimit
     /// The actual fee may be lower if the transaction uses less than the gas limit.
     /// </remarks>
-    public EthereumAmount EstimatedFee { get; set; }
+    public EtherAmount EstimatedFee { get; set; }
 
     /// <summary>
     /// The legacy gas price, for backward compatibility with pre-EIP-1559 transactions.
@@ -67,7 +67,7 @@ public class TransactionFeeEstimate
     /// Before EIP-1559, transactions used a single gas price. This value combines the base fee
     /// and priority fee to provide an equivalent gas price for legacy (Type 0) transactions.
     /// </remarks>
-    public EthereumAmount GasPrice { get; set; }
+    public EtherAmount GasPrice { get; set; }
 
     /// <summary>
     /// The estimated maximum total fee in wei.
@@ -76,7 +76,7 @@ public class TransactionFeeEstimate
     /// This is the worst-case scenario fee: GasLimit * MaxFeePerGas
     /// You'll never pay more than this amount, regardless of base fee changes.
     /// </remarks>
-    public EthereumAmount MaxFee => GasLimit * MaxFeePerGas;
+    public EtherAmount MaxFee => GasLimit * MaxFeePerGas;
 
     /// <summary>
     /// The estimated minimum total fee in wei.
@@ -85,7 +85,7 @@ public class TransactionFeeEstimate
     /// This is the minimum possible fee if only the base fee is paid: GasLimit * BaseFeePerGas
     /// In practice, you'll always pay at least the priority fee on top of this.
     /// </remarks>
-    public EthereumAmount MinFee => GasLimit * BaseFeePerGas;
+    public EtherAmount MinFee => GasLimit * BaseFeePerGas;
 
     /// <summary>
     /// The estimated priority fee in wei.
@@ -93,5 +93,5 @@ public class TransactionFeeEstimate
     /// <remarks>
     /// This is the portion of the fee that goes to miners/validators: GasLimit * MaxPriorityFeePerGas
     /// </remarks>
-    public EthereumAmount PriorityFee => GasLimit * MaxPriorityFeePerGas;
+    public EtherAmount PriorityFee => GasLimit * MaxPriorityFeePerGas;
 }

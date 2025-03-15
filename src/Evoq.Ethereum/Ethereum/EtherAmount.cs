@@ -24,7 +24,7 @@ public enum EthereumUnit
 /// <summary>
 /// Represents an amount of Ethereum currency.
 /// </summary>
-public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<EthereumAmount>
+public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherAmount>
 {
     // Constants for conversion
     private static readonly BigInteger WeiPerEther = BigInteger.Parse("1000000000000000000");
@@ -45,7 +45,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="weiValue">The amount in Wei.</param>
     /// <param name="displayUnit">The unit to use for display.</param>
-    public EthereumAmount(BigInteger weiValue, EthereumUnit displayUnit)
+    public EtherAmount(BigInteger weiValue, EthereumUnit displayUnit)
     {
         if (!Enum.IsDefined(typeof(EthereumUnit), displayUnit))
         {
@@ -66,14 +66,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="wei">The amount in Wei.</param>
     /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
-    public static EthereumAmount FromWei(BigInteger wei)
+    public static EtherAmount FromWei(BigInteger wei)
     {
         if (wei < 0)
         {
             throw new ArgumentException("Ethereum amounts cannot be negative", nameof(wei));
         }
 
-        return new EthereumAmount(wei, EthereumUnit.Wei);
+        return new EtherAmount(wei, EthereumUnit.Wei);
     }
 
     /// <summary>
@@ -81,14 +81,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="ether">The amount in Ether.</param>
     /// <returns>A new EthereumAmount with Ether as the display unit.</returns>
-    public static EthereumAmount FromEther(decimal ether)
+    public static EtherAmount FromEther(decimal ether)
     {
         if (ether < 0)
         {
             throw new ArgumentException("Ethereum amounts cannot be negative", nameof(ether));
         }
 
-        return new EthereumAmount(
+        return new EtherAmount(
             (BigInteger)(ether * 1_000_000_000_000_000_000m),
             EthereumUnit.Ether);
     }
@@ -100,7 +100,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="hex">The hexadecimal representation of the amount.</param>
     /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
     /// <exception cref="ArgumentException">Thrown if the hex value is invalid or represents a negative number.</exception>
-    public static EthereumAmount FromHex(Hex hex)
+    public static EtherAmount FromHex(Hex hex)
     {
         // Check the most significant byte for negative numbers in two's complement
         byte[] bytes = hex.ToByteArray();
@@ -115,7 +115,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
             throw new ArgumentException("Ethereum amounts cannot be negative", nameof(hex));
         }
 
-        return new EthereumAmount(weiValue, EthereumUnit.Wei);
+        return new EtherAmount(weiValue, EthereumUnit.Wei);
     }
 
     /// <summary>
@@ -157,14 +157,14 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="unit">The target display unit.</param>
     /// <returns>A new EthereumAmount with the specified display unit.</returns>
-    public EthereumAmount ConvertTo(EthereumUnit unit)
+    public EtherAmount ConvertTo(EthereumUnit unit)
     {
         if (!Enum.IsDefined(typeof(EthereumUnit), unit))
         {
             throw new ArgumentException("Invalid Ethereum unit", nameof(unit));
         }
 
-        return new EthereumAmount(WeiValue, unit);
+        return new EtherAmount(WeiValue, unit);
     }
 
     /// <summary>
@@ -172,9 +172,9 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="other">The other amount to add.</param>
     /// <returns>A new EthereumAmount representing the sum.</returns>
-    public EthereumAmount Add(EthereumAmount other)
+    public EtherAmount Add(EtherAmount other)
     {
-        return new EthereumAmount(WeiValue + other.WeiValue, DisplayUnit);
+        return new EtherAmount(WeiValue + other.WeiValue, DisplayUnit);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="other">The amount to subtract.</param>
     /// <returns>A new EthereumAmount representing the difference.</returns>
-    public EthereumAmount Subtract(EthereumAmount other)
+    public EtherAmount Subtract(EtherAmount other)
     {
         var leftWei = ToWei();
         var rightWei = other.ToWei();
@@ -192,7 +192,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
             throw new InvalidOperationException("Cryptocurrency amounts cannot be negative");
         }
 
-        return new EthereumAmount(leftWei - rightWei, DisplayUnit);
+        return new EtherAmount(leftWei - rightWei, DisplayUnit);
     }
 
     /// <summary>
@@ -243,7 +243,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="other">The other instance.</param>
     /// <returns>True if the instances are equal, false otherwise.</returns>
-    public bool Equals(EthereumAmount other)
+    public bool Equals(EtherAmount other)
     {
         return WeiValue == other.WeiValue;
     }
@@ -255,7 +255,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <returns>True if the objects are equal, false otherwise.</returns>
     public override bool Equals(object obj)
     {
-        return obj is EthereumAmount other && Equals(other);
+        return obj is EtherAmount other && Equals(other);
     }
 
     /// <summary>
@@ -272,7 +272,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// </summary>
     /// <param name="other">The other instance.</param>
     /// <returns>A value indicating the relative order of the instances.</returns>
-    public int CompareTo(EthereumAmount other)
+    public int CompareTo(EtherAmount other)
     {
         return WeiValue.CompareTo(other.WeiValue);
     }
@@ -283,7 +283,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the instances are equal, false otherwise.</returns>
-    public static bool operator ==(EthereumAmount left, EthereumAmount right)
+    public static bool operator ==(EtherAmount left, EtherAmount right)
     {
         return left.Equals(right);
     }
@@ -294,7 +294,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the instances are not equal, false otherwise.</returns>
-    public static bool operator !=(EthereumAmount left, EthereumAmount right)
+    public static bool operator !=(EtherAmount left, EtherAmount right)
     {
         return !left.Equals(right);
     }
@@ -305,7 +305,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the first instance is less than the second instance, false otherwise.</returns>
-    public static bool operator <(EthereumAmount left, EthereumAmount right)
+    public static bool operator <(EtherAmount left, EtherAmount right)
     {
         return left.CompareTo(right) < 0;
     }
@@ -316,7 +316,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the first instance is greater than the second instance, false otherwise.</returns>
-    public static bool operator >(EthereumAmount left, EthereumAmount right)
+    public static bool operator >(EtherAmount left, EtherAmount right)
     {
         return left.CompareTo(right) > 0;
     }
@@ -327,7 +327,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the first instance is less than or equal to the second instance, false otherwise.</returns>
-    public static bool operator <=(EthereumAmount left, EthereumAmount right)
+    public static bool operator <=(EtherAmount left, EtherAmount right)
     {
         return left.CompareTo(right) <= 0;
     }
@@ -338,7 +338,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>True if the first instance is greater than or equal to the second instance, false otherwise.</returns>
-    public static bool operator >=(EthereumAmount left, EthereumAmount right)
+    public static bool operator >=(EtherAmount left, EtherAmount right)
     {
         return left.CompareTo(right) >= 0;
     }
@@ -349,7 +349,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>The sum of the instances.</returns>
-    public static EthereumAmount operator +(EthereumAmount left, EthereumAmount right)
+    public static EtherAmount operator +(EtherAmount left, EtherAmount right)
     {
         return left.Add(right);
     }
@@ -360,7 +360,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="left">The first instance.</param>
     /// <param name="right">The second instance.</param>
     /// <returns>The difference between the instances.</returns>
-    public static EthereumAmount operator -(EthereumAmount left, EthereumAmount right)
+    public static EtherAmount operator -(EtherAmount left, EtherAmount right)
     {
         var leftWei = left.ToWei();
         var rightWei = right.ToWei();
@@ -370,7 +370,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
             throw new InvalidOperationException("Cryptocurrency amounts cannot be negative");
         }
 
-        return new EthereumAmount(leftWei - rightWei, left.DisplayUnit);
+        return new EtherAmount(leftWei - rightWei, left.DisplayUnit);
     }
 
     /// <summary>
@@ -379,9 +379,9 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="amount">The amount to multiply.</param>
     /// <param name="multiplier">The multiplier.</param>
     /// <returns>A new EthereumAmount representing the product.</returns>
-    public static EthereumAmount operator *(EthereumAmount amount, int multiplier)
+    public static EtherAmount operator *(EtherAmount amount, int multiplier)
     {
-        return new EthereumAmount(amount.WeiValue * multiplier, amount.DisplayUnit);
+        return new EtherAmount(amount.WeiValue * multiplier, amount.DisplayUnit);
     }
 
     /// <summary>
@@ -390,7 +390,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="multiplier">The multiplier.</param>
     /// <param name="amount">The amount to multiply.</param>
     /// <returns>A new EthereumAmount representing the product.</returns>
-    public static EthereumAmount operator *(int multiplier, EthereumAmount amount)
+    public static EtherAmount operator *(int multiplier, EtherAmount amount)
     {
         return amount * multiplier;
     }
@@ -401,12 +401,12 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="amount">The amount to divide.</param>
     /// <param name="divisor">The divisor.</param>
     /// <returns>A new EthereumAmount representing the quotient.</returns>
-    public static EthereumAmount operator /(EthereumAmount amount, int divisor)
+    public static EtherAmount operator /(EtherAmount amount, int divisor)
     {
         if (divisor == 0)
             throw new DivideByZeroException();
 
-        return new EthereumAmount(amount.WeiValue / divisor, amount.DisplayUnit);
+        return new EtherAmount(amount.WeiValue / divisor, amount.DisplayUnit);
     }
 
     /// <summary>
@@ -415,9 +415,9 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="amount">The amount to multiply.</param>
     /// <param name="multiplier">The BigInteger multiplier.</param>
     /// <returns>A new EthereumAmount representing the product.</returns>
-    public static EthereumAmount operator *(EthereumAmount amount, BigInteger multiplier)
+    public static EtherAmount operator *(EtherAmount amount, BigInteger multiplier)
     {
-        return new EthereumAmount(amount.WeiValue * multiplier, amount.DisplayUnit);
+        return new EtherAmount(amount.WeiValue * multiplier, amount.DisplayUnit);
     }
 
     /// <summary>
@@ -426,7 +426,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="multiplier">The BigInteger multiplier.</param>
     /// <param name="amount">The amount to multiply.</param>
     /// <returns>A new EthereumAmount representing the product.</returns>
-    public static EthereumAmount operator *(BigInteger multiplier, EthereumAmount amount)
+    public static EtherAmount operator *(BigInteger multiplier, EtherAmount amount)
     {
         return amount * multiplier;
     }
@@ -437,7 +437,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="amount">The amount to multiply.</param>
     /// <param name="factor">The decimal multiplier.</param>
     /// <returns>A new EthereumAmount representing the product.</returns>
-    public static EthereumAmount operator *(EthereumAmount amount, decimal factor)
+    public static EtherAmount operator *(EtherAmount amount, decimal factor)
     {
         if (factor < 0)
         {
@@ -451,7 +451,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         // Convert back to wei, maintaining maximum precision
         var weiValue = (BigInteger)(etherValue * 1_000_000_000_000_000_000m);
 
-        return new EthereumAmount(weiValue, amount.DisplayUnit);
+        return new EtherAmount(weiValue, amount.DisplayUnit);
     }
 
     /// <summary>
@@ -460,7 +460,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="amount">The amount to divide.</param>
     /// <param name="divisor">The decimal divisor.</param>
     /// <returns>A new EthereumAmount representing the quotient.</returns>
-    public static EthereumAmount operator /(EthereumAmount amount, decimal divisor)
+    public static EtherAmount operator /(EtherAmount amount, decimal divisor)
     {
         if (divisor == 0)
         {
@@ -468,7 +468,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         }
 
         var newWeiValue = amount.WeiValue * 1_000_000_000_000_000_000 / (BigInteger)(divisor * 1_000_000_000_000_000_000m);
-        return new EthereumAmount(newWeiValue, amount.DisplayUnit);
+        return new EtherAmount(newWeiValue, amount.DisplayUnit);
     }
 
     //
@@ -490,10 +490,10 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <param name="localCurrencyCents">The amount in local currency cents.</param>
     /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
     /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
-    public static EthereumAmount FromLocalCurrency(BigInteger localCurrencyCents, BigInteger etherPriceInCents)
+    public static EtherAmount FromLocalCurrency(BigInteger localCurrencyCents, BigInteger etherPriceInCents)
     {
         // Convert from local currency using the same logic as LocalCurrencyInWei
         var weiValue = (localCurrencyCents * WeiPerEther) / etherPriceInCents;
-        return new EthereumAmount(weiValue, EthereumUnit.Wei);
+        return new EtherAmount(weiValue, EthereumUnit.Wei);
     }
 }
