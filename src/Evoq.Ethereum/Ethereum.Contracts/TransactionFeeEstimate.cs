@@ -94,37 +94,4 @@ public class TransactionFeeEstimate
     /// This is the portion of the fee that goes to miners/validators: GasLimit * MaxPriorityFeePerGas
     /// </remarks>
     public EthereumAmount PriorityFee => GasLimit * MaxPriorityFeePerGas;
-
-    /// <summary>
-    /// Gets the estimated fee in Ether.
-    /// </summary>
-    /// <remarks>
-    /// Converts the EstimatedFeeInWei from wei to ether (1 ether = 10^18 wei).
-    /// </remarks>
-    public decimal EstimatedFeeInEther => EstimatedFee.ToEther();
-
-    /// <summary>
-    /// Gets the maximum fee in Ether.
-    /// </summary>
-    /// <remarks>
-    /// Converts the MaxFeeInWei from wei to ether (1 ether = 10^18 wei).
-    /// </remarks>
-    public decimal MaxFeeInEther => MaxFee.ToEther();
-
-    /// <summary>
-    /// Gets the minimum fee in Ether.
-    /// </summary>
-    /// <remarks>
-    /// Converts the MinFeeInWei from wei to ether (1 ether = 10^18 wei).
-    /// </remarks>
-    public decimal MinFeeInEther => MinFee.ToEther();
-
-    /// <summary>
-    /// Gets the priority fee in Ether.
-    /// </summary>
-    /// <remarks>
-    /// Converts the PriorityFeeInWei from wei to ether (1 ether = 10^18 wei).
-    /// </remarks>
-    public decimal PriorityFeeInEther => PriorityFee.ToEther();
-
 }

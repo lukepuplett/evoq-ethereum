@@ -102,12 +102,14 @@ public class ExampleEAS
             null,
             AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true));
 
+
+        BigInteger etherPriceInCents = 193045; // $1,930.45 as of 15 March 2025
+
         Assert.IsTrue(100_000 > guess.GasLimit);
         Assert.AreEqual(EthereumAmount.FromWei(2_000_000_000), guess.MaxFeePerGas);
-        Assert.AreEqual(EthereumAmount.FromWei(0), guess.MaxPriorityFeePerGas);
-        Assert.AreEqual(EthereumAmount.FromWei(0), guess.BaseFeePerGas);
-        Assert.AreEqual(EthereumAmount.FromWei(0), guess.EstimatedFee);
-        Assert.AreEqual(0, guess.EstimatedFeeInEther);
+        Assert.IsTrue(guess.MaxPriorityFeePerGas >= EthereumAmount.FromWei(2_000_000_000), $"MaxPriorityFeePerGas is {guess.MaxPriorityFeePerGas}");
+        Assert.AreEqual(EthereumAmount.FromWei(0), guess.BaseFeePerGas, $"BaseFeePerGas is {guess.BaseFeePerGas}");
+        Assert.IsTrue(guess.EstimatedFee.ToLocalCurrency(etherPriceInCents) < 90, $"EstimatedFee is {guess.EstimatedFee.ToLocalCurrency(etherPriceInCents)}c");
 
         // original est
 

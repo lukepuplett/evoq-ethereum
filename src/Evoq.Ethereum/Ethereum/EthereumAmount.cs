@@ -136,6 +136,8 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         return (decimal)WeiValue * WeiToEtherFactor;
     }
 
+
+
     /// <summary>
     /// Gets the amount in the display unit.
     /// </summary>
@@ -153,7 +155,7 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
     /// <summary>
     /// Converts the amount to a different display unit.
     /// </summary>
-    /// <param name="targetUnit">The target display unit.</param>
+    /// <param name="unit">The target display unit.</param>
     /// <returns>A new EthereumAmount with the specified display unit.</returns>
     public EthereumAmount ConvertTo(EthereumUnit unit)
     {
@@ -429,6 +431,12 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         return amount * multiplier;
     }
 
+    /// <summary>
+    /// Multiplies an EthereumAmount by a decimal value.
+    /// </summary>
+    /// <param name="amount">The amount to multiply.</param>
+    /// <param name="factor">The decimal multiplier.</param>
+    /// <returns>A new EthereumAmount representing the product.</returns>
     public static EthereumAmount operator *(EthereumAmount amount, decimal factor)
     {
         if (factor < 0)
@@ -446,6 +454,12 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
         return new EthereumAmount(weiValue, amount.DisplayUnit);
     }
 
+    /// <summary>
+    /// Divides an EthereumAmount by a decimal value.
+    /// </summary>
+    /// <param name="amount">The amount to divide.</param>
+    /// <param name="divisor">The decimal divisor.</param>
+    /// <returns>A new EthereumAmount representing the quotient.</returns>
     public static EthereumAmount operator /(EthereumAmount amount, decimal divisor)
     {
         if (divisor == 0)
@@ -455,5 +469,31 @@ public readonly struct EthereumAmount : IEquatable<EthereumAmount>, IComparable<
 
         var newWeiValue = amount.WeiValue * 1_000_000_000_000_000_000 / (BigInteger)(divisor * 1_000_000_000_000_000_000m);
         return new EthereumAmount(newWeiValue, amount.DisplayUnit);
+    }
+
+    //
+
+    /// <summary>
+    /// Converts this amount to local currency (in cents).
+    /// </summary>
+    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
+    /// <returns>The amount in local currency cents.</returns>
+    public BigInteger ToLocalCurrency(BigInteger etherPriceInCents)
+    {
+        // Convert to local currency using the same logic as WeiInLocalCurrency
+        return (WeiValue * etherPriceInCents) / WeiPerEther;
+    }
+
+    /// <summary>
+    /// Creates a new EthereumAmount from a local currency amount.
+    /// </summary>
+    /// <param name="localCurrencyCents">The amount in local currency cents.</param>
+    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
+    /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
+    public static EthereumAmount FromLocalCurrency(BigInteger localCurrencyCents, BigInteger etherPriceInCents)
+    {
+        // Convert from local currency using the same logic as LocalCurrencyInWei
+        var weiValue = (localCurrencyCents * WeiPerEther) / etherPriceInCents;
+        return new EthereumAmount(weiValue, EthereumUnit.Wei);
     }
 }

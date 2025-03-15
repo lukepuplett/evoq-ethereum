@@ -613,4 +613,67 @@ public class EthereumAmountsTests
         Assert.ThrowsException<ArgumentException>(() => EthereumAmount.FromHex(hex),
             "Should reject hex values that would result in negative amounts");
     }
+
+    [TestMethod]
+    public void ToLocalCurrency_OneEther_ReturnsCorrectUsdCents()
+    {
+        // Arrange
+        var oneEther = EthereumAmount.FromEther(1);
+        var etherPriceInCents = new BigInteger(193045); // $1,930.45
+
+        // Act
+        var localCurrencyCents = oneEther.ToLocalCurrency(etherPriceInCents);
+
+        // Assert
+        Assert.AreEqual(etherPriceInCents, localCurrencyCents,
+            "1 ETH should convert to 193,045 cents ($1,930.45)");
+    }
+
+    [TestMethod]
+    public void ToLocalCurrency_SmallAmount_HandlesRoundingCorrectly()
+    {
+        // Arrange
+        var smallAmount = EthereumAmount.FromEther(0.0001m); // About 19 cents
+        var etherPriceInCents = new BigInteger(193045);
+
+        // Act
+        var localCurrencyCents = smallAmount.ToLocalCurrency(etherPriceInCents);
+
+        // Assert
+        Assert.AreEqual(new BigInteger(19), localCurrencyCents,
+            "0.0001 ETH should convert to approximately 19 cents");
+    }
+
+    [TestMethod]
+    public void FromLocalCurrency_OneDollar_CreatesCorrectAmount()
+    {
+        // Arrange
+        var oneDollarInCents = new BigInteger(100);
+        var etherPriceInCents = new BigInteger(193045); // $1,930.45
+
+        // Act
+        var amount = EthereumAmount.FromLocalCurrency(oneDollarInCents, etherPriceInCents);
+
+        // Assert
+        Assert.AreEqual(0.000518m, Math.Round(amount.ToEther(), 6),
+            "1 USD should convert to approximately 0.000518 ETH");
+    }
+
+    [TestMethod]
+    public void LocalCurrency_RoundTrip_PreservesValue()
+    {
+        // Arrange
+        var originalCents = new BigInteger(100000); // $1,000.00
+        var etherPriceInCents = new BigInteger(193045);
+
+        // Act
+        var amount = EthereumAmount.FromLocalCurrency(originalCents, etherPriceInCents);
+        var roundTrippedCents = amount.ToLocalCurrency(etherPriceInCents);
+
+        // Assert
+        // Due to integer division, we might lose a few cents, so we check if we're within 1 cent
+        var difference = BigInteger.Abs(originalCents - roundTrippedCents);
+        Assert.IsTrue(difference <= 1,
+            $"Round trip conversion should preserve value within 1 cent. Difference: {difference} cents");
+    }
 }
