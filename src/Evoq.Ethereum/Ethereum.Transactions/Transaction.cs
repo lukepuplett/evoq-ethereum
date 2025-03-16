@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.Transactions;
 /// <summary>
 /// Represents a legacy Ethereum transaction (pre-EIP-1559).
 /// </summary>
-public struct Transaction : ITransactionFeatures
+public struct Transaction : IEthereumTransaction
 {
     /// <summary>
     /// An empty transaction instance.
@@ -84,37 +84,37 @@ public struct Transaction : ITransactionFeatures
     /// <summary>
     /// The nonce of the transaction.
     /// </summary>
-    public ulong Nonce;
+    public ulong Nonce { get; }
 
     /// <summary>
     /// The gas price of the transaction.
     /// </summary>
-    public BigInteger GasPrice;
+    public BigInteger GasPrice { get; }
 
     /// <summary>
     /// The gas limit of the transaction.
     /// </summary>
-    public ulong GasLimit;
+    public ulong GasLimit { get; }
 
     /// <summary>
     /// The to address of the transaction.
     /// </summary>
-    public byte[] To; // 20-byte address
+    public byte[] To { get; } // 20-byte address
 
     /// <summary>
     /// The value of the transaction.
     /// </summary>
-    public BigInteger Value;
+    public BigInteger Value { get; }
 
     /// <summary>
     /// The data of the transaction.
     /// </summary>
-    public byte[] Data;
+    public byte[] Data { get; }
 
     /// <summary>
     /// The signature of the transaction. Null if the transaction is unsigned.
     /// </summary>
-    public RsvSignature? Signature;
+    public RsvSignature? Signature { get; }
 
     //
 
@@ -238,5 +238,14 @@ public struct Transaction : ITransactionFeatures
         );
     }
 
+    // Also need to add explicit interface implementations for WithSignature
+    IEthereumTransaction IEthereumTransaction.WithSignature(RsvSignature signature)
+    {
+        return WithSignature(signature);
+    }
 
+    IEthereumTransaction IEthereumTransaction.WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    {
+        return WithSignature(v, r, s);
+    }
 }

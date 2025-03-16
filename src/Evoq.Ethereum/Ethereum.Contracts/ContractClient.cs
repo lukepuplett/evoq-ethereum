@@ -6,6 +6,8 @@ using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
+using Evoq.Ethereum.RLP;
+using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Contracts;
@@ -21,7 +23,7 @@ public class ContractClient
     private readonly IAbiEncoder abiEncoder;
     private readonly IAbiDecoder abiDecoder;
     private readonly ITransactionSigner? transactionSigner;
-    private readonly INonceStore? nonceStore;
+    private readonly IRlpTransactionEncoder rlpEncoder;
 
     //
 
@@ -32,19 +34,21 @@ public class ContractClient
     /// <param name="abiEncoder">The ABI encoder.</param>
     /// <param name="abiDecoder">The ABI decoder.</param>
     /// <param name="transactionSigner">The transaction signer.</param>
-    /// <param name="nonceStore">The nonce store.</param>
+    /// <param name="rlpEncoder">The RLP encoder.</param>
+    /// <param name="chainId">The chain ID.</param>
     public ContractClient(
         IEthereumJsonRpc jsonRpc,
         IAbiEncoder abiEncoder,
         IAbiDecoder abiDecoder,
         ITransactionSigner? transactionSigner,
-        INonceStore? nonceStore)
+        IRlpTransactionEncoder rlpEncoder,
+        ulong chainId)
     {
         this.jsonRpc = jsonRpc;
         this.abiEncoder = abiEncoder;
         this.abiDecoder = abiDecoder;
         this.transactionSigner = transactionSigner;
-        this.nonceStore = nonceStore;
+        this.rlpEncoder = rlpEncoder;
     }
 
     //
@@ -53,10 +57,10 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> parameters)
+        IDictionary<string, object?> arguments)
     where T : new()
     {
-        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
+        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, arguments);
 
         var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
 
@@ -67,9 +71,9 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> parameters)
+        IDictionary<string, object?> arguments)
     {
-        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, parameters);
+        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, arguments);
 
         var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
 
@@ -81,11 +85,64 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
-        IDictionary<string, object?> parameters)
+        IDictionary<string, object?> arguments)
     {
         // TODO / research access list usage for the transaction
 
-        throw new NotImplementedException("Contract method invocation not implemented. This functionality requires transaction signing and submission capabilities. Implement this method to encode function calls, sign transactions, and submit them to the Ethereum network.");
+        var signature = contract.GetFunctionSignature(methodName);
+        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
+
+        byte[] rlpEncoded;
+
+        if (options.Gas is LegacyGasOptions legacyGasOptions)
+        {
+            // TODO / construct a legacy transaction
+
+            var transaction = new Transaction(
+                nonce: options.Nonce,
+                gasPrice: legacyGasOptions.Price.ToBigBouncy(),
+                gasLimit: options.Gas.Limit,
+                to: contract.Address.ToByteArray(),
+                value: options.Value.ToBigBouncy(),
+                data: encoded,
+                signature: null);
+
+            transaction = (Transaction)this.transactionSigner!.GetSignedTransaction(transaction);
+            rlpEncoded = this.rlpEncoder.Encode(transaction);
+        }
+        else if (options.Gas is EIP1559GasOptions eip1559GasOptions)
+        {
+            // construct an EIP-1559 transaction
+
+            var transaction = new TransactionEIP1559(
+                chainId: 1,
+                nonce: options.Nonce,
+                maxPriorityFeePerGas: eip1559GasOptions.MaxPriorityFeePerGas.ToBigBouncy(),
+                maxFeePerGas: eip1559GasOptions.MaxFeePerGas.ToBigBouncy(),
+                gasLimit: options.Gas.Limit,
+                to: contract.Address.ToByteArray(),
+                value: options.Value.ToBigBouncy(),
+                data: encoded,
+                accessList: null,
+                signature: null);
+
+            transaction = (TransactionEIP1559)this.transactionSigner!.GetSignedTransaction(transaction);
+            rlpEncoded = this.rlpEncoder.Encode(transaction);
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Cannot invoke method. The gas options specified are of an unsupported type.",
+                nameof(options));
+        }
+
+        // TODO / send the RLP encoded transaction over JSON RPC by encoding it as a hex string
+
+        var transactionHex = new Hex(rlpEncoded);
+
+        var result = await this.jsonRpc.SendRawTransactionAsync(transactionHex, id: this.GetRandomId());
+
+        return result;
     }
 
     internal async Task<Hex> EstimateGasAsync(
@@ -149,28 +206,31 @@ public class ContractClient
     /// <summary>
     /// Creates a new ContractCaller instance using the default secp256k1 curve, if the sender is provided.
     /// </summary>
-    /// <param name="providerBaseUrl">The base URL of the JSON-RPC provider.</param>
+    /// <param name="endpoint">The endpoint to use to call the contract.</param>
     /// <param name="sender">The sender; if null, the ContractCaller will be read-only; attempts to send transactions will throw.</param>
-    /// <param name="loggerFactory">The logger factory.</param>
     /// <returns>The ContractCaller instance.</returns>
     public static ContractClient CreateDefault(
-        Uri providerBaseUrl,
-        Sender? sender,
-        ILoggerFactory loggerFactory)
+        Endpoint endpoint,
+        Sender? sender)
     {
-        var jsonRpc = new JsonRpcClient(providerBaseUrl, loggerFactory);
+        var chainId = ulong.TryParse(ChainNames.GetChainId(endpoint.NetworkName), out var id)
+            ? id
+            : throw new InvalidOperationException($"Cannot create a {nameof(ContractClient)} for an unsupported network.");
+
+        var jsonRpc = new JsonRpcClient(new Uri(endpoint.URL), endpoint.LoggerFactory);
         var abiEncoder = new AbiEncoder();
         var abiDecoder = new AbiDecoder();
+        var rlpEncoder = new RlpEncoder();
 
         if (sender.HasValue)
         {
             var transactionSigner = TransactionSigner.CreateDefault(sender.Value.PrivateKey.ToByteArray());
 
-            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, transactionSigner, sender.Value.NonceStore);
+            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, transactionSigner, rlpEncoder, chainId);
         }
         else
         {
-            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, null);
+            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, rlpEncoder, chainId);
         }
     }
 }
@@ -186,27 +246,27 @@ public class ContractInvocationOptions
     /// <param name="nonce">Transaction sequence number to prevent replay attacks (null = auto-detect)</param>
     /// <param name="gas">Gas pricing and limit configuration for the transaction</param>
     /// <param name="value">Amount of ETH (in wei) to send with the transaction</param>
-    public ContractInvocationOptions(ulong? nonce, GasOptions? gas, BigInteger? value)
+    public ContractInvocationOptions(ulong nonce, GasOptions gas, EtherAmount value)
     {
-        Nonce = nonce;
-        Gas = gas;
-        Value = value;
+        this.Nonce = nonce;
+        this.Gas = gas;
+        this.Value = value;
     }
 
     /// <summary>
     /// Transaction sequence number to prevent replay attacks (null = auto-detect)
     /// </summary>
-    public ulong? Nonce { get; }
+    public ulong Nonce { get; }
 
     /// <summary>
     /// Gas pricing and limit configuration for the transaction
     /// </summary>
-    public GasOptions? Gas { get; }
+    public GasOptions Gas { get; }
 
     /// <summary>
     /// Amount of ETH (in wei) to send with the transaction
     /// </summary>
-    public BigInteger? Value { get; }
+    public EtherAmount Value { get; }
 }
 
 /// <summary>

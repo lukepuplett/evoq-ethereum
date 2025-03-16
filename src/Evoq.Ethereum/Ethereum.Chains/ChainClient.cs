@@ -117,11 +117,10 @@ public class ChainClient
     /// Creates a default chain client.
     /// </summary>
     /// <param name="uri">The URI of the chain.</param>
-    /// <param name="sender">The sender.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <returns>The chain client.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public static ChainClient CreateDefault(Uri uri, Sender sender, ILoggerFactory loggerFactory)
+    public static ChainClient CreateDefault(Uri uri, ILoggerFactory loggerFactory)
     {
         var jsonRpc = new JsonRpcClient(uri, loggerFactory);
 

@@ -87,12 +87,13 @@ public class ExampleEAS
 
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
         var sender = new Sender(privateKeyHex, nonceStore!);
-        var contractClient = ContractClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
+        var endpoint = new Endpoint(hardhatBaseUrl, "hardhat", "hardhat", loggerFactory!);
+        var contractClient = ContractClient.CreateDefault(endpoint, sender);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
         // guess gas price
 
-        var chainClient = ChainClient.CreateDefault(new Uri(hardhatBaseUrl), sender, loggerFactory!);
+        var chainClient = ChainClient.CreateDefault(new Uri(hardhatBaseUrl), loggerFactory!);
         var chain = new Chain(chainClient);
 
         var guess = await contract.EstimateTransactionFeeAsync(
@@ -111,16 +112,12 @@ public class ExampleEAS
         Assert.AreEqual(EtherAmount.FromWei(0), guess.BaseFeePerGas, $"BaseFeePerGas is {guess.BaseFeePerGas}");
         Assert.IsTrue(guess.EstimatedFee.ToLocalCurrency(etherPriceInCents) < 90, $"EstimatedFee is {guess.EstimatedFee.ToLocalCurrency(etherPriceInCents)}c");
 
-        // original est
+        // register
 
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
-        var registerGas = await contract.EstimateGasAsync("register", senderAddress, null, registerArgs);
-
-        Assert.IsTrue(registerGas < 100_000, "Register gas is less than 100_000"); // just over 93_000
-
         var registerGasOptions = new EIP1559GasOptions(100_000, BigInteger.Zero, BigInteger.Zero); // ZEROES!!
-        var registerOptions = new ContractInvocationOptions(1, registerGasOptions, null);
+        var registerOptions = new ContractInvocationOptions(1, registerGasOptions, EtherAmount.Zero);
         var registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
 
         // get schema

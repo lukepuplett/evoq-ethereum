@@ -11,6 +11,10 @@ namespace Evoq.Ethereum.RLP;
 /// <summary>
 /// Encodes an object into RLP format.
 /// </summary>
+/// <remarks>
+/// RLP is used to encode the transaction then hashed and signed. The signature is then added to the
+/// unencoded transaction as v, r, s values, and the transaction is RLP encoded again.
+/// </remarks>
 internal class RlpEncoder : IRlpTransactionEncoder
 {
     /// <summary>

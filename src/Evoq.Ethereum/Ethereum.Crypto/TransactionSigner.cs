@@ -15,14 +15,7 @@ public interface ITransactionSigner
     /// </summary>
     /// <param name="transaction">The transaction to sign.</param>
     /// <returns>The signed transaction.</returns>
-    Transaction GetSignedTransaction(Transaction transaction);
-
-    /// <summary>
-    /// Signs the given transaction.
-    /// </summary>
-    /// <param name="transaction">The transaction to sign.</param>
-    /// <returns>The signed transaction.</returns>
-    TransactionEIP1559 GetSignedTransaction(TransactionEIP1559 transaction);
+    IEthereumTransaction GetSignedTransaction(IEthereumTransaction transaction);
 }
 
 /// <summary>
@@ -31,7 +24,7 @@ public interface ITransactionSigner
 public class TransactionSigner : ITransactionSigner
 {
     private readonly ISignPayload signer;
-    private readonly IRlpTransactionEncoder encoder;
+    private readonly IRlpTransactionEncoder rlpEncoder;
     private readonly ITransactionHasher hasher;
 
     //
@@ -40,15 +33,15 @@ public class TransactionSigner : ITransactionSigner
     /// Initializes a new instance of the DefaultTransactionSigner class.
     /// </summary>
     /// <param name="signer">The signer to use.</param>
-    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="rlpEncoder">The RLP encoder to use.</param>
     /// <param name="hasher">The hasher to use.</param>
     public TransactionSigner(
         ISignPayload signer,
-        IRlpTransactionEncoder encoder,
+        IRlpTransactionEncoder rlpEncoder,
         ITransactionHasher hasher)
     {
         this.signer = signer;
-        this.encoder = encoder;
+        this.rlpEncoder = rlpEncoder;
         this.hasher = hasher;
     }
 
@@ -61,7 +54,7 @@ public class TransactionSigner : ITransactionSigner
     /// <returns>The signature.</returns>
     public RsvSignature GetSignature(Transaction transaction)
     {
-        var hash = this.hasher.Hash(this.encoder.Encode(transaction));
+        var hash = this.hasher.Hash(this.rlpEncoder.Encode(transaction));
 
         return this.signer.Sign(new SigningPayload
         {
@@ -93,7 +86,7 @@ public class TransactionSigner : ITransactionSigner
             throw new ArgumentException("ChainId must be greater than 0", nameof(transaction));
         }
 
-        var hash = this.hasher.Hash(this.encoder.Encode(transaction));
+        var hash = this.hasher.Hash(this.rlpEncoder.Encode(transaction));
 
         return this.signer.Sign(new SigningPayload
         {
@@ -110,6 +103,20 @@ public class TransactionSigner : ITransactionSigner
     public TransactionEIP1559 GetSignedTransaction(TransactionEIP1559 transaction)
     {
         return transaction.WithSignature(GetSignature(transaction));
+    }
+
+    IEthereumTransaction ITransactionSigner.GetSignedTransaction(IEthereumTransaction transaction)
+    {
+        if (transaction is TransactionEIP1559 eip1559Transaction)
+        {
+            return GetSignedTransaction(eip1559Transaction);
+        }
+        else if (transaction is Transaction legacyTransaction)
+        {
+            return GetSignedTransaction(legacyTransaction);
+        }
+
+        throw new ArgumentException("Unsupported transaction type", nameof(transaction));
     }
 
     //

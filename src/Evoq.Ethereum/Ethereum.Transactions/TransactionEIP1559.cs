@@ -6,9 +6,9 @@ using Org.BouncyCastle.Math;
 namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
-/// Represents an Ethereum transaction.
+/// An EIP-1559 Ethereum transaction with a signature.
 /// </summary>
-public struct TransactionEIP1559 : ITransactionFeatures
+public struct TransactionEIP1559 : IEthereumTransaction
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct.
@@ -84,52 +84,52 @@ public struct TransactionEIP1559 : ITransactionFeatures
     /// <summary>
     /// The chain ID of the network.
     /// </summary>
-    public ulong ChainId;
+    public ulong ChainId { get; }
 
     /// <summary>
     /// The nonce of the transaction.
     /// </summary>
-    public ulong Nonce;
+    public ulong Nonce { get; }
 
     /// <summary>
     /// The maximum priority fee per gas (tip for miners/validators).
     /// </summary>
-    public BigInteger MaxPriorityFeePerGas;
+    public BigInteger MaxPriorityFeePerGas { get; }
 
     /// <summary>
     /// The maximum fee per gas (total fee cap).
     /// </summary>
-    public BigInteger MaxFeePerGas;
+    public BigInteger MaxFeePerGas { get; }
 
     /// <summary>
     /// The gas limit of the transaction.
     /// </summary>
-    public ulong GasLimit;
+    public ulong GasLimit { get; }
 
     /// <summary>
     /// The to address of the transaction.
     /// </summary>
-    public byte[] To; // 20-byte address
+    public byte[] To { get; } // 20-byte address
 
     /// <summary>
     /// The value of the transaction.
     /// </summary>
-    public BigInteger Value;
+    public BigInteger Value { get; }
 
     /// <summary>
     /// The data of the transaction.
     /// </summary>
-    public byte[] Data;
+    public byte[] Data { get; }
 
     /// <summary>
     /// The access list for gas optimization.
     /// </summary>
-    public AccessListItem[] AccessList;
+    public AccessListItem[] AccessList { get; }
 
     /// <summary>
     /// The signature of the transaction. Null if the transaction is unsigned.
     /// </summary>
-    public RsvSignature? Signature;
+    public RsvSignature? Signature { get; }
 
     /// <summary>
     /// Determines whether this transaction is signed.
@@ -180,6 +180,16 @@ public struct TransactionEIP1559 : ITransactionFeatures
     public TransactionEIP1559 WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(new RsvSignature(v, r, s));
+    }
+
+    IEthereumTransaction IEthereumTransaction.WithSignature(RsvSignature signature)
+    {
+        return WithSignature(signature);
+    }
+
+    IEthereumTransaction IEthereumTransaction.WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    {
+        return WithSignature(v, r, s);
     }
 
     /// <summary>
@@ -279,4 +289,5 @@ public struct TransactionEIP1559 : ITransactionFeatures
 
         return features;
     }
+
 }

@@ -31,6 +31,11 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
     private const decimal WeiToEtherFactor = 0.000000000000000001m; // 10^-18
 
     /// <summary>
+    /// Represents a zero amount of Ethereum.
+    /// </summary>
+    public static readonly EtherAmount Zero = new EtherAmount(BigInteger.Zero, EthereumUnit.Wei);
+
+    /// <summary>
     /// The amount in Wei (the smallest unit).
     /// </summary>
     public readonly BigInteger WeiValue { get; }
@@ -136,7 +141,47 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
         return (decimal)WeiValue * WeiToEtherFactor;
     }
 
+    /// <summary>
+    /// Converts this amount to local currency (in cents).
+    /// </summary>
+    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
+    /// <returns>The amount in local currency cents.</returns>
+    public BigInteger ToLocalCurrency(BigInteger etherPriceInCents)
+    {
+        // Convert to local currency using the same logic as WeiInLocalCurrency
+        return (WeiValue * etherPriceInCents) / WeiPerEther;
+    }
 
+    /// <summary>
+    /// Creates a new EthereumAmount from a local currency amount.
+    /// </summary>
+    /// <param name="localCurrencyCents">The amount in local currency cents.</param>
+    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
+    /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
+    public static EtherAmount FromLocalCurrency(BigInteger localCurrencyCents, BigInteger etherPriceInCents)
+    {
+        // Convert from local currency using the same logic as LocalCurrencyInWei
+        var weiValue = (localCurrencyCents * WeiPerEther) / etherPriceInCents;
+        return new EtherAmount(weiValue, EthereumUnit.Wei);
+    }
+
+    /// <summary>
+    /// Converts the amount to a hexadecimal representation.
+    /// </summary>
+    /// <returns>The amount in hexadecimal representation.</returns>
+    public Hex ToHexStruct()
+    {
+        return Hex.FromBigInteger(WeiValue, HexEndianness.BigEndian);
+    }
+
+    /// <summary>
+    /// Converts the amount to a BouncyCastle BigInteger with the correct endianness and sign.
+    /// </summary>
+    /// <returns>The amount in BouncyCastle BigInteger.</returns>
+    public Org.BouncyCastle.Math.BigInteger ToBigBouncy()
+    {
+        return this.WeiValue.ToBigBouncy();
+    }
 
     /// <summary>
     /// Gets the amount in the display unit.
@@ -469,31 +514,5 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
 
         var newWeiValue = amount.WeiValue * 1_000_000_000_000_000_000 / (BigInteger)(divisor * 1_000_000_000_000_000_000m);
         return new EtherAmount(newWeiValue, amount.DisplayUnit);
-    }
-
-    //
-
-    /// <summary>
-    /// Converts this amount to local currency (in cents).
-    /// </summary>
-    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
-    /// <returns>The amount in local currency cents.</returns>
-    public BigInteger ToLocalCurrency(BigInteger etherPriceInCents)
-    {
-        // Convert to local currency using the same logic as WeiInLocalCurrency
-        return (WeiValue * etherPriceInCents) / WeiPerEther;
-    }
-
-    /// <summary>
-    /// Creates a new EthereumAmount from a local currency amount.
-    /// </summary>
-    /// <param name="localCurrencyCents">The amount in local currency cents.</param>
-    /// <param name="etherPriceInCents">The current price of 1 Ether in cents.</param>
-    /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
-    public static EtherAmount FromLocalCurrency(BigInteger localCurrencyCents, BigInteger etherPriceInCents)
-    {
-        // Convert from local currency using the same logic as LocalCurrencyInWei
-        var weiValue = (localCurrencyCents * WeiPerEther) / etherPriceInCents;
-        return new EtherAmount(weiValue, EthereumUnit.Wei);
     }
 }

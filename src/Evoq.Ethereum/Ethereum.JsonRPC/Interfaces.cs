@@ -54,10 +54,10 @@ public interface ISendRawTransaction
     /// <summary>
     /// Sends a signed transaction to the network
     /// </summary>
-    /// <param name="signedTransaction">The RLP encoded signed transaction</param>
+    /// <param name="signedRlpTransaction">The RLP encoded signed transaction</param>
     /// <param name="id">The request identifier</param>
     /// <returns>The transaction hash as a hex value</returns>
-    Task<Hex> SendRawTransactionAsync(Hex signedTransaction, int id = 1);
+    Task<Hex> SendRawTransactionAsync(Hex signedRlpTransaction, int id = 1);
 }
 
 /// <summary>
