@@ -22,7 +22,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     //
 
     /// <summary>
-    /// Returns the canonical type of the parameters.
+    /// Returns the canonical type of the parameters, enclosed in parentheses.
     /// </summary>
     /// <param name="includeNames">Whether to include the names of the parameters.</param>
     /// <param name="includeSpaces">Whether to include spaces between the parameters.</param>

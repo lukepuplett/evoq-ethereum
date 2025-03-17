@@ -91,8 +91,8 @@ public class FunctionSignature
     {
         var result = encoder.EncodeParameters(this.Inputs, values);
 
-        var selectorBytes = this.GetSelector();
-        var resultBytes = result.GetBytes();
+        var selectorBytes = this.GetSelectorBytes();
+        var resultBytes = result.ToByteArray();
 
         var fullBytes = new byte[selectorBytes.Length + resultBytes.Length];
         selectorBytes.CopyTo(fullBytes, 0);
@@ -144,7 +144,7 @@ public class FunctionSignature
     /// Gets the 4-byte function selector.
     /// </summary>
     /// <returns>The function selector.</returns>
-    public byte[] GetSelector()
+    public byte[] GetSelectorBytes()
     {
         var signature = this.GetCanonicalInputsSignature();
 

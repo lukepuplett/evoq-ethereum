@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -46,7 +47,7 @@ public class AbiEncodingResult
     /// Gets the combined static and dynamic data as a byte array.
     /// </summary>
     /// <returns>The combined static and dynamic data as a byte array.</returns>
-    public byte[] GetBytes()
+    public byte[] ToByteArray()
     {
         return this.GetSlots().SelectMany(slot => slot.Data).ToArray();
     }
@@ -55,9 +56,9 @@ public class AbiEncodingResult
     /// Gets the hex representation of the encoding result.
     /// </summary>
     /// <returns>The hex representation of the encoding result.</returns>
-    public Hex GetHex()
+    public Hex ToHexStruct()
     {
-        return new Hex(this.GetBytes());
+        return new Hex(this.ToByteArray());
     }
 
     //

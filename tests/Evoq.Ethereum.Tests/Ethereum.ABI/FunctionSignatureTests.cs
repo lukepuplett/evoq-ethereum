@@ -153,7 +153,7 @@ public class FunctionSignatureTests
     public void GetSelector_ReturnsCorrectBytes(string fullSignature, string expectedHex)
     {
         var signature = FunctionSignature.Parse(fullSignature);
-        var selector = signature.GetSelector();
+        var selector = signature.GetSelectorBytes();
         CollectionAssert.AreEqual(Convert.FromHexString(expectedHex), selector);
     }
 

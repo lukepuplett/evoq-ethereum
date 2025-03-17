@@ -122,9 +122,12 @@ public class ExampleEAS
 
         // get schema
 
-        var schemaIdHex = Hex.Parse("2ab49509aba579bdcbb82dbc86db6bb04efe44289b146964f07a75ecffbb7f1e"); // random, non-existent schemaId
+        var abiEncoder = new AbiEncoder();
+        var easSchemaUidSchema = AbiParameters.Parse("string schema, address resolver, bool revocable");
+        var easSchemaUidSchemaValues = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
+        var easSchemaUid = abiEncoder.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToHexStruct();
 
-        var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", schemaIdHex));
+        var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", easSchemaUid));
 
         Assert.IsNotNull(getSchemaResult, "The call to getSchema returned a null result");
 
