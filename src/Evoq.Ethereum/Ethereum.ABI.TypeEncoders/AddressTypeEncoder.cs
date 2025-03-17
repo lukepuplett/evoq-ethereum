@@ -31,7 +31,8 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         encoded = Array.Empty<byte>();
 
@@ -44,7 +45,7 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         if (value is EthereumAddress address)
         {
-            encoded = EncodeAddress(address);
+            encoded = EncodeAddress(address, length);
             return true;
         }
 
@@ -53,7 +54,7 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             try
             {
                 Hex h = Hex.Parse(addr);
-                encoded = EncodeAddress(new EthereumAddress(h));
+                encoded = EncodeAddress(new EthereumAddress(h), length);
                 return true;
             }
             catch
@@ -64,7 +65,7 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         if (value is Hex hex)
         {
-            encoded = EncodeAddress(new EthereumAddress(hex));
+            encoded = EncodeAddress(new EthereumAddress(hex), length);
             return true;
         }
 
@@ -72,7 +73,7 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
         {
             try
             {
-                encoded = EncodeAddress(new EthereumAddress(bytes));
+                encoded = EncodeAddress(new EthereumAddress(bytes), length);
                 return true;
             }
             catch
@@ -145,23 +146,26 @@ public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Encodes an address as a 32-byte value.
     /// </summary>
     /// <param name="address">The address to encode.</param>
-    /// <returns>The encoded address, padded to 32 bytes.</returns>
-    public static byte[] EncodeAddress(EthereumAddress address)
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
+    /// <returns>The encoded address, padded to the specified length.</returns>
+    public static byte[] EncodeAddress(EthereumAddress address, int length = 32)
     {
         if (address == null)
         {
             throw new ArgumentNullException(nameof(address));
         }
 
-        var result = new byte[32];
         var addressBytes = address.ToByteArray();
 
-        if (addressBytes.Length != 20)
-            throw new ArgumentException("Address must be 20 bytes", nameof(address));
+        if (length == -1)
+        {
+            length = addressBytes.Length;
+        }
 
-        Buffer.BlockCopy(addressBytes, 0, result, 12, 20);
+        var result = new byte[length];
+        var startIndex = length - addressBytes.Length;
 
-        Debug.Assert(result.Length == 32);
+        Buffer.BlockCopy(addressBytes, 0, result, startIndex, addressBytes.Length);
 
         return result;
     }

@@ -38,9 +38,10 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
     /// <returns>True if the value was encoded successfully, false otherwise.</returns>
     /// <exception cref="ArgumentNullException">Thrown if the value is null.</exception>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         if (value == null)
         {
@@ -61,6 +62,11 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return false;
         }
 
+        if (length == 0 || length < -1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
         if (value is sbyte sbyteValue)
         {
             if (maxAbiCapacity < 8) // .NET value could be 8 bits but ABI type is smaller
@@ -68,7 +74,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeInt(maxAbiCapacity, sbyteValue);
+            encoded = EncodeInt(maxAbiCapacity, sbyteValue, length);
             return true;
         }
 
@@ -79,7 +85,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeInt(maxAbiCapacity, shortValue);
+            encoded = EncodeInt(maxAbiCapacity, shortValue, length);
             return true;
         }
 
@@ -90,7 +96,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeInt(maxAbiCapacity, intValue);
+            encoded = EncodeInt(maxAbiCapacity, intValue, length);
             return true;
         }
 
@@ -101,7 +107,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeInt(maxAbiCapacity, longValue);
+            encoded = EncodeInt(maxAbiCapacity, longValue, length);
             return true;
         }
 
@@ -116,7 +122,7 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeInt(maxAbiCapacity, bigIntegerValue);
+            encoded = EncodeInt(maxAbiCapacity, bigIntegerValue, length);
             return true;
         }
 
@@ -206,28 +212,46 @@ public class IntTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// </summary>
     /// <param name="bits">The number of bits to encode.</param>
     /// <param name="value">The value to encode.</param>
-    /// <returns>The encoded value as 32 bytes.</returns>
-    public static byte[] EncodeInt(int bits, BigInteger value)
+    /// <param name="length">The length of the byte array to return or -1 for no padding.</param>
+    /// <returns>The encoded value as a byte array.</returns>
+    public static byte[] EncodeInt(int bits, BigInteger value, int length = 32)
     {
+        if (length == 0 || length < -1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
         if (bits < 8 || bits > 256 || bits % 8 != 0)
+        {
             throw new ArgumentException("Bits must be between 8 and 256 and a multiple of 8", nameof(bits));
+        }
+
+        if (length == -1)
+        {
+            length = bits / 8;
+        }
 
         var two = new BigInteger(2);
         var minValue = BigInteger.Negate(BigInteger.Pow(two, bits - 1));
         var maxValue = BigInteger.Pow(two, bits - 1) - 1;
 
         if (value < minValue || value > maxValue)
+        {
             throw new ArgumentException($"Value outside range for {bits} bits", nameof(value));
+        }
 
-        var result = new byte[32];
+        var result = new byte[length];
         var bytes = value.ToByteArray(isUnsigned: false, isBigEndian: true);
-        int copyLength = Math.Min(bytes.Length, 32);
-        int destOffset = 32 - copyLength;
-        Buffer.BlockCopy(bytes, 0, result, destOffset, copyLength);
+        int copyLength = Math.Min(bytes.Length, length);
+        int startIndex = length - copyLength;
+
+        Buffer.BlockCopy(bytes, 0, result, startIndex, copyLength);
 
         // Sign-extend if negative and bytes don't fill the array
-        if (value < 0 && destOffset > 0)
-            Array.Fill(result, (byte)0xFF, 0, destOffset);
+        if (value < 0 && startIndex > 0)
+        {
+            Array.Fill(result, (byte)0xFF, 0, startIndex);
+        }
 
         return result;
     }

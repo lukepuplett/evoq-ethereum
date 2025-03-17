@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Evoq.Blockchain;
-using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -10,7 +9,8 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiEncodingResult
 {
-    private readonly SlotCollection final = new(capacity: 8);
+    private readonly SlotCollection? slotCollection;
+    private readonly byte[]? bytes;
 
     //
 
@@ -20,15 +20,17 @@ public class AbiEncodingResult
     /// <param name="slots">The final slots.</param>
     public AbiEncodingResult(SlotCollection slots)
     {
-        this.final = slots;
+        this.slotCollection = slots;
     }
 
-    //
-
     /// <summary>
-    /// Gets the number of slots in the encoding result.
+    /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
-    public int Count => this.final.Count;
+    /// <param name="bytes">The final bytes.</param>
+    public AbiEncodingResult(byte[] bytes)
+    {
+        this.bytes = bytes;
+    }
 
     //
 
@@ -36,11 +38,18 @@ public class AbiEncodingResult
     /// Gets the slots of the slot space.
     /// </summary>
     /// <returns>The slots of the slot space.</returns>
-    public IReadOnlyList<Slot> GetSlots()
+    public bool TryGetSlots(out IReadOnlyList<Slot>? slots)
     {
+        if (this.slotCollection == null)
+        {
+            slots = null;
+            return false;
+        }
+
         this.UpdateOffsetsAndEncodePointers();
 
-        return this.final.OrderBy(slot => slot.Order).ToList();
+        slots = this.slotCollection.OrderBy(slot => slot.Order).ToList();
+        return true;
     }
 
     /// <summary>
@@ -49,7 +58,12 @@ public class AbiEncodingResult
     /// <returns>The combined static and dynamic data as a byte array.</returns>
     public byte[] ToByteArray()
     {
-        return this.GetSlots().SelectMany(slot => slot.Data).ToArray();
+        if (this.TryGetSlots(out var slots))
+        {
+            return slots.SelectMany(slot => slot.Data).ToArray();
+        }
+
+        return this.bytes!;
     }
 
     /// <summary>
@@ -67,16 +81,20 @@ public class AbiEncodingResult
     /// Sets the byte offset on every slot.
     /// </summary>
     /// <remarks>
-    /// Each slot is 32 bytes, so the second slot has offset 32, the third has offset 64, etc.
     /// This method must be called after all the slots have been appended to the slot space
     /// and the full bytes are read.
     /// </remarks>
     private void UpdateOffsetsAndEncodePointers()
     {
+        if (this.slotCollection == null)
+        {
+            return;
+        }
+
         int offset = 0;
         int order = 0;
 
-        foreach (var slot in this.final)
+        foreach (var slot in this.slotCollection)
         {
             slot.SetOrder(order);
             order++;
@@ -87,7 +105,7 @@ public class AbiEncodingResult
 
         // now we can encode the pointers
 
-        foreach (var slot in this.final)
+        foreach (var slot in this.slotCollection)
         {
             slot.EncodePointer();
             slot.EncodePointerOffset();

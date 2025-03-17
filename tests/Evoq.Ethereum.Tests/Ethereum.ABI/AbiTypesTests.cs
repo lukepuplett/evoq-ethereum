@@ -825,4 +825,82 @@ public class AbiTypesTests
     }
 
     #endregion
+
+    #region CanBePacked Tests
+
+    [TestMethod]
+    [DataRow("uint8", true)]       // Types shorter than 32 bytes are concatenated directly
+    [DataRow("uint16", true)]
+    [DataRow("uint256", true)]     // All basic types can be packed
+    [DataRow("int8", true)]
+    [DataRow("int256", true)]
+    [DataRow("bytes1", true)]
+    [DataRow("bytes32", true)]
+    [DataRow("bool", true)]
+    [DataRow("address", true)]
+    [DataRow("string", true)]      // Dynamic types are encoded in-place without length
+    [DataRow("bytes", true)]
+    [DataRow("uint8[]", false)]    // Arrays are not directly packable (elements are padded)
+    [DataRow("bytes1[]", false)]
+    [DataRow("string[]", false)]
+    [DataRow("uint256[]", false)]
+    [DataRow("(uint8,uint16)", false)]  // Structs are not supported in packed mode
+    [DataRow("(uint256,bool)", false)]
+    [DataRow("(string,bytes)", false)]
+    [DataRow("uint8[2]", false)]   // Fixed arrays are still arrays (elements are padded)
+    [DataRow("uint256[2]", false)]
+    [DataRow("bytes1[3]", false)]
+    [DataRow("(uint8,bytes1)[2]", false)]  // Arrays of structs are not supported
+    [DataRow("uint8[][2]", false)] // Nested arrays are not supported
+    [DataRow("uint8[2][]", false)]
+    public void CanBePacked_ReturnsExpectedResult(string type, bool expected)
+    {
+        // Act
+        bool result = AbiTypes.CanBePacked(type);
+
+        // Assert
+        Assert.AreEqual(expected, result, $"Type '{type}' should {(expected ? "" : "not ")}be packable");
+    }
+
+    #endregion
+
+    #region IsPackingSupported Tests
+
+    [TestMethod]
+    [DataRow("uint8", true)]       // Basic types are supported
+    [DataRow("uint16", true)]
+    [DataRow("uint256", true)]
+    [DataRow("int8", true)]
+    [DataRow("int256", true)]
+    [DataRow("bytes1", true)]
+    [DataRow("bytes32", true)]
+    [DataRow("bool", true)]
+    [DataRow("address", true)]
+    [DataRow("string", true)]      // Dynamic types are supported
+    [DataRow("bytes", true)]
+    [DataRow("uint8[]", true)]     // Simple arrays are supported
+    [DataRow("bytes1[]", true)]
+    [DataRow("string[]", true)]
+    [DataRow("uint256[]", true)]
+    [DataRow("uint8[2]", true)]    // Fixed arrays are supported
+    [DataRow("uint256[2]", true)]
+    [DataRow("bytes1[3]", true)]
+    [DataRow("(uint8,uint16)", false)]  // Structs are not supported
+    [DataRow("(uint256,bool)", false)]
+    [DataRow("(string,bytes)", false)]
+    [DataRow("(uint8,bytes1)[2]", false)]  // Arrays of structs are not supported
+    [DataRow("uint8[][2]", false)] // Nested arrays are not supported
+    [DataRow("uint8[2][]", false)] // Nested arrays are not supported
+    [DataRow("uint8[][]", false)]  // Nested arrays are not supported
+    [DataRow("string[][]", false)] // Nested arrays are not supported
+    public void IsPackingSupported_ReturnsExpectedResult(string type, bool expected)
+    {
+        // Act
+        bool result = AbiTypes.IsPackingSupported(type);
+
+        // Assert
+        Assert.AreEqual(expected, result, $"Type '{type}' should {(expected ? "" : "not ")}be supported in packed encoding");
+    }
+
+    #endregion
 }

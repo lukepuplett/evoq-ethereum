@@ -42,8 +42,9 @@ public interface IAbiEncode : IAbiTypeCompatible
     /// <param name="abiType">The ABI type string (e.g. "uint256", "address")</param>
     /// <param name="value">The value to encode</param>
     /// <param name="bytes">The encoded bytes if successful</param>
+    /// <param name="length">The length of the bytes to encode.</param>
     /// <returns>True if encoding was successful, false otherwise</returns>
-    bool TryEncode(string abiType, object value, out byte[] bytes);
+    bool TryEncode(string abiType, object value, out byte[] bytes, int length = 32);
 }
 
 /// <summary>

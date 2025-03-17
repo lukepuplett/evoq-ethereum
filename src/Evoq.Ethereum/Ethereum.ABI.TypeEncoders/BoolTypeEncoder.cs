@@ -25,8 +25,9 @@ public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
     /// <returns>True if the encoding was successful, false otherwise.</returns>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         encoded = Array.Empty<byte>();
 
@@ -39,7 +40,7 @@ public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         if (value is bool boolValue)
         {
-            encoded = EncodeBool(boolValue);
+            encoded = EncodeBool(boolValue, length);
             return true;
         }
 
@@ -81,14 +82,26 @@ public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Encodes a boolean as a 32-byte value.
     /// </summary>
     /// <param name="value">The value to encode.</param>
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
     /// <returns>The encoded value as 32 bytes.</returns>
-    public static byte[] EncodeBool(bool value)
+    public static byte[] EncodeBool(bool value, int length = 32)
     {
-        var result = new byte[32];
-        if (value)
-            result[31] = 1;
+        if (length == -1)
+        {
+            length = 1;
+        }
 
-        Debug.Assert(result.Length == 32);
+        if (length == 0 || length < -1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
+        var result = new byte[length];
+
+        if (value)
+        {
+            result[31] = 1;
+        }
 
         return result;
     }

@@ -38,7 +38,10 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    /// <param name="length">The length of the byte array to return or -1 for no padding.</param>
+    /// <returns>True if the value was encoded successfully, false otherwise.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if the value is null.</exception>
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         if (value == null)
         {
@@ -68,7 +71,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeUint(maxAbiCapacity, byteValue);
+            encoded = EncodeUint(maxAbiCapacity, byteValue, length);
             return true;
         }
 
@@ -79,7 +82,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeUint(maxAbiCapacity, ushortValue);
+            encoded = EncodeUint(maxAbiCapacity, ushortValue, length);
             return true;
         }
 
@@ -90,7 +93,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeUint(maxAbiCapacity, uintValue);
+            encoded = EncodeUint(maxAbiCapacity, uintValue, length);
             return true;
         }
 
@@ -101,7 +104,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeUint(maxAbiCapacity, ulongValue);
+            encoded = EncodeUint(maxAbiCapacity, ulongValue, length);
             return true;
         }
 
@@ -121,7 +124,7 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeUint(maxAbiCapacity, bigIntegerValue);
+            encoded = EncodeUint(maxAbiCapacity, bigIntegerValue, length);
             return true;
         }
 
@@ -213,17 +216,28 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// </summary>
     /// <param name="bits">The number of bits to encode, e.g. 8 or 256 etc.</param>
     /// <param name="value">The value to encode.</param>
-    /// <returns>The encoded value as 32 bytes.</returns>
-    public static byte[] EncodeUint(int bits, BigInteger value)
+    /// <param name="length">The length of the byte array to return or -1 for no padding.</param>
+    /// <returns>The encoded value as a byte array.</returns>
+    public static byte[] EncodeUint(int bits, BigInteger value, int length = 32)
     {
         if (bits < 8 || bits > 256 || bits % 8 != 0)
         {
             throw new ArgumentException("Bits must be between 8 and 256 and a multiple of 8", nameof(bits));
         }
 
+        if (length == 0 || length < -1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
         if (value < 0)
         {
             throw new ArgumentException("Value cannot be negative", nameof(value));
+        }
+
+        if (length == -1)
+        {
+            length = bits / 8;
         }
 
         var two = new BigInteger(2);
@@ -234,9 +248,10 @@ public class UintTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             throw new ArgumentException($"Value too large for {bits} bits", nameof(value));
         }
 
-        var result = new byte[32];
+        var result = new byte[length];
         var bytes = value.ToByteArray(isUnsigned: true, isBigEndian: true);
-        Buffer.BlockCopy(bytes, 0, result, 32 - bytes.Length, bytes.Length);
+
+        Buffer.BlockCopy(bytes, 0, result, length - bytes.Length, bytes.Length);
 
         return result;
     }

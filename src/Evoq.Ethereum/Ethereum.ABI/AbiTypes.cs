@@ -824,5 +824,88 @@ public static class AbiTypes
         return true;
     }
 
+    /// <summary>
+    /// Determines if a type can be directly packed in the ABI's packed encoding mode (abi.encodePacked).
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type can be directly packed, false otherwise.</returns>
+    /// <remarks>
+    /// According to Solidity documentation for abi.encodePacked:
+    /// 
+    /// 1. Basic types (uint/int of any size, address, bool, bytes1-32) are concatenated directly
+    /// 2. Dynamic types (string, bytes) are encoded in-place without length field
+    /// 3. Arrays have their elements padded and are not directly packable
+    /// 4. Structs and nested arrays are not supported
+    /// 
+    /// This method returns true only for types that can be directly packed without special handling.
+    /// </remarks>
+    public static bool CanBePacked(string type)
+    {
+        if (!IsValidType(type))
+        {
+            return false;
+        }
+
+        // Arrays (both fixed and dynamic) are not directly packable
+        if (IsArray(type))
+        {
+            return false;
+        }
+
+        // Structs/tuples are not supported in packed mode
+        if (IsTuple(type, includeArrays: false))
+        {
+            return false;
+        }
+
+        // All basic types (uint/int of any size, address, bool, bytes1-32)
+        // and dynamic types (string, bytes) can be packed
+        return true;
+    }
+
+    /// <summary>
+    /// Determines if a type is supported in ABI's packed encoding mode (abi.encodePacked).
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is supported in packed encoding, false otherwise.</returns>
+    /// <remarks>
+    /// According to Solidity documentation, the following are not supported in packed encoding:
+    /// - Structs (tuples)
+    /// - Nested arrays
+    /// 
+    /// Basic types, dynamic types, and simple (non-nested) arrays are supported.
+    /// </remarks>
+    public static bool IsPackingSupported(string type)
+    {
+        if (!IsValidType(type))
+        {
+            return false;
+        }
+
+        // Structs/tuples are not supported in packed mode
+        if (IsTuple(type, includeArrays: true))
+        {
+            return false;
+        }
+
+        // Check for arrays
+        if (TryGetArrayDimensions(type, out var dimensions))
+        {
+            if (dimensions!.Count > 1)
+            {
+                return false;
+            }
+
+            if (!TryGetArrayBaseType(type, out var baseType))
+            {
+                throw new ArgumentException($"Invalid array type '{type}'", nameof(type));
+            }
+
+            return IsPackingSupported(baseType!);
+        }
+
+        // All basic types and dynamic types are supported
+        return true;
+    }
 
 }

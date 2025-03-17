@@ -820,7 +820,7 @@ public class AbiEncoder : IAbiEncoder
     /// <param name="value">The value to convert.</param>
     /// <param name="array">When this method returns, contains the Array if conversion was successful, or null if conversion failed.</param>
     /// <returns>true if the conversion was successful; otherwise, false.</returns>
-    private static bool TryConvertToArray(object? value, out Array array)
+    internal static bool TryConvertToArray(object? value, out Array array)
     {
         if (value is Array valueArray)
         {

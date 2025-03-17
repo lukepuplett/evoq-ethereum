@@ -61,7 +61,8 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         encoded = Array.Empty<byte>();
 
@@ -79,7 +80,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                     return false;
                 }
 
-                encoded = EncodeBytes(bytes);
+                encoded = EncodeBytes(bytes, length);
                 return true;
             }
 
@@ -95,7 +96,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeBytes(new byte[] { byteValue });
+            encoded = EncodeBytes(new byte[] { byteValue }, length);
             return true;
         }
 
@@ -106,7 +107,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeBytes(new byte[] { (byte)sbyteValue });
+            encoded = EncodeBytes(new byte[] { (byte)sbyteValue }, length);
             return true;
         }
 
@@ -117,7 +118,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeBytes(new byte[] { (byte)charValue });
+            encoded = EncodeBytes(new byte[] { (byte)charValue }, length);
             return true;
         }
 
@@ -130,7 +131,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeBytes(bytes);
+            encoded = EncodeBytes(bytes, length);
             return true;
         }
 
@@ -141,7 +142,7 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
                 return false;
             }
 
-            encoded = EncodeBytes(hexValue.ToByteArray());
+            encoded = EncodeBytes(hexValue.ToByteArray(), length);
             return true;
         }
 
@@ -244,24 +245,34 @@ public class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     //
 
     /// <summary>
-    /// Encodes a bytes array as a 32-byte value.
+    /// Encodes a bytes array to its ABI binary representation.
     /// </summary>
     /// <remarks>
-    /// Bytes are encoded with right-padding to 32 bytes.
+    /// Bytes are encoded with right-padding to the specified width. So a byte16 padded to 32 bytes
+    /// will return a 32-byte array with the last 16 bytes being 0. A byte16 padded to 16 bytes will
+    /// return a 16-byte array. A byte16 padded to 8 bytes will throw an exception because the bytes
+    /// are too large to fit. Using -1 for the padToWidth parameter will return the bytes as is, without
+    /// padding, so a byte16 will return a 16-byte array.
     /// </remarks>
     /// <param name="bytes">The bytes to encode.</param>
-    /// <returns>The encoded bytes, padded to 32 bytes.</returns>
-    public static byte[] EncodeBytes(byte[] bytes)
+    /// <param name="length">The length of byte array to return, right-padded with 0s. Use -1 for no padding.</param>
+    /// <returns>The encoded bytes, padded to the specified width.</returns>
+    public static byte[] EncodeBytes(byte[] bytes, int length = 32)
     {
         if (bytes == null)
         {
             throw new ArgumentNullException(nameof(bytes));
         }
 
-        var result = new byte[32];
+        if (length == -1)
+        {
+            return bytes;
+        }
+
+        var result = new byte[length];
         Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
 
-        Debug.Assert(result.Length == 32);
+        Debug.Assert(result.Length == length);
 
         return result;
     }

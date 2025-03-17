@@ -27,8 +27,9 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// <param name="abiType">The ABI type to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <param name="encoded">The encoded bytes if successful.</param>
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
     /// <returns>True if the encoding was successful, false otherwise.</returns>
-    public bool TryEncode(string abiType, object value, out byte[] encoded)
+    public bool TryEncode(string abiType, object value, out byte[] encoded, int length = 32)
     {
         encoded = Array.Empty<byte>();
 
@@ -39,13 +40,13 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         if (value is byte[] bytes)
         {
-            encoded = EncodeBytes(bytes);
+            encoded = EncodeBytes(bytes, length);
             return true;
         }
 
         if (value is Hex hexValue)
         {
-            encoded = EncodeBytes(hexValue.ToByteArray());
+            encoded = EncodeBytes(hexValue.ToByteArray(), length);
             return true;
         }
 
@@ -94,25 +95,34 @@ public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Encodes a byte array to a byte array padded to 32 bytes or returns empty for null.
     /// </summary>
     /// <param name="bytes">The bytes to encode.</param>
+    /// <param name="length">The length of the bytes to encode or -1 for no padding.</param>
     /// <returns>The encoded bytes, padded to a multiple of 32 bytes.</returns>
-    public static byte[] EncodeBytes(byte[] bytes)
+    public static byte[] EncodeBytes(byte[] bytes, int length = 32)
     {
         if (bytes == null)
         {
             return Array.Empty<byte>();
         }
 
-        // we're returning the full length bytes but
-        // we just need to pad the input until the
-        // length is a multiple of 32
+        byte[] result;
 
+        if (length == -1)
+        {
+            // No padding for packed encoding
+            result = new byte[bytes.Length];
+            Buffer.BlockCopy(bytes, 0, result, 0, bytes.Length);
+            return result;
+        }
+
+        // Calculate how many bytes we need to add to make the length a multiple of 'length'
         var inputLength = bytes.Length;
-        var padding = (32 - (inputLength % 32)) % 32;
+        var remainder = inputLength % length;
+        var padding = remainder == 0 ? 0 : length - remainder;
 
-        var result = new byte[inputLength + padding];
+        result = new byte[inputLength + padding];
         Buffer.BlockCopy(bytes, 0, result, 0, inputLength);
 
-        Debug.Assert(result.Length == inputLength + padding);
+        Debug.Assert(result.Length % length == 0, "Result length should be a multiple of the specified length");
 
         return result;
     }

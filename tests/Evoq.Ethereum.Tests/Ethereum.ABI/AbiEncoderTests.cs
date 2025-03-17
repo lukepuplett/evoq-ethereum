@@ -54,11 +54,11 @@ public class AbiEncoderTests
         // Act
 
         var result = this.encoder.EncodeParameters(signature.Inputs, testCase.Values);
-        var actualHexSet = result.GetSlots().Select(slot => slot.ToHex()).ToList();
+        var actualHexSet = result.TryGetSlots(out var slots) ? slots!.Select(slot => slot.ToHex()).ToList() : new List<Hex>();
 
         // Assert
         CollectionAssert.AreEquivalent(expectedHexList, actualHexSet,
-            $"Test case {caseNumber}: {testCase.Name} failed.\n{FormatSlotBlock(result.GetSlots())}");
+            $"Test case {caseNumber}: {testCase.Name} failed.\n{FormatSlotBlock(slots!)}");
     }
 
     private static IEnumerable<object[]> GetTestCases()
