@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="Evoq.Blockchain" Version="1.0.7" />
-    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="Nethereum.Signer" Version="4.29.0" />
     <PackageReference Include="Nethereum.Util" Version="4.29.0" />
     <PackageReference Include="Nethereum.Web3" Version="4.29.0" />
