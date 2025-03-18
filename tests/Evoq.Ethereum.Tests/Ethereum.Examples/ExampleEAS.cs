@@ -81,11 +81,15 @@ public class ExampleEAS
         var privateKeyHex = Hex.Parse(privateKeyStr);
 
         var senderAddressStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1Address")!;
-
         var senderAddress = new EthereumAddress(senderAddressStr);
 
+        var chainClient = ChainClient.CreateDefault(chainId, new Uri(hardhatBaseUrl), loggerFactory!);
+        var chain = new Chain(chainClient);
+
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+
         var path = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddressStr));
-        var nonceStore = new FileSystemNonceStore(path, loggerFactory);
+        var nonceStore = new FileSystemNonceStore(path, loggerFactory, getStartingNonce);
 
         // Read the ABI file using our helper method
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
@@ -97,9 +101,6 @@ public class ExampleEAS
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
         // guess gas price
-
-        var chainClient = ChainClient.CreateDefault(chainId, new Uri(hardhatBaseUrl), loggerFactory!);
-        var chain = new Chain(chainClient);
 
         var registerEstimate = await contract.EstimateTransactionFeeAsync(
             chain,

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +17,7 @@ public class FileSystemNonceStore : INonceStore
     private readonly string path;
     private readonly ILogger<FileSystemNonceStore> logger;
     private readonly object nonceStoreLock = new();
+    private readonly Func<Task<BigInteger>>? getNonce;
 
     //
 
@@ -24,7 +26,11 @@ public class FileSystemNonceStore : INonceStore
     /// </summary>
     /// <param name="path">The path to the nonce store.</param>
     /// <param name="loggerFactory">The logger factory.</param>
-    public FileSystemNonceStore(string path, ILoggerFactory loggerFactory)
+    /// <param name="getNonce">Optional function to get the current nonce from an external source (e.g., blockchain).</param>
+    public FileSystemNonceStore(
+        string path,
+        ILoggerFactory loggerFactory,
+        Func<Task<BigInteger>>? getNonce = null)
     {
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException("Path cannot be empty", nameof(path));
@@ -45,6 +51,7 @@ public class FileSystemNonceStore : INonceStore
         this.path = fullPath;
         this.logger = loggerFactory?.CreateLogger<FileSystemNonceStore>()
             ?? throw new ArgumentNullException(nameof(loggerFactory));
+        this.getNonce = getNonce;
 
         EnsureDirectoryExists();
     }
@@ -55,7 +62,7 @@ public class FileSystemNonceStore : INonceStore
     /// Gets the next nonce to use.
     /// </summary>
     /// <returns>The next nonce to use.</returns>
-    public Task<uint> BeforeSubmissionAsync()
+    public async Task<uint> BeforeSubmissionAsync()
     {
         EnsureDirectoryExists();
 
@@ -63,10 +70,26 @@ public class FileSystemNonceStore : INonceStore
         {
             lock (nonceStoreLock)
             {
-                uint nonce = 0;
+                uint startingNonce = 0;
+
+                // If getNonce is provided, try to get the current nonce from external source
+                if (getNonce != null)
+                {
+                    try
+                    {
+                        var currentNonce = getNonce().Result;
+                        startingNonce = (uint)currentNonce;
+                        logger.LogDebug("Got starting nonce {Nonce} from external source", startingNonce);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to get nonce from external source, falling back to file system");
+                    }
+                }
+
                 while (true)
                 {
-                    var noncePath = Path.Combine(path, $"{nonce}.nonce");
+                    var noncePath = Path.Combine(path, $"{startingNonce}.nonce");
 
                     try
                     {
@@ -74,15 +97,15 @@ public class FileSystemNonceStore : INonceStore
                         using (FileStream fs = File.Open(noncePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                         {
                             // File created successfully
-                            logger.LogDebug("Reserved nonce {Nonce} at {Path}", nonce, noncePath);
-                            return Task.FromResult(nonce);
+                            logger.LogDebug("Reserved nonce {Nonce} at {Path}", startingNonce, noncePath);
+                            return startingNonce;
                         }
                     }
                     catch (IOException) when (File.Exists(noncePath))
                     {
                         // More specific exception handling
-                        logger.LogDebug("Nonce {Nonce} already exists, trying next", nonce);
-                        nonce++;
+                        logger.LogDebug("Nonce {Nonce} already exists, trying next", startingNonce);
+                        startingNonce++;
                     }
                 }
             }
