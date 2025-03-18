@@ -3,7 +3,7 @@ using Evoq.Blockchain;
 namespace Evoq.Ethereum.ABI;
 
 [TestClass]
-public class AbiPackedEncoderTests
+public class AbiEncoderPackedTests
 {
     [TestMethod]
     public void EncodePacked_SolidityExample_MatchesExpectedOutput()
@@ -50,7 +50,7 @@ public class AbiPackedEncoderTests
 
         // bytes1(0x42) -> 0x42
         var bytes1Params = AbiParameters.Parse("(bytes1 value)");
-        var bytes1Values = new Dictionary<string, object?> { { "value", new byte[] { 0x42 } } };
+        var bytes1Values = new Dictionary<string, object?> { { "value", Hex.FromBytes(new byte[] { 0x42 }) } };
         var bytes1Expected = "42";
 
         // uint16(0x03) -> 0x0003
@@ -129,49 +129,49 @@ public class AbiPackedEncoderTests
         // Test 1: string(""), string("A"), string("AB")
         var test1Params = AbiParameters.Parse("(string a, string b, string c)");
         var test1Values = new Dictionary<string, object?>
-        {
-            { "a", "" },
-            { "b", "A" },
-            { "c", "AB" }
-        };
-        var test1Expected = "4142"; // "A" + "AB" in UTF-8 (empty string contributes nothing)
+    {
+        { "a", "" },    // Empty string -> 0 bytes
+        { "b", "A" },   // "A" -> 0x41 (1 byte)
+        { "c", "AB" }   // "AB" -> 0x4142 (2 bytes)
+    };
+        var test1Expected = "414142"; // Hex for "A" + "AB" (0x41 + 0x4142 = 3 bytes)
 
         // Test 2: bytes(0x), bytes(0x12), bytes(0x1234)
         var test2Params = AbiParameters.Parse("(bytes a, bytes b, bytes c)");
         var test2Values = new Dictionary<string, object?>
-        {
-            { "a", new byte[0] },
-            { "b", new byte[] { 0x12 } },
-            { "c", new byte[] { 0x12, 0x34 } }
-        };
-        var test2Expected = "121234"; // Empty bytes contributes nothing
+    {
+        { "a", new byte[0] },          // Empty bytes -> 0 bytes
+        { "b", new byte[] { 0x12 } },  // 0x12 -> 1 byte
+        { "c", new byte[] { 0x12, 0x34 } } // 0x1234 -> 2 bytes
+    };
+        var test2Expected = "121234"; // Hex for 0x12 + 0x1234 (3 bytes total)
 
         // Act
         var test1Result = encoder.EncodeParameters(test1Params, test1Values);
         var test2Result = encoder.EncodeParameters(test2Params, test2Values);
 
         // Assert
-        Assert.AreEqual(test1Expected, Hex.FromBytes(test1Result.ToByteArray()));
-        Assert.AreEqual(test2Expected, Hex.FromBytes(test2Result.ToByteArray()));
+        Assert.AreEqual(test1Expected, Hex.FromBytes(test1Result.ToByteArray()), "String encoding failed");
+        Assert.AreEqual(test2Expected, Hex.FromBytes(test2Result.ToByteArray()), "Bytes encoding failed");
     }
 
     [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
+    [ExpectedException(typeof(ArgumentException))]
     public void EncodePacked_UnsupportedTypes_ThrowsException()
     {
         // Test that unsupported types throw exceptions
         var encoder = new AbiEncoderPacked();
 
         // Arrays are not supported in packed encoding
-        var testParams = AbiParameters.Parse("(uint8[] value)");
-        var testValues = new Dictionary<string, object?> { { "value", new byte[] { 1, 2, 3 } } };
+        var testParams = AbiParameters.Parse("(uint8[][] value)");
+        var testValues = new Dictionary<string, object?> { { "value", new byte[][] { new byte[] { 1, 2 }, new byte[] { 3, 4 } } } };
 
         // Act - should throw
         encoder.EncodeParameters(testParams, testValues);
     }
 
     [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
+    [ExpectedException(typeof(ArgumentException))]
     public void EncodePacked_NestedArrays_ThrowsException()
     {
         // Test that nested arrays throw exceptions
@@ -189,7 +189,7 @@ public class AbiPackedEncoderTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
+    [ExpectedException(typeof(ArgumentException))]
     public void EncodePacked_Tuples_ThrowsException()
     {
         // Test that tuples throw exceptions
@@ -211,11 +211,11 @@ public class AbiPackedEncoderTests
         var encoder = new AbiEncoderPacked();
 
         // Mix of supported and unsupported types
-        var testParams = AbiParameters.Parse("(uint8 a, uint8[] b)");
+        var testParams = AbiParameters.Parse("(uint8 a, uint8[2][2] b)");
         var testValues = new Dictionary<string, object?>
         {
             { "a", (byte)1 },
-            { "b", new byte[] { 2, 3 } }
+            { "b", new byte[][] { new byte[] { 2, 3 }, new byte[] { 4, 5 } } }
         };
 
         // Act & Assert
@@ -224,7 +224,7 @@ public class AbiPackedEncoderTests
             var result = encoder.EncodeParameters(testParams, testValues);
             Assert.Fail("Expected an exception but none was thrown");
         }
-        catch (InvalidOperationException)
+        catch (ArgumentException)
         {
             // Expected exception
         }

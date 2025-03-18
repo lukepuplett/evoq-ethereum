@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -100,7 +101,7 @@ public class BoolTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 
         if (value)
         {
-            result[31] = 1;
+            result[length - 1] = 1;
         }
 
         return result;

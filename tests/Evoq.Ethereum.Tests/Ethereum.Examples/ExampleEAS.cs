@@ -15,7 +15,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    // [Ignore]
+    [Ignore]
     public async Task ExampleEAS_CreateWallet()
     {
         // Call the GetSchema method on Ethereum Attestation Service
@@ -43,7 +43,6 @@ public class ExampleEAS
         //
         // !! We need something to compute the gas price.
         //
-
 
         // Then what?
         //
@@ -87,7 +86,7 @@ public class ExampleEAS
 
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
         var sender = new Sender(privateKeyHex, nonceStore!);
-        var endpoint = new Endpoint(hardhatBaseUrl, "hardhat", "hardhat", loggerFactory!);
+        var endpoint = new Endpoint(ChainNames.Hardhat, ChainNames.Hardhat, hardhatBaseUrl, loggerFactory!);
         var contractClient = ContractClient.CreateDefault(endpoint, sender);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
