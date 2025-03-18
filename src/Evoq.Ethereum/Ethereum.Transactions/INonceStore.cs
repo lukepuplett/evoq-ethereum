@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// The response from the nonce store communicating the result of a potential nonce rollback.

@@ -6,6 +6,7 @@ using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
+using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -76,13 +77,15 @@ public class ExampleEAS
             builder => builder.AddSimpleConsole(
                 options => options.SingleLine = true).SetMinimumLevel(LogLevel.Debug));
 
-        INonceStore nonceStore = new InMemoryNonceStore(loggerFactory);
-
         var privateKeyStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
         var privateKeyHex = Hex.Parse(privateKeyStr);
 
         var senderAddressStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1Address")!;
+
         var senderAddress = new EthereumAddress(senderAddressStr);
+
+        var path = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddressStr));
+        var nonceStore = new FileSystemNonceStore(path, loggerFactory);
 
         // Read the ABI file using our helper method
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");

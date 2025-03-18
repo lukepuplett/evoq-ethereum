@@ -4,8 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
+/// <summary>
+/// A simple in-memory nonce store that stores nonces in a HashSet.
+/// </summary>
 public class InMemoryNonceStore : INonceStore
 {
     private readonly HashSet<uint> nonceStore = new();
@@ -14,6 +17,10 @@ public class InMemoryNonceStore : INonceStore
 
     //
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InMemoryNonceStore"/> class.
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory.</param>
     public InMemoryNonceStore(ILoggerFactory loggerFactory)
     {
         this.logger = loggerFactory.CreateLogger<InMemoryNonceStore>();
@@ -21,6 +28,10 @@ public class InMemoryNonceStore : INonceStore
 
     //
 
+    /// <summary>
+    /// Gets the next available nonce.
+    /// </summary>
+    /// <returns>The next available nonce.</returns>
     public Task<uint> BeforeSubmissionAsync()
     {
         uint nonce = 0;
@@ -41,6 +52,11 @@ public class InMemoryNonceStore : INonceStore
         }
     }
 
+    /// <summary>
+    /// Gets the next available nonce after a too-low nonce.
+    /// </summary>
+    /// <param name="nonce">The nonce to check.</param>
+    /// <returns>The next available nonce.</returns>
     public async Task<uint> AfterNonceTooLowAsync(uint nonce)
     {
         uint nextNonce;
@@ -54,6 +70,11 @@ public class InMemoryNonceStore : INonceStore
         return nextNonce;
     }
 
+    /// <summary>
+    /// Handles a transaction that was reverted.
+    /// </summary>
+    /// <param name="nonce">The nonce of the transaction.</param>
+    /// <returns>The response to the caller.</returns>
     public Task<NonceRollbackResponse> AfterTransactionRevertedAsync(uint nonce)
     {
         logger.LogError("Transaction with nonce {Nonce} reverted.", nonce);
@@ -61,6 +82,11 @@ public class InMemoryNonceStore : INonceStore
         return Task.FromResult(NonceRollbackResponse.NotRemovedGasSpent);
     }
 
+    /// <summary>
+    /// Handles a transaction that ran out of gas.
+    /// </summary>
+    /// <param name="nonce">The nonce of the transaction.</param>
+    /// <returns>The response to the caller.</returns>
     public Task<NonceRollbackResponse> AfterTransactionOutOfGas(uint nonce)
     {
         logger.LogError("Transaction with nonce {Nonce} out of gas.", nonce);
@@ -68,6 +94,11 @@ public class InMemoryNonceStore : INonceStore
         return Task.FromResult(NonceRollbackResponse.NotRemovedGasSpent);
     }
 
+    /// <summary>
+    /// Handles a successful transaction submission.
+    /// </summary>
+    /// <param name="nonce">The nonce of the transaction.</param>
+    /// <returns>The response to the caller.</returns>
     public Task AfterSubmissionSuccessAsync(uint nonce)
     {
         nonceFailedTimes.Remove(nonce);
@@ -76,6 +107,11 @@ public class InMemoryNonceStore : INonceStore
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Handles a failed transaction submission.
+    /// </summary>
+    /// <param name="nonce">The nonce of the transaction.</param>
+    /// <returns>The response to the caller.</returns>
     public Task<NonceRollbackResponse> AfterSubmissionFailureAsync(uint nonce)
     {
         if (nonceFailedTimes.TryGetValue(nonce, out var failedTime))

@@ -1,4 +1,5 @@
 using Evoq.Blockchain;
+using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.JsonRPC;
