@@ -25,18 +25,11 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// <returns>The RLP encoded transaction.</returns>
     public byte[] Encode(TransactionEIP1559 tx)
     {
+        // Validate the transaction
+        tx.Validate();
+
         // Check if To is null or an array of all zeros (indicating contract creation)
         bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
-
-        // Validate that the transaction has required fields
-        // EIP-1559 transactions must have chainId, fee parameters, and gas limit
-        if (
-            tx.ChainId == 0 ||
-            (tx.MaxPriorityFeePerGas.SignValue == 0 && tx.MaxFeePerGas.SignValue == 0) ||
-            tx.GasLimit == 0)
-        {
-            throw new ArgumentException("Transaction cannot be empty or invalid.");
-        }
 
         // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, to, value, data, access_list, signature_y_parity, signature_r, signature_s]
 
@@ -86,7 +79,7 @@ internal class RlpEncoder : IRlpTransactionEncoder
         {
             // Use the new methods from RsvSignature to get the appropriate y-parity value
             // This simplifies the logic and centralizes the signature format handling
-            byte yParity = signature.GetYParity(tx);
+            ulong yParity = signature.GetYParity(tx);
 
             // Add y_parity (0 or 1) - this will be minimally encoded
             fields.Add(yParity);
@@ -122,21 +115,11 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// <returns>The RLP encoded transaction.</returns>
     public byte[] Encode(Transaction tx, ulong chainId = 0)
     {
+        // Validate the transaction
+        tx.Validate();
+
         // Check if To is null or an array of all zeros (indicating contract creation)
         bool toIsEmpty = tx.To == null || tx.To.All(b => b == 0);
-
-        // Validate that the transaction has at least some data
-        // A completely empty transaction is invalid in Ethereum
-        if (
-            tx.Nonce == 0 &&
-            tx.GasPrice.SignValue == 0 &&
-            tx.GasLimit == 0 &&
-            toIsEmpty &&
-            tx.Value.SignValue == 0 &&
-            tx.Data.Length == 0)
-        {
-            throw new ArgumentException("Transaction cannot be empty or invalid.");
-        }
 
         // Create a list with the basic transaction fields in the order specified by Ethereum protocol
         // IMPORTANT: This order is mandatory and must not be changed
@@ -329,12 +312,12 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// <summary>
     /// Encodes a BigInteger into RLP format.
     /// </summary>
-    /// <param name="value">The BigInteger to encode.</param>
+    /// <param name="bouncy">The BigInteger to encode.</param>
     /// <returns>The RLP encoded BigInteger.</returns>
-    public byte[] Encode(BigInteger value)
+    public byte[] Encode(BigInteger bouncy)
     {
         // Convert the BigInteger to a byte array
-        byte[] bytes = value.ToByteArray();
+        byte[] bytes = bouncy.ToByteArray();
 
         // If the value is zero, return the RLP encoding for zero
         if (bytes.Length == 0 || (bytes.Length == 1 && bytes[0] == 0))
@@ -351,31 +334,6 @@ internal class RlpEncoder : IRlpTransactionEncoder
         }
 
         return EncodeBytes(bytes);
-    }
-
-    /// <summary>
-    /// Encodes a byte array representing a number in big-endian format into RLP format.
-    /// This can be used for encoding numbers with custom representations (e.g., negative numbers as two's complement).
-    /// </summary>
-    /// <param name="numberBytes">The byte array representing the number in big-endian format.</param>
-    /// <returns>The RLP encoded number.</returns>
-    public byte[] EncodeNumber(byte[] numberBytes)
-    {
-        if (numberBytes == null)
-        {
-            throw new ArgumentNullException(nameof(numberBytes));
-        }
-
-        // If the number is zero (empty byte array or all zeros), encode as empty string
-        if (numberBytes.Length == 0 || numberBytes.All(b => b == 0))
-        {
-            return new byte[] { 0x80 };
-        }
-
-        // Remove leading zeros
-        numberBytes = numberBytes.SkipWhile((b, i) => b == 0 && i < numberBytes.Length - 1).ToArray();
-
-        return EncodeBytes(numberBytes);
     }
 
     /// <summary>
@@ -464,20 +422,33 @@ internal class RlpEncoder : IRlpTransactionEncoder
 
     private byte[] EncodeList(List<object> items)
     {
-        var encodedItems = items
-            .Select(this.Encode)
-            .Aggregate(new byte[0], (acc, next) => acc.Concat(next).ToArray());
+        var itemsEncoded = items.Select(this.Encode).ToList();
 
-        if (encodedItems.Length <= 55)
+        for (int i = 0; i < items.Count; i++)
         {
-            byte pre = (byte)(0xC0 + encodedItems.Length);
-            return new[] { pre }.Concat(encodedItems).ToArray();
+            var item = items[i];
+            var encoded = itemsEncoded[i];
+            if (item is ulong || item is BigInteger)
+            {
+                if (encoded.Length > 1 && encoded[0] == 0) // Non-minimal integer
+                {
+                    throw new ArgumentException($"Invalid RLP encoding of integer at index {i}: leading zero");
+                }
+            }
+            // Allow [0x00] for yParity (byte type)
+        }
+        var encodedBytes = itemsEncoded.Aggregate(new byte[0], (acc, next) => acc.Concat(next).ToArray());
+
+        if (encodedBytes.Length <= 55)
+        {
+            byte pre = (byte)(0xC0 + encodedBytes.Length);
+            return new[] { pre }.Concat(encodedBytes).ToArray();
         }
 
-        byte[] lengthBytes = ToBigEndianBytes(encodedItems.Length);
+        byte[] lengthBytes = ToBigEndianBytes(encodedBytes.Length);
         byte prefix = (byte)(0xF7 + lengthBytes.Length);
 
-        return new[] { prefix }.Concat(lengthBytes).Concat(encodedItems).ToArray();
+        return new[] { prefix }.Concat(lengthBytes).Concat(encodedBytes).ToArray();
     }
 
     private static byte[] ToBigEndianBytes(int value)

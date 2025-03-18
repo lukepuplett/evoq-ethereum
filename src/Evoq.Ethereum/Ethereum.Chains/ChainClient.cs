@@ -24,11 +24,21 @@ public class ChainClient
     /// <summary>
     /// Initializes a new instance of the ChainClient class.
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="jsonRpc">The JSON-RPC client.</param>
-    public ChainClient(IEthereumJsonRpc jsonRpc)
+    public ChainClient(ulong chainId, IEthereumJsonRpc jsonRpc)
     {
+        this.ChainId = chainId;
         this.jsonRpc = jsonRpc;
     }
+
+    //
+
+    /// <summary>
+    /// Gets the chain ID.
+    /// </summary>
+    /// <returns>The chain ID.</returns>
+    public ulong ChainId { get; }
 
     //
 
@@ -116,15 +126,15 @@ public class ChainClient
     /// <summary>
     /// Creates a default chain client.
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <returns>The chain client.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public static ChainClient CreateDefault(Uri uri, ILoggerFactory loggerFactory)
+    public static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
     {
         var jsonRpc = new JsonRpcClient(uri, loggerFactory);
 
-        return new ChainClient(jsonRpc);
+        return new ChainClient(chainId, jsonRpc);
     }
 
     //

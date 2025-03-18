@@ -907,5 +907,4 @@ public static class AbiTypes
         // All basic types and dynamic types are supported
         return true;
     }
-
 }

@@ -1,10 +1,10 @@
-using System.Diagnostics;
 using System.Numerics;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -15,7 +15,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    [Ignore]
+    // [Ignore]
     public async Task ExampleEAS_CreateWallet()
     {
         // Call the GetSchema method on Ethereum Attestation Service
@@ -59,6 +59,9 @@ public class ExampleEAS
         string infuraBaseUrl = "https://mainnet.infura.io/v3/";
         string hardhatBaseUrl = "http://localhost:8545";
 
+        string chainName = ChainNames.Hardhat;
+        ulong chainId = ulong.Parse(ChainNames.GetChainId(chainName));
+
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
             .AddInMemoryCollection(
@@ -86,45 +89,48 @@ public class ExampleEAS
 
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
         var sender = new Sender(privateKeyHex, nonceStore!);
-        var endpoint = new Endpoint(ChainNames.Hardhat, ChainNames.Hardhat, hardhatBaseUrl, loggerFactory!);
+        var endpoint = new Endpoint(chainName, chainName, hardhatBaseUrl, loggerFactory!);
         var contractClient = ContractClient.CreateDefault(endpoint, sender);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
 
         // guess gas price
 
-        var chainClient = ChainClient.CreateDefault(new Uri(hardhatBaseUrl), loggerFactory!);
+        var chainClient = ChainClient.CreateDefault(chainId, new Uri(hardhatBaseUrl), loggerFactory!);
         var chain = new Chain(chainClient);
 
-        var guess = await contract.EstimateTransactionFeeAsync(
+        var registerEstimate = await contract.EstimateTransactionFeeAsync(
             chain,
             "register",
             senderAddress,
             null,
             AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true));
 
+        registerEstimate = registerEstimate.InEther();
+
+        // throw new Exception();
 
         BigInteger etherPriceInCents = 193045; // $1,930.45 as of 15 March 2025
 
-        Assert.IsTrue(100_000 > guess.GasLimit);
-        Assert.AreEqual(EtherAmount.FromWei(2_000_000_000), guess.MaxFeePerGas);
-        Assert.IsTrue(guess.MaxPriorityFeePerGas >= EtherAmount.FromWei(2_000_000_000), $"MaxPriorityFeePerGas is {guess.MaxPriorityFeePerGas}");
-        Assert.AreEqual(EtherAmount.FromWei(0), guess.BaseFeePerGas, $"BaseFeePerGas is {guess.BaseFeePerGas}");
-        Assert.IsTrue(guess.EstimatedFee.ToLocalCurrency(etherPriceInCents) < 90, $"EstimatedFee is {guess.EstimatedFee.ToLocalCurrency(etherPriceInCents)}c");
+        Assert.IsTrue(100_000 > registerEstimate.EstimatedGasLimit);
+        Assert.AreEqual(EtherAmount.FromWei(2_000_000_000), registerEstimate.SuggestedMaxFeePerGas);
+        Assert.IsTrue(registerEstimate.SuggestedMaxPriorityFeePerGas >= EtherAmount.FromWei(2_000_000_000), $"MaxPriorityFeePerGas is {registerEstimate.SuggestedMaxPriorityFeePerGas}");
+        Assert.AreEqual(EtherAmount.FromWei(0), registerEstimate.CurrentBaseFeePerGas, $"BaseFeePerGas is {registerEstimate.CurrentBaseFeePerGas}");
+        Assert.IsTrue(registerEstimate.EstimatedTotalFee.ToLocalCurrency(etherPriceInCents) < 90, $"EstimatedFee is {registerEstimate.EstimatedTotalFee.ToLocalCurrency(etherPriceInCents)}c");
 
-        // register
+        // call register
 
+        var registerOptions = new ContractInvocationOptions(1, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
-        var registerGasOptions = new EIP1559GasOptions(100_000, BigInteger.Zero, BigInteger.Zero); // ZEROES!!
-        var registerOptions = new ContractInvocationOptions(1, registerGasOptions, EtherAmount.Zero);
+        // JSON-RPC error: -32602 - leading zero
         var registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
 
         // get schema
 
-        var abiEncoder = new AbiEncoder();
+        var abiPacker = new AbiEncoderPacked();
         var easSchemaUidSchema = AbiParameters.Parse("string schema, address resolver, bool revocable");
         var easSchemaUidSchemaValues = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
-        var easSchemaUid = abiEncoder.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToHexStruct();
+        var easSchemaUid = KeccakHash.ComputeHash(abiPacker.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToHexStruct());
 
         var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", easSchemaUid));
 

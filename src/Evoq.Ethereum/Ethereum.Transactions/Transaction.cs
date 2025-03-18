@@ -119,6 +119,24 @@ public struct Transaction : IEthereumTransaction
     //
 
     /// <summary>
+    /// Validates that the transaction has the required fields to be considered valid.
+    /// </summary>
+    /// <exception cref="ArgumentException">Thrown if the transaction is missing required fields.</exception>
+    public void Validate()
+    {
+        // A completely empty transaction is invalid in Ethereum
+        if (Nonce == 0 &&
+            GasPrice.SignValue == 0 &&
+            GasLimit == 0 &&
+            (To == null || To.All(b => b == 0)) &&
+            Value.SignValue == 0 &&
+            Data.Length == 0)
+        {
+            throw new ArgumentException("Transaction cannot be empty. At least one field must have a non-zero value.");
+        }
+    }
+
+    /// <summary>
     /// Determines whether this transaction is signed.
     /// </summary>
     /// <returns>True if the transaction is signed; otherwise, false.</returns>

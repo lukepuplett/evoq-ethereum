@@ -160,27 +160,27 @@ public class Contract
         return new TransactionFeeEstimate
         {
             // The maximum amount of gas the transaction can consume
-            GasLimit = gasLimit,
+            EstimatedGasLimit = gasLimit,
 
             // The maximum fee per gas unit the user is willing to pay (base fee + priority fee)
             // This is the absolute maximum that could be charged per gas unit
-            MaxFeePerGas = suggestion.MaxFeePerGasInWei.ToWeiAmount(),
+            SuggestedMaxFeePerGas = suggestion.MaxFeePerGasInWei.ToWeiAmount(),
 
             // The priority fee (tip) per gas unit offered to validators
             // This is what incentivizes miners to include the transaction
-            MaxPriorityFeePerGas = suggestion.MaxPriorityFeePerGasInWei.ToWeiAmount(),
+            SuggestedMaxPriorityFeePerGas = suggestion.MaxPriorityFeePerGasInWei.ToWeiAmount(),
 
             // The network's current base fee per gas unit
             // This is determined by network congestion and is burned when paid
-            BaseFeePerGas = baseFeeInWei.ToWeiAmount(),
+            CurrentBaseFeePerGas = baseFeeInWei.ToWeiAmount(),
 
             // The estimated total transaction fee (worst case if all gas is used)
             // Formula: (baseFee + priorityFee) * gasLimit
-            EstimatedFee = totalFeeInWei.ToWeiAmount(),
+            EstimatedTotalFee = totalFeeInWei.ToWeiAmount(),
 
             // The equivalent legacy gas price (for compatibility with pre-EIP-1559 tools)
             // Formula: baseFee + priorityFee
-            GasPrice = legacyGasPrice.ToWeiAmount()
+            LegacyGasPrice = legacyGasPrice.ToWeiAmount()
         };
     }
 

@@ -94,7 +94,7 @@ public struct RsvSignature
     /// See <see cref="Signing.GetYParityForFeatures"/> for detailed information about 
     /// how y-parity is calculated for different transaction types.
     /// </remarks>
-    public byte GetYParity(ITransactionFeatures features)
+    public ulong GetYParity(ITransactionFeatures features)
     {
         var flags = features.GetFeatures();
 

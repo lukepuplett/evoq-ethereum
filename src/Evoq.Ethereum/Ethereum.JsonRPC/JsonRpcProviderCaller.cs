@@ -205,8 +205,11 @@ internal class JsonRpcProviderCaller<TResponseResult>
                 // Check if the response contains an error
                 if (responseDto.Error != null)
                 {
-                    this.logger?.LogWarning("JSON-RPC error: {ErrorCode} - {ErrorMessage} for method {MethodName}",
-                        responseDto.Error.Code, responseDto.Error.Message, methodInfo.MethodName);
+                    this.logger?.LogWarning(
+                        "JSON-RPC Error | Method: {MethodName} | Code: {ErrorCode} | Message: {ErrorMessage}",
+                        methodInfo.MethodName,
+                        responseDto.Error.Code,
+                        responseDto.Error.Message);
 
                     var jsonRpcException = new JsonRpcRequestFailedException(
                         $"JSON-RPC error: {responseDto.Error.Code} - {responseDto.Error.Message}");
@@ -218,15 +221,20 @@ internal class JsonRpcProviderCaller<TResponseResult>
 
                     if (shouldRetry != null && await shouldRetry(faultInfo))
                     {
-                        this.logger?.LogInformation("Retrying after JSON-RPC error {ErrorCode} for method {MethodName}",
-                            responseDto.Error.Code, methodInfo.MethodName);
+                        this.logger?.LogInformation(
+                            "Retrying request | Method: {MethodName} | Previous error code: {ErrorCode}",
+                            methodInfo.MethodName,
+                            responseDto.Error.Code);
 
                         continue; // Retry the request
                     }
 
                     // If we shouldn't retry, throw the exception
-                    this.logger?.LogError("JSON-RPC error: {ErrorCode} - {ErrorMessage} for method {MethodName}",
-                        responseDto.Error.Code, responseDto.Error.Message, methodInfo.MethodName);
+                    this.logger?.LogError(
+                        "JSON-RPC Error | Method: {MethodName} | Code: {ErrorCode} | Message: {ErrorMessage}",
+                        methodInfo.MethodName,
+                        responseDto.Error.Code,
+                        responseDto.Error.Message);
 
                     throw jsonRpcException;
                 }

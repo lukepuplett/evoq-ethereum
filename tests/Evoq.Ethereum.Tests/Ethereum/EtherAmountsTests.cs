@@ -99,15 +99,18 @@ public class EtherAmountsTests
         // Arrange
         var weiAmount = EtherAmount.FromWei(123);
         var etherAmount = EtherAmount.FromEther(7.89m);
+        var largeWeiAmount = EtherAmount.FromWei(1234567890);
 
         // Act
         var weiString = weiAmount.ToString();
         var etherString = etherAmount.ToString();
+        var largeWeiString = largeWeiAmount.ToString();
 
         // Assert
         Assert.AreEqual("123 Wei", weiString, "Wei amount should be formatted correctly");
         Assert.IsTrue(etherString.StartsWith("7.89"), "Ether amount should start with the correct value");
         Assert.IsTrue(etherString.EndsWith("ETH"), "Ether amount should end with ETH");
+        Assert.AreEqual("1,234,567,890 Wei", largeWeiString, "Large Wei amount should include thousands separators");
     }
 
     [TestMethod]
@@ -567,13 +570,15 @@ public class EtherAmountsTests
     {
         // Arrange
         var amount = EtherAmount.FromEther(1.23456789m);
+        var largeAmount = EtherAmount.FromEther(1234567.89m);
 
         // Act & Assert
-        // Note: This test assumes we implement a ToString(int decimals) method
         Assert.AreEqual("1.23 ETH", amount.ToString(2),
             "Should format with specified decimal places");
         Assert.AreEqual("1.234568 ETH", amount.ToString(6),
             "Should round to specified decimal places");
+        Assert.AreEqual("1,234,567.89 ETH", largeAmount.ToString(2),
+            "Should format large numbers with thousands separators");
     }
 
     [TestMethod]

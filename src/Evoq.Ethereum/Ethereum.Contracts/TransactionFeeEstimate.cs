@@ -19,7 +19,7 @@ public class TransactionFeeEstimate
     /// The gas limit is the maximum amount of gas you're willing to use for your transaction.
     /// If your transaction requires more gas than this limit, it will fail with an "out of gas" error.
     /// </remarks>
-    public BigInteger GasLimit { get; set; }
+    public BigInteger EstimatedGasLimit { get; set; }
 
     /// <summary>
     /// The suggested maximum fee per gas (in wei).
@@ -30,7 +30,7 @@ public class TransactionFeeEstimate
     /// maxFeePerGas = baseFeePerGas * 2 + maxPriorityFeePerGas
     /// The multiplier accounts for potential base fee increases between blocks.
     /// </remarks>
-    public EtherAmount MaxFeePerGas { get; set; }
+    public EtherAmount SuggestedMaxFeePerGas { get; set; }
 
     /// <summary>
     /// The suggested maximum priority fee per gas (in wei).
@@ -39,7 +39,7 @@ public class TransactionFeeEstimate
     /// This is the "tip" you're willing to pay to miners/validators per unit of gas.
     /// Higher priority fees can result in faster transaction processing during network congestion.
     /// </remarks>
-    public EtherAmount MaxPriorityFeePerGas { get; set; }
+    public EtherAmount SuggestedMaxPriorityFeePerGas { get; set; }
 
     /// <summary>
     /// The current base fee per gas (in wei).
@@ -49,7 +49,7 @@ public class TransactionFeeEstimate
     /// It's the minimum fee required for inclusion and is burned (removed from circulation).
     /// The base fee automatically adjusts based on network congestion.
     /// </remarks>
-    public EtherAmount BaseFeePerGas { get; set; }
+    public EtherAmount CurrentBaseFeePerGas { get; set; }
 
     /// <summary>
     /// The estimated total transaction fee in wei.
@@ -58,7 +58,7 @@ public class TransactionFeeEstimate
     /// Calculated as: (baseFeePerGas + maxPriorityFeePerGas) * gasLimit
     /// The actual fee may be lower if the transaction uses less than the gas limit.
     /// </remarks>
-    public EtherAmount EstimatedFee { get; set; }
+    public EtherAmount EstimatedTotalFee { get; set; }
 
     /// <summary>
     /// The legacy gas price, for backward compatibility with pre-EIP-1559 transactions.
@@ -67,7 +67,7 @@ public class TransactionFeeEstimate
     /// Before EIP-1559, transactions used a single gas price. This value combines the base fee
     /// and priority fee to provide an equivalent gas price for legacy (Type 0) transactions.
     /// </remarks>
-    public EtherAmount GasPrice { get; set; }
+    public EtherAmount LegacyGasPrice { get; set; }
 
     /// <summary>
     /// The estimated maximum total fee in wei.
@@ -76,7 +76,7 @@ public class TransactionFeeEstimate
     /// This is the worst-case scenario fee: GasLimit * MaxFeePerGas
     /// You'll never pay more than this amount, regardless of base fee changes.
     /// </remarks>
-    public EtherAmount MaxFee => GasLimit * MaxFeePerGas;
+    public EtherAmount EstimatedMaxFee => EstimatedGasLimit * SuggestedMaxFeePerGas;
 
     /// <summary>
     /// The estimated minimum total fee in wei.
@@ -85,7 +85,7 @@ public class TransactionFeeEstimate
     /// This is the minimum possible fee if only the base fee is paid: GasLimit * BaseFeePerGas
     /// In practice, you'll always pay at least the priority fee on top of this.
     /// </remarks>
-    public EtherAmount MinFee => GasLimit * BaseFeePerGas;
+    public EtherAmount EstimatedMinFee => EstimatedGasLimit * CurrentBaseFeePerGas;
 
     /// <summary>
     /// The estimated priority fee in wei.
@@ -93,5 +93,29 @@ public class TransactionFeeEstimate
     /// <remarks>
     /// This is the portion of the fee that goes to miners/validators: GasLimit * MaxPriorityFeePerGas
     /// </remarks>
-    public EtherAmount PriorityFee => GasLimit * MaxPriorityFeePerGas;
+    public EtherAmount EstimatedPriorityFee => EstimatedGasLimit * SuggestedMaxPriorityFeePerGas;
+
+    //
+
+    /// <summary>
+    /// Returns a new TransactionFeeEstimate with all values converted to ether.
+    /// </summary>
+    public TransactionFeeEstimate InEther() => new TransactionFeeEstimate
+    {
+        EstimatedGasLimit = EstimatedGasLimit,
+        SuggestedMaxFeePerGas = SuggestedMaxFeePerGas.InEther,
+        SuggestedMaxPriorityFeePerGas = SuggestedMaxPriorityFeePerGas.InEther,
+        CurrentBaseFeePerGas = CurrentBaseFeePerGas.InEther,
+        EstimatedTotalFee = EstimatedTotalFee.InEther,
+        LegacyGasPrice = LegacyGasPrice.InEther,
+    };
+
+    /// <summary>
+    /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
+    /// </summary>
+    /// <returns>A new EIP-1559 gas options object.</returns>
+    public EIP1559GasOptions ToSuggestedGasOptions() => new EIP1559GasOptions(
+        gasLimit: (ulong)EstimatedGasLimit,
+        maxFeePerGas: SuggestedMaxFeePerGas,
+        maxPriorityFeePerGas: SuggestedMaxPriorityFeePerGas);
 }

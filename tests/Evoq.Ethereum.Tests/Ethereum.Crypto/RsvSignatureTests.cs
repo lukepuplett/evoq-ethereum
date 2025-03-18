@@ -115,8 +115,8 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             var yParity28 = signature28.GetYParity();
 
             // Assert
-            Assert.AreEqual(0, yParity27);
-            Assert.AreEqual(1, yParity28);
+            Assert.AreEqual((ulong)0, yParity27);
+            Assert.AreEqual((ulong)1, yParity28);
         }
 
         [TestMethod]
@@ -132,8 +132,8 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             var yParity38 = signature38.GetYParity();
 
             // Assert
-            Assert.AreEqual(0, yParity37);
-            Assert.AreEqual(1, yParity38);
+            Assert.AreEqual((ulong)0, yParity37);
+            Assert.AreEqual((ulong)1, yParity38);
         }
 
         [TestMethod]
@@ -178,12 +178,12 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             // - V=38 should give y-parity=1
             // - V=0 should give y-parity=0
             // - V=1 should give y-parity=1
-            Assert.AreEqual(0, yParity27);
-            Assert.AreEqual(1, yParity28);
-            Assert.AreEqual(0, yParity37);
-            Assert.AreEqual(1, yParity38);
-            Assert.AreEqual(0, yParity0);
-            Assert.AreEqual(1, yParity1);
+            Assert.AreEqual((ulong)0, yParity27);
+            Assert.AreEqual((ulong)1, yParity28);
+            Assert.AreEqual((ulong)0, yParity37);
+            Assert.AreEqual((ulong)1, yParity38);
+            Assert.AreEqual((ulong)0, yParity0);
+            Assert.AreEqual((ulong)1, yParity1);
         }
 
         [TestMethod]
@@ -219,10 +219,10 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             // - V=28 is even, so y-parity=0
             // - V=37 is odd, so y-parity=1
             // - V=38 is even, so y-parity=0
-            Assert.AreEqual(1, yParity27);
-            Assert.AreEqual(0, yParity28);
-            Assert.AreEqual(1, yParity37);
-            Assert.AreEqual(0, yParity38);
+            Assert.AreEqual((ulong)1, yParity27);
+            Assert.AreEqual((ulong)0, yParity28);
+            Assert.AreEqual((ulong)1, yParity37);
+            Assert.AreEqual((ulong)0, yParity38);
         }
 
         [TestMethod]
@@ -256,11 +256,11 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
 
             // Assert
             // The expected y-parity is 1 based on the hex string comparison
-            Assert.AreEqual(1, yParity);
+            Assert.AreEqual((ulong)1, yParity);
 
             // Also test the direct Constants.VToYParity method
             var yParityFromConstants = Signing.VToYParity(signature.V);
-            Assert.AreEqual(1, yParityFromConstants);
+            Assert.AreEqual((ulong)1, yParityFromConstants);
         }
     }
 }

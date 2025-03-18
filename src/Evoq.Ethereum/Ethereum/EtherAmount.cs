@@ -124,6 +124,16 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
     }
 
     /// <summary>
+    /// Returns a new EtherAmount with the display unit converted to ether.
+    /// </summary>
+    public EtherAmount InEther => new EtherAmount(WeiValue, EthereumUnit.Ether);
+
+    /// <summary>
+    /// Returns a new EtherAmount with the display unit converted to wei.
+    /// </summary>
+    public EtherAmount InWei => new EtherAmount(WeiValue, EthereumUnit.Wei);
+
+    /// <summary>
     /// Gets the amount in Wei.
     /// </summary>
     /// <returns>The amount in Wei.</returns>
@@ -249,7 +259,9 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
     public string ToString(int decimalPlaces)
     {
         if (decimalPlaces < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(decimalPlaces), "Decimal places must be non-negative.");
+        }
 
         // Clamp to the maximum precision supported by decimal (28 digits)
         decimalPlaces = Math.Min(decimalPlaces, 28);
@@ -268,8 +280,8 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
         // Non-zero amounts use the specified precision
         return DisplayUnit switch
         {
-            EthereumUnit.Wei => $"{WeiValue} Wei",
-            EthereumUnit.Ether => $"{ToEther().ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture)} ETH",
+            EthereumUnit.Wei => $"{WeiValue.ToString("N0", CultureInfo.InvariantCulture)} Wei",
+            EthereumUnit.Ether => $"{ToEther().ToString($"N{decimalPlaces}", CultureInfo.InvariantCulture)} ETH",
             _ => throw new ArgumentOutOfRangeException()
         };
     }

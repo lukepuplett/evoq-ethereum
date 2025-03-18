@@ -59,4 +59,10 @@ public interface IEthereumTransaction : ITransactionFeatures
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
     IEthereumTransaction WithSignature(BigInteger v, BigInteger r, BigInteger s);
+
+    /// <summary>
+    /// Validates that the transaction has the required fields and data to be considered valid.
+    /// </summary>
+    /// <exception cref="ArgumentException">Thrown if the transaction is invalid.</exception>
+    void Validate();
 }

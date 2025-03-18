@@ -10,7 +10,8 @@ namespace Evoq.Ethereum.Tests.Ethereum.RLP;
 [TestClass]
 public class RlpEncoderTests
 {
-    private readonly RlpEncoder _encoder = new RlpEncoder();
+    private readonly RlpEncoder encoder = new RlpEncoder();
+    private TestableRlpEncoder testableEncoder = new TestableRlpEncoder();
 
     private static readonly Hex zeroHex = Hex.Parse("0x00");
     private static readonly Hex oneHex = Hex.Parse("0x01");
@@ -20,12 +21,151 @@ public class RlpEncoderTests
     private static readonly BigInteger oneBig = oneHex.ToBigInteger().ToBigBouncy();
     private static readonly BigInteger twoBig = twoHex.ToBigInteger().ToBigBouncy();
 
+    //
+
+    [TestInitialize]
+    public void Setup()
+    {
+        testableEncoder = new TestableRlpEncoder();
+    }
+
+    // Grok's tests
+
+    private class TestableRlpEncoder : RlpEncoder
+    {
+        // Expose EncodeBytes result for testing
+        public byte[] EncodeBigInteger(BigInteger bouncy)
+        {
+            return Encode(bouncy); // Calls the public Encode method
+        }
+
+        // Expose the raw bytes before EncodeBytes for inspection
+        public byte[] GetRawBytes(BigInteger bouncy)
+        {
+            byte[] bytes = bouncy.ToByteArray();
+            if (bytes.Length == 0 || (bytes.Length == 1 && bytes[0] == 0))
+            {
+                return new byte[] { 0x80 };
+            }
+            if (bytes.Length > 1 && bytes[0] == 0 && (bytes[1] & 0x80) != 0)
+            {
+                bytes = bytes.Skip(1).ToArray();
+            }
+            return bytes; // Return bytes before EncodeBytes
+        }
+    }
+
+    [TestMethod]
+    public void Encode_Zero_ReturnsEmptyRlp()
+    {
+        BigInteger zero = BigInteger.Zero;
+        byte[] result = testableEncoder.EncodeBigInteger(zero);
+        Assert.AreEqual(1, result.Length, "Zero should encode to a single byte.");
+        Assert.AreEqual(0x80, result[0], "Zero should encode to [0x80].");
+    }
+
+    [TestMethod]
+    public void Encode_SmallPositiveNumber_NoLeadingZeros()
+    {
+        BigInteger small = new BigInteger("1234"); // 0x04d2
+        byte[] raw = testableEncoder.GetRawBytes(small);
+        byte[] encoded = testableEncoder.EncodeBigInteger(small);
+
+        Assert.AreEqual(2, raw.Length, "Raw bytes should be 2 bytes.");
+        Assert.AreEqual(0x04, raw[0], "First byte should be 0x04.");
+        Assert.AreEqual(0xd2, raw[1], "Second byte should be 0xd2.");
+        Assert.AreEqual(3, encoded.Length, "Encoded length should include prefix.");
+        Assert.AreEqual(0x82, encoded[0], "Prefix should be 0x82 (128 + 2).");
+        Assert.IsFalse(raw[0] == 0, "No leading zero should be present.");
+    }
+
+    [TestMethod]
+    public void Encode_32ByteValue_NoExtraLeadingZeros()
+    {
+        // A 32-byte value: 0x1234... (32 bytes total)
+        byte[] valueBytes = new byte[32];
+        valueBytes[0] = 0x12;
+        valueBytes[1] = 0x34;
+        for (int i = 2; i < 32; i++) valueBytes[i] = 0xff; // Fill with 0xff
+        BigInteger value = new BigInteger(1, valueBytes); // Positive, big-endian
+
+        byte[] raw = testableEncoder.GetRawBytes(value);
+        byte[] encoded = testableEncoder.EncodeBigInteger(value);
+
+        Assert.AreEqual(32, raw.Length, "Raw bytes should be exactly 32 bytes.");
+        Assert.AreEqual(0x12, raw[0], "First byte should be 0x12.");
+        Assert.AreEqual(33, encoded.Length, "Encoded length should be 33 (prefix + 32).");
+        Assert.AreEqual(0xa0, encoded[0], "Prefix should be 0xa0 (128 + 32).");
+        Assert.IsFalse(raw[0] == 0, "No leading zero should be present.");
+    }
+
+    [TestMethod]
+    public void Encode_32ByteValueWithHighBit_StripsSignByte()
+    {
+        // A 32-byte value starting with 0x80 (high bit set)
+        byte[] valueBytes = new byte[32];
+        valueBytes[0] = 0x80; // High bit set
+        for (int i = 1; i < 32; i++) valueBytes[i] = 0xff;
+        BigInteger value = new BigInteger(1, valueBytes);
+
+        byte[] raw = testableEncoder.GetRawBytes(value);
+        byte[] encoded = testableEncoder.EncodeBigInteger(value);
+
+        Assert.AreEqual(32, raw.Length, "Raw bytes should be 32 bytes after stripping sign byte.");
+        Assert.AreEqual(0x80, raw[0], "First byte should be 0x80.");
+        Assert.AreEqual(33, encoded.Length, "Encoded length should be 33 (prefix + 32).");
+        Assert.AreEqual(0xa0, encoded[0], "Prefix should be 0xa0 (128 + 32).");
+        // BouncyCastle adds 0x00, but it’s stripped
+    }
+
+    [TestMethod]
+    public void Encode_33ByteValueWithLeadingZero_StripsToMinimal()
+    {
+        byte[] valueBytes = new byte[33];
+        valueBytes[0] = 0x00;
+        valueBytes[1] = 0x12;
+        for (int i = 2; i < 33; i++) valueBytes[i] = 0xff;
+        BigInteger value = new BigInteger(1, valueBytes);
+
+        byte[] raw = testableEncoder.GetRawBytes(value);
+        byte[] encoded = testableEncoder.EncodeBigInteger(value);
+
+        Assert.AreEqual(32, raw.Length, "Raw bytes should be 32 bytes (leading zero stripped).");
+        Assert.AreEqual(0x12, raw[0], "First byte should be 0x12.");
+        Assert.AreEqual(0xff, raw[1], "Second byte should be 0xff.");
+        Assert.AreEqual(33, encoded.Length, "Encoded length should be 33 (prefix + 32).");
+        Assert.AreEqual(0xa0, encoded[0], "Prefix should be 0xa0 (128 + 32).");
+    }
+
+    [TestMethod]
+    public void Encode_33ByteValueWithSignByte_StripsCorrectly()
+    {
+        // A 33-byte value: 0x00, 0x80, ... (high bit set)
+        byte[] valueBytes = new byte[33];
+        valueBytes[0] = 0x00;
+        valueBytes[1] = 0x80;
+        for (int i = 2; i < 33; i++) valueBytes[i] = 0xff;
+        BigInteger value = new BigInteger(1, valueBytes);
+
+        byte[] raw = testableEncoder.GetRawBytes(value);
+        byte[] encoded = testableEncoder.EncodeBigInteger(value);
+
+        Assert.AreEqual(32, raw.Length, "Raw bytes should be 32 bytes after stripping sign byte.");
+        Assert.AreEqual(0x80, raw[0], "First byte should be 0x80.");
+        Assert.AreEqual(33, encoded.Length, "Encoded length should be 33 (prefix + 32).");
+        Assert.AreEqual(0xa0, encoded[0], "Prefix should be 0xa0 (128 + 32).");
+        // Leading 0x00 is stripped because 0x80 has high bit set
+    }
+
+
+    //
+
     [TestMethod]
     public void Encode_EmptyString_ReturnsCorrectEncoding()
     {
         // Empty string = 0x80
         byte[] expected = new byte[] { 0x80 };
-        byte[] actual = _encoder.Encode(string.Empty);
+        byte[] actual = encoder.Encode(string.Empty);
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -35,7 +175,7 @@ public class RlpEncoderTests
     {
         // Single character below 0x80 is encoded as itself
         byte[] expected = new byte[] { (byte)'a' };
-        byte[] actual = _encoder.Encode("a");
+        byte[] actual = encoder.Encode("a");
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -45,7 +185,7 @@ public class RlpEncoderTests
     {
         // "dog" = [ 0x83, 'd', 'o', 'g' ]
         byte[] expected = new byte[] { 0x83, 0x64, 0x6f, 0x67 };
-        byte[] actual = _encoder.Encode("dog");
+        byte[] actual = encoder.Encode("dog");
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -63,7 +203,7 @@ public class RlpEncoderTests
         expected[1] = 0x38;
         Array.Copy(stringBytes, 0, expected, 2, 56);
 
-        byte[] actual = _encoder.Encode(longString);
+        byte[] actual = encoder.Encode(longString);
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -73,7 +213,7 @@ public class RlpEncoderTests
     {
         // Empty list = 0xC0
         byte[] expected = new byte[] { 0xC0 };
-        byte[] actual = _encoder.Encode(new List<object>());
+        byte[] actual = encoder.Encode(new List<object>());
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -83,7 +223,7 @@ public class RlpEncoderTests
     {
         // [ "cat", "dog" ] = [ 0xC8, 0x83, 'c', 'a', 't', 0x83, 'd', 'o', 'g' ]
         byte[] expected = new byte[] { 0xC8, 0x83, 0x63, 0x61, 0x74, 0x83, 0x64, 0x6f, 0x67 };
-        byte[] actual = _encoder.Encode(new List<object> { "cat", "dog" });
+        byte[] actual = encoder.Encode(new List<object> { "cat", "dog" });
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -93,7 +233,7 @@ public class RlpEncoderTests
     {
         // [ [], [[]], [ [], [[]] ] ] = [ 0xC7, 0xC0, 0xC1, 0xC0, 0xC3, 0xC0, 0xC1, 0xC0 ]
         byte[] expected = new byte[] { 0xC7, 0xC0, 0xC1, 0xC0, 0xC3, 0xC0, 0xC1, 0xC0 };
-        byte[] actual = _encoder.Encode(new List<object>
+        byte[] actual = encoder.Encode(new List<object>
         {
             new List<object>(),
             new List<object> { new List<object>() },
@@ -109,14 +249,14 @@ public class RlpEncoderTests
         // Single byte below 0x80 is encoded as itself
         byte input = 0x7F;
         byte[] expected = new byte[] { 0x7F };
-        byte[] actual = _encoder.Encode(input);
+        byte[] actual = encoder.Encode(input);
 
         CollectionAssert.AreEqual(expected, actual);
 
         // Single byte 0x00 is encoded as itself
         input = 0x00;
         expected = new byte[] { 0x00 };
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -127,7 +267,7 @@ public class RlpEncoderTests
         // Byte array [1, 2, 3] = [ 0x83, 0x01, 0x02, 0x03 ]
         byte[] input = new byte[] { 0x01, 0x02, 0x03 };
         byte[] expected = new byte[] { 0x83, 0x01, 0x02, 0x03 };
-        byte[] actual = _encoder.Encode(input);
+        byte[] actual = encoder.Encode(input);
 
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -137,7 +277,7 @@ public class RlpEncoderTests
     {
         // ulong 0 = [ 0x80 ]
         ulong input = 0;
-        byte[] actual = _encoder.Encode(input);
+        byte[] actual = encoder.Encode(input);
         // Print actual bytes for debugging
         Console.WriteLine($"Actual bytes for 0: {BitConverter.ToString(actual)}");
         byte[] expected = new byte[] { 0x80 };
@@ -145,14 +285,14 @@ public class RlpEncoderTests
 
         // ulong 15 = [ 0x0F ]
         input = 15;
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for 15: {BitConverter.ToString(actual)}");
         expected = new byte[] { 0x0F };
         CollectionAssert.AreEqual(expected, actual);
 
         // ulong 1024 = [ 0x0F ]
         input = 1024;
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for 1024: {BitConverter.ToString(actual)}");
 
         // 1024 = 0x0400 in hex (big-endian)
@@ -182,21 +322,21 @@ public class RlpEncoderTests
     {
         // BigInteger 0 = [ 0x80 ]
         BigInteger input = BigInteger.Zero;
-        byte[] actual = _encoder.Encode(input);
+        byte[] actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for BigInteger 0: {BitConverter.ToString(actual)}");
         byte[] expected = new byte[] { 0x80 };
         CollectionAssert.AreEqual(expected, actual);
 
         // BigInteger 15 = [ 0x0F ]
         input = BigInteger.ValueOf(15);
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for BigInteger 15: {BitConverter.ToString(actual)}");
         expected = new byte[] { 0x0F };
         CollectionAssert.AreEqual(expected, actual);
 
         // BigInteger 1024 = [ 0x82, 0x04, 0x00 ]
         input = BigInteger.ValueOf(1024);
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for BigInteger 1024: {BitConverter.ToString(actual)}");
         expected = new byte[] { 0x82, 0x04, 0x00 };
         CollectionAssert.AreEqual(expected, actual);
@@ -214,7 +354,7 @@ public class RlpEncoderTests
             expected[i] = 0xFF;
         }
 
-        actual = _encoder.Encode(input);
+        actual = encoder.Encode(input);
         Console.WriteLine($"Actual bytes for large BigInteger: {BitConverter.ToString(actual)}");
         CollectionAssert.AreEqual(expected, actual);
     }
@@ -224,7 +364,7 @@ public class RlpEncoderTests
     {
         // With Bouncy Castle's BigInteger, negative numbers should be handled correctly
         BigInteger input = new BigInteger("-1000000");
-        byte[] actual = _encoder.Encode(input);
+        byte[] actual = encoder.Encode(input);
 
         Console.WriteLine($"Actual bytes: {BitConverter.ToString(actual)}");
 
@@ -236,7 +376,7 @@ public class RlpEncoderTests
 
         // We should also verify that our encoder handles the absolute value correctly
         BigInteger absInput = input.Abs();
-        byte[] absActual = _encoder.Encode(absInput);
+        byte[] absActual = encoder.Encode(absInput);
         byte[] absExpected = new byte[] { 0x83, 0x0F, 0x42, 0x40 };
 
         Console.WriteLine($"Absolute value bytes encoded: {BitConverter.ToString(absActual)}");
@@ -249,7 +389,7 @@ public class RlpEncoderTests
     public void Encode_UnsupportedType_ThrowsArgumentException()
     {
         // Try to encode an unsupported type (like a DateTime)
-        _encoder.Encode(DateTime.Now);
+        encoder.Encode(DateTime.Now);
     }
 
     [TestMethod]
@@ -258,7 +398,7 @@ public class RlpEncoderTests
         byte[]? nullInput = null;
 
         // Test encoding a null input
-        Assert.ThrowsException<ArgumentNullException>(() => _encoder.Encode(nullInput));
+        Assert.ThrowsException<ArgumentNullException>(() => encoder.Encode(nullInput));
     }
 
     [TestMethod]
@@ -277,7 +417,7 @@ public class RlpEncoderTests
         expected[2] = 0xE8; // second byte of length
         Array.Fill<byte>(expected, 0x61, 3, 1000); // fill with 'a'
 
-        byte[] actual = _encoder.Encode(longString);
+        byte[] actual = encoder.Encode(longString);
         Console.WriteLine($"Expected length: {expected.Length}, Actual length: {actual.Length}");
         Console.WriteLine($"Expected first bytes: {expected[0]:X2} {expected[1]:X2} {expected[2]:X2}, Actual first bytes: {actual[0]:X2} {actual[1]:X2} {actual[2]:X2}");
 
@@ -291,7 +431,7 @@ public class RlpEncoderTests
         string specialString = "!@#$%^&*()";
         // The correct RLP encoding is 0x8A (0x80 + length 10) followed by the characters
         byte[] expected = new byte[] { 0x8A, 0x21, 0x40, 0x23, 0x24, 0x25, 0x5E, 0x26, 0x2A, 0x28, 0x29 };
-        byte[] actual = _encoder.Encode(specialString);
+        byte[] actual = encoder.Encode(specialString);
         CollectionAssert.AreEqual(expected, actual);
     }
 
@@ -299,10 +439,10 @@ public class RlpEncoderTests
     public void Encode_EmptyTransaction_ThrowsArgumentException()
     {
         // Use the Empty static property for a legacy transaction
-        Assert.ThrowsException<ArgumentException>(() => _encoder.Encode(Transaction.Empty));
+        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(Transaction.Empty));
 
         // Use the Empty static property for an EIP-1559 transaction
-        Assert.ThrowsException<ArgumentException>(() => _encoder.Encode(TransactionEIP1559.Empty));
+        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(TransactionEIP1559.Empty));
     }
 
     [TestMethod]
@@ -323,7 +463,7 @@ public class RlpEncoderTests
         );
 
         // Encode the transaction
-        byte[] encoded = _encoder.Encode(tx);
+        byte[] encoded = encoder.Encode(tx);
 
         // We can't easily predict the exact encoding, but we can check that:
         // 1. It starts with the transaction type byte (0x02)
@@ -351,10 +491,10 @@ public class RlpEncoderTests
         );
 
         // Encode the transaction for signing (should exclude signature components)
-        byte[] encodedForSigning = _encoder.EncodeForSigning(tx);
+        byte[] encodedForSigning = encoder.EncodeForSigning(tx);
 
         // Encode the full transaction (should include signature components)
-        byte[] encodedFull = _encoder.Encode(tx);
+        byte[] encodedFull = encoder.Encode(tx);
 
         // The encoding for signing should be shorter than the full encoding
         Assert.IsTrue(encodedForSigning.Length < encodedFull.Length);
@@ -379,10 +519,10 @@ public class RlpEncoderTests
         );
 
         // Encode the transaction for signing with chainId = 1 (Ethereum mainnet)
-        byte[] encodedForSigning = _encoder.EncodeForSigning(tx, 1);
+        byte[] encodedForSigning = encoder.EncodeForSigning(tx, 1);
 
         // Encode the full transaction
-        byte[] encodedFull = _encoder.Encode(tx);
+        byte[] encodedFull = encoder.Encode(tx);
 
         // The encoding for signing should be different from the full encoding
         Assert.AreNotEqual(BitConverter.ToString(encodedForSigning), BitConverter.ToString(encodedFull));
@@ -410,8 +550,8 @@ public class RlpEncoderTests
         var signedTx = unsignedTx.WithSignature(Constants.LegacyBaseValue27, oneBig, twoBig);
 
         // Encode both transactions
-        byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
-        byte[] encodedSigned = _encoder.Encode(signedTx);
+        byte[] encodedUnsigned = encoder.Encode(unsignedTx);
+        byte[] encodedSigned = encoder.Encode(signedTx);
 
         // The unsigned encoding should be shorter than the signed encoding
         Assert.IsTrue(encodedUnsigned.Length < encodedSigned.Length);
@@ -440,8 +580,8 @@ public class RlpEncoderTests
         var signedTx = unsignedTx.WithSignature(Big.Zero, oneBig, twoBig);
 
         // Encode both transactions
-        byte[] encodedUnsigned = _encoder.Encode(unsignedTx);
-        byte[] encodedSigned = _encoder.Encode(signedTx);
+        byte[] encodedUnsigned = encoder.Encode(unsignedTx);
+        byte[] encodedSigned = encoder.Encode(signedTx);
 
         // The unsigned encoding should be shorter than the signed encoding
         Assert.IsTrue(encodedUnsigned.Length < encodedSigned.Length);
@@ -449,23 +589,6 @@ public class RlpEncoderTests
         // Both should start with the transaction type byte (0x02)
         Assert.AreEqual(0x02, encodedUnsigned[0]);
         Assert.AreEqual(0x02, encodedSigned[0]);
-    }
-
-    [TestMethod]
-    public void EncodeNumber_NegativeNumberBytes_EncodesCorrectly()
-    {
-        // For negative numbers, we need to pre-convert to the desired byte representation
-        // Here we're using the big-endian byte representation of 1,000,000 (0x0f4240)
-        byte[] numberBytes = new byte[] { 0x0f, 0x42, 0x40 };
-        byte[] actual = _encoder.EncodeNumber(numberBytes);
-
-        // Expected: 0x830f4240
-        // 0x83: prefix for 3-byte string
-        // 0x0f4240: big-endian representation of 1,000,000
-        byte[] expected = new byte[] { 0x83, 0x0f, 0x42, 0x40 };
-
-        CollectionAssert.AreEqual(expected, actual,
-            $"Expected: {BitConverter.ToString(expected)}, Actual: {BitConverter.ToString(actual)}");
     }
 
     [TestMethod]
@@ -507,7 +630,7 @@ public class RlpEncoderTests
         byte[] expectedFullBytes = expectedFullHex.ToByteArray();
 
         // Act
-        byte[] actual1559FullBytes = _encoder.Encode(tx);
+        byte[] actual1559FullBytes = encoder.Encode(tx);
         Hex actual1559FullHex = new Hex(actual1559FullBytes);
 
         // Create the same transaction as a list of objects (without using TransactionEIP1559)
@@ -537,7 +660,7 @@ public class RlpEncoderTests
             HexToByteArray("1234567890abcdef"), // r
             HexToByteArray("fedcba9876543210")  // s
         };
-        byte[] actualListedRlpBytes = _encoder.Encode(txAsList);
+        byte[] actualListedRlpBytes = encoder.Encode(txAsList);
         Hex actualListedRlpHex = new Hex(actualListedRlpBytes);
 
         // Assert

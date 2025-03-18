@@ -150,6 +150,28 @@ public struct TransactionEIP1559 : IEthereumTransaction
     //
 
     /// <summary>
+    /// Validates that the transaction has the required fields to be considered valid.
+    /// </summary>
+    /// <exception cref="ArgumentException">Thrown if the transaction is missing required fields.</exception>
+    public void Validate()
+    {
+        if (ChainId == 0)
+        {
+            throw new ArgumentException("Chain ID cannot be zero for EIP-1559 transactions.");
+        }
+
+        if (MaxPriorityFeePerGas.SignValue == 0 && MaxFeePerGas.SignValue == 0)
+        {
+            throw new ArgumentException("Both MaxPriorityFeePerGas and MaxFeePerGas cannot be zero.");
+        }
+
+        if (GasLimit == 0)
+        {
+            throw new ArgumentException("Gas limit cannot be zero.");
+        }
+    }
+
+    /// <summary>
     /// Creates a signed transaction by adding a signature to an unsigned transaction.
     /// </summary>
     /// <param name="signature">The signature to add.</param>
@@ -289,5 +311,4 @@ public struct TransactionEIP1559 : IEthereumTransaction
 
         return features;
     }
-
 }
