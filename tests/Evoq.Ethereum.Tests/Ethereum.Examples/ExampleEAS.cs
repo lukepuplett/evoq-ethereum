@@ -95,7 +95,7 @@ public class ExampleEAS
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
 
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
-        var sender = new Sender(privateKeyHex, nonceStore!);
+        var sender = new Sender(privateKeyHex, nonceStore);
         var endpoint = new Endpoint(chainName, chainName, hardhatBaseUrl, loggerFactory!);
         var contractClient = ContractClient.CreateDefault(endpoint, sender);
         var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
@@ -123,7 +123,9 @@ public class ExampleEAS
 
         // call register
 
-        var registerOptions = new ContractInvocationOptions(1, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+        var n = await nonceStore.BeforeSubmissionAsync();
+
+        var registerOptions = new ContractInvocationOptions(n, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
         // JSON-RPC error: -32602 - leading zero
