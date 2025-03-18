@@ -139,11 +139,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
     /// <returns>The transaction count of the Ethereum address.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
+    public async Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
     {
-        // Implements eth_getTransactionCount
-        throw new NotImplementedException("eth_getTransactionCount method not implemented. This method retrieves the number of transactions sent from an address.");
+        var request = JsonRpcRequestDtoFactory.CreateGetTransactionCountRequest(address.ToString(), blockParameter, id);
+
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+
+        return ParseHexResponse(response);
     }
 
     /// <summary>

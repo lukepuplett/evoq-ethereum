@@ -151,4 +151,16 @@ public class Chain
             newestBlock.ToString(),
             rewardPercentiles);
     }
+
+    /// <summary>
+    /// Gets the transaction count (nonce) for an address.
+    /// </summary>
+    /// <param name="address">The address to get the transaction count for.</param>
+    /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
+    /// <returns>The transaction count as a BigInteger.</returns>
+    public async Task<BigInteger> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest")
+    {
+        var hex = await this.chainClient.GetTransactionCountAsync(address, blockParameter);
+        return hex.ToBigInteger();
+    }
 }

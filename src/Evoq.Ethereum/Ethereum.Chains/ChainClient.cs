@@ -121,6 +121,17 @@ public class ChainClient
         return new FeeHistory();
     }
 
+    /// <summary>
+    /// Gets the transaction count (nonce) for an address.
+    /// </summary>
+    /// <param name="address">The address to get the transaction count for.</param>
+    /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
+    /// <returns>The transaction count as a hexadecimal value.</returns>
+    public async Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest")
+    {
+        return await this.jsonRpc.GetTransactionCountAsync(address, blockParameter, this.GetRandomId());
+    }
+
     //
 
     /// <summary>
