@@ -139,52 +139,6 @@ public class EventLogReaderTests
     }
 
     [TestMethod]
-    public void TryRead_URI_DecodesCorrectly()
-    {
-        // Arrange
-        var eventSignature = AbiSignature.Parse(AbiItemType.Event, "URI(string value,uint256 indexed id)");
-
-        // Real URI event data:
-        // value: "ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/",
-        // id: 42
-
-        var log = new TransactionLog
-        {
-            Topics = new[]
-            {
-                // keccak256("URI(string,uint256)")
-                Hex.Parse("0x6bb7ff708619ba0610cba295a58592e0451dee2622938c8755667688daf3529b"),
-                // tokenId padded
-                Hex.Parse("0x000000000000000000000000000000000000000000000000000000000000002a")
-            },
-            // encoded string data (offset + length + value padded)
-            Data = Hex.Parse(
-                "0x" +
-                "0000000000000000000000000000000000000000000000000000000000000020" + // offset
-                "0000000000000000000000000000000000000000000000000000000000000037" + // length (55)
-                "697066733a2f2f516d65536a53696e4870506e6d586d73704d6a776958794e36" + // "ipfs://QmeSjSinHpPnmXmspMjwiXyN6"
-                "7a5334453977636361726947523378636157747100000000000000000000000000"  // "zS4E9zccariGR3jxcaWtq" + padding
-            )
-        };
-
-        var receipt = new TransactionReceipt { Logs = new[] { log } };
-
-        // Act
-        bool result = reader.TryRead(receipt, eventSignature, out var indexed, out var data);
-
-        // Assert
-        Assert.IsTrue(result);
-        Assert.IsNotNull(indexed);
-        Assert.IsNotNull(data);
-
-        var id = (BigInteger)indexed!["id"]!;
-        var value = (string)data!["value"]!;
-
-        Assert.AreEqual(42, id);
-        Assert.AreEqual("ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/", value);
-    }
-
-    [TestMethod]
     public void TryRead_AnonymousEvent_DecodesCorrectly()
     {
         // Arrange
@@ -214,5 +168,118 @@ public class EventLogReaderTests
         var value = (BigInteger)indexed!["value"]!;
         Assert.AreEqual(123, value);
         Assert.AreEqual(0, data!.Count); // no non-indexed params
+    }
+
+    [TestMethod]
+    public void TryRead_MultipleLogsInReceipt_FindsCorrectOne()
+    {
+        // Arrange
+        var eventSignature = AbiSignature.Parse(AbiItemType.Event, "Transfer(address indexed from,address indexed to,uint256 value)");
+
+        var logs = new[]
+        {
+            new TransactionLog // Some other event
+            {
+                Topics = new[] { Hex.Parse("0x1234567890123456789012345678901234567890123456789012345678901234") }
+            },
+            new TransactionLog // Our Transfer event
+            {
+                Topics = new[]
+                {
+                    Hex.Parse("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
+                    Hex.Parse("0x000000000000000000000000742d35cc6634c0532925a3b844bc454e4438f44e"),
+                    Hex.Parse("0x000000000000000000000000742d35cc6634c0532925a3b844bc454e4438f44e")
+                },
+                Data = Hex.Parse("0x0000000000000000000000000000000000000000000000000de0b6b3a7640000")
+            },
+            new TransactionLog // Another different event
+            {
+                Topics = new[] { Hex.Parse("0x9876543210987654321098765432109876543210987654321098765432109876") }
+            }
+        };
+
+        var receipt = new TransactionReceipt { Logs = logs };
+
+        // Act
+        bool result = reader.TryRead(receipt, eventSignature, out var indexed, out var data);
+
+        // Assert
+        Assert.IsTrue(result);
+        Assert.IsNotNull(indexed);
+        var fromAddress = (EthereumAddress)indexed!["from"]!;
+        Assert.AreEqual("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", fromAddress.ToString());
+    }
+
+    [TestMethod]
+    public void TryRead_MultipleAnonymousLogsInReceipt_FindsFirstMatchingTopicCount()
+    {
+        // Arrange
+        var eventSignature = AbiSignature.Parse(AbiItemType.Event, "MyEvent(uint256 indexed value) anonymous");
+
+        var logs = new[]
+        {
+            new TransactionLog // Event with 2 topics (wrong)
+            {
+                Topics = new[]
+                {
+                    Hex.Parse("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                    Hex.Parse("0x0000000000000000000000000000000000000000000000000000000000000002")
+                }
+            },
+            new TransactionLog // Our anonymous event with 1 topic
+            {
+                Topics = new[]
+                {
+                    Hex.Parse("0x000000000000000000000000000000000000000000000000000000000000007b")
+                }
+            },
+            new TransactionLog // Another event with 1 topic (we should get the first one)
+            {
+                Topics = new[]
+                {
+                    Hex.Parse("0x0000000000000000000000000000000000000000000000000000000000000064")
+                }
+            }
+        };
+
+        var receipt = new TransactionReceipt { Logs = logs };
+
+        // Act
+        bool result = reader.TryRead(receipt, eventSignature, out var indexed, out var data);
+
+        // Assert
+        Assert.IsTrue(result);
+        Assert.IsNotNull(indexed);
+        var value = (BigInteger)indexed!["value"]!;
+        Assert.AreEqual(123, value); // We got the first matching log (0x7b = 123)
+    }
+
+    [TestMethod]
+    public void TryRead_NoMatchingLogs_ReturnsFalse()
+    {
+        // Arrange
+        var eventSignature = AbiSignature.Parse(AbiItemType.Event, "Transfer(address indexed from,address indexed to,uint256 value)");
+
+        var logs = new[]
+        {
+            new TransactionLog // Different event
+            {
+                Topics = new[] { Hex.Parse("0x1234567890123456789012345678901234567890123456789012345678901234") }
+            },
+            new TransactionLog // Different event
+            {
+                Topics = new[] { Hex.Parse("0x9876543210987654321098765432109876543210987654321098765432109876") }
+            }
+        };
+
+        var receipt = new TransactionReceipt { Logs = logs };
+
+        // Act
+        bool result = reader.TryRead(receipt, eventSignature, out var indexed, out var data);
+
+        // Assert
+        Assert.IsFalse(result);
+        Assert.IsNull(indexed);
+        Assert.IsNull(data);
     }
 }

@@ -48,8 +48,21 @@ internal class EventLogReader
             return false;
         }
 
-        var eventSignatureHash = eventSignature.GetSignatureHash();
-        var log = receipt.Logs.FirstOrDefault(l => l.Topics.Any() && l.Topics[0] == eventSignatureHash);
+        // Find matching log
+        TransactionLog? log;
+        if (eventSignature.IsAnonymous)
+        {
+            // For anonymous events, we can't match by signature hash
+            // Just take the first log that has the right number of topics
+            var indexedCount = eventSignature.Inputs.Count(p => p.IsIndexed);
+            log = receipt.Logs.FirstOrDefault(l => l.Topics.Count == indexedCount);
+        }
+        else
+        {
+            // For normal events, match by signature hash in topics[0]
+            var eventSignatureHash = eventSignature.GetSignatureHash();
+            log = receipt.Logs.FirstOrDefault(l => l.Topics.Any() && l.Topics[0] == eventSignatureHash);
+        }
 
         if (log == null)
         {
@@ -61,16 +74,16 @@ internal class EventLogReader
         var indexedResults = new Dictionary<string, object?>();
         var dataResults = new Dictionary<string, object?>();
 
-        //
-
-        // deal with indexed params first
+        // Deal with indexed params
         var indexedParams = eventSignature.Inputs.Where(p => p.IsIndexed).ToList();
         foreach (var param in indexedParams)
         {
-            // for types that fit into 32 bytes, the value is directly in the topic
-            // but for anything larger, the topic contains a keccak hash of the value
+            // Get the correct topic index - for anonymous events start at 0, for normal events start at 1
+            var topicIndex = eventSignature.IsAnonymous ?
+                indexedParams.IndexOf(param) :
+                indexedParams.IndexOf(param) + 1;
 
-            var topic = log.Topics[indexedParams.IndexOf(param) + 1];
+            var topic = log.Topics[topicIndex];
 
             if (AbiTypes.IsHashedInTopic(param.AbiType))
             {
@@ -83,8 +96,7 @@ internal class EventLogReader
             }
         }
 
-        // deal with data params
-
+        // Deal with data params
         var dp = eventSignature.Inputs.Where(p => !p.IsIndexed).ToList();
         if (dp.Count > 0)
         {
