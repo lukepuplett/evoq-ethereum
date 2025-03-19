@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Reads contract ABI documents.
 /// </summary>
-public static class ContractAbiReader
+public static class AbiJsonReader
 {
     /// <summary>
     /// Reads a contract ABI from a stream.

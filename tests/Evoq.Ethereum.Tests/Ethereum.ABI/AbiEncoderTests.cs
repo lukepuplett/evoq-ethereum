@@ -45,7 +45,7 @@ public class AbiEncoderTests
     public void Encode_TestCase_ReturnsCorrectEncoding(int caseNumber, AbiTestCase testCase)
     {
         // Arrange
-        var signature = FunctionSignature.Parse(testCase.Signature);
+        var signature = AbiSignature.Parse(AbiItemType.Function, testCase.Signature);
 
         var expectedHexList = testCase.ExpectedLines
             .Select(line => Hex.Parse(FormatHexLine(line)))

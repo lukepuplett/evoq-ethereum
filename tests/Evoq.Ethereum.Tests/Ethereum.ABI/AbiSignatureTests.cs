@@ -3,11 +3,11 @@ using System.Numerics;
 namespace Evoq.Ethereum.ABI;
 
 [TestClass]
-public class FunctionSignatureTests
+public class AbiSignatureTests
 {
     private readonly AbiTypeValidator validator;
 
-    public FunctionSignatureTests()
+    public AbiSignatureTests()
     {
         this.validator = new AbiEncoder().Validator;
     }
@@ -15,21 +15,21 @@ public class FunctionSignatureTests
     [TestMethod]
     public void Constructor_WithNameAndTypes_CreatesCorrectSignature()
     {
-        var signature = new FunctionSignature("transfer", "address recipient, uint256 amount");
+        var signature = new AbiSignature(AbiItemType.Function, "transfer", "address recipient, uint256 amount");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_NormalizesTypes()
     {
-        var signature = new FunctionSignature("example", "uint foo, int bar, byte[] data");
+        var signature = new AbiSignature(AbiItemType.Function, "example", "uint foo, int bar, byte[] data");
         Assert.AreEqual("example(uint256,int256,bytes1[])", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_HandlesArrayTypes()
     {
-        var signature = new FunctionSignature("example", "uint256[] numbers, address[3] addresses");
+        var signature = new AbiSignature(AbiItemType.Function, "example", "uint256[] numbers, address[3] addresses");
         Assert.AreEqual("example(uint256[],address[3])", signature.GetCanonicalInputsSignature());
     }
 
@@ -37,29 +37,29 @@ public class FunctionSignatureTests
     public void Constructor_WithComplexTypes_CreatesCorrectSignature()
     {
         // Tuple parameter
-        var signature = new FunctionSignature("setPerson", "(string name, uint256 age, address wallet)");
+        var signature = new AbiSignature(AbiItemType.Function, "setPerson", "(string name, uint256 age, address wallet)");
         Assert.AreEqual("setPerson(string,uint256,address)", signature.GetCanonicalInputsSignature());
 
         // Multiple tuples with arrays
-        signature = new FunctionSignature("complexOp", "(address[] accounts, uint256 value)[], bool enabled");
+        signature = new AbiSignature(AbiItemType.Function, "complexOp", "(address[] accounts, uint256 value)[], bool enabled");
         Assert.AreEqual("complexOp((address[],uint256)[],bool)", signature.GetCanonicalInputsSignature());
 
         // Nested tuples
-        signature = new FunctionSignature("nestedData", "(string name, (uint256 x, uint256 y)[] points)");
+        signature = new AbiSignature(AbiItemType.Function, "nestedData", "(string name, (uint256 x, uint256 y)[] points)");
         Assert.AreEqual("nestedData(string,(uint256,uint256)[])", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_WithNamedBasicParameters_StripsNames()
     {
-        var signature = new FunctionSignature("transfer", "address recipient, uint256 amount");
+        var signature = new AbiSignature(AbiItemType.Function, "transfer", "address recipient, uint256 amount");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void Constructor_WithNamedTupleParameters_StripsNames()
     {
-        var signature = new FunctionSignature("setPerson", "(string userName, uint256 userAge, address userWallet) person");
+        var signature = new AbiSignature(AbiItemType.Function, "setPerson", "(string userName, uint256 userAge, address userWallet) person");
         Assert.AreEqual("setPerson((string,uint256,address))", signature.GetCanonicalInputsSignature());
     }
 
@@ -67,20 +67,20 @@ public class FunctionSignatureTests
     [ExpectedException(typeof(ArgumentException))]
     public void Constructor_WithEmptyName_ThrowsException()
     {
-        _ = new FunctionSignature("", "address,uint256");
+        _ = new AbiSignature(AbiItemType.Function, "", "address,uint256");
     }
 
     [TestMethod]
     public void Constructor_WithWhitespace_NormalizesCorrectly()
     {
-        var signature = new FunctionSignature("complex", "  (  string  name ,  uint256  age  )  data  ,  bool  enabled  ");
+        var signature = new AbiSignature(AbiItemType.Function, "complex", "  (  string  name ,  uint256  age  )  data  ,  bool  enabled  ");
         Assert.AreEqual("complex((string,uint256),bool)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void FromString_WithFullSignature_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("transfer(address,uint256) returns (bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address,uint256) returns (bool)");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
     }
@@ -88,14 +88,14 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithFullSignatureWithNames_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("transfer(address recipient, uint256 amount)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address recipient, uint256 amount)");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
     }
 
     [TestMethod]
     public void FromString_WithTupleParameter_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("setPerson((string,uint256,address))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPerson((string,uint256,address))");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
@@ -106,7 +106,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithTupleParameterWithNames_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("setPerson((string userName, uint256 userAge, address userWallet))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPerson((string userName, uint256 userAge, address userWallet))");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
@@ -117,7 +117,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithNestedTupleParameter_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("setPerson(((string,string),uint256,address))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPerson(((string,string),uint256,address))");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual("setPerson", signature.GetCanonicalInputsSignature()[..signature.GetCanonicalInputsSignature().IndexOf('(')]);
@@ -128,7 +128,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithTupleAndOtherParameters_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("setPersonAndActive((string,uint256,address),bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPersonAndActive((string,uint256,address),bool)");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(2, types.Length);
@@ -139,7 +139,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithNestedTuples_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("complexFunction((uint256,(address,bool)[]))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "complexFunction((uint256,(address,bool)[]))");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(1, types.Length);
@@ -152,7 +152,7 @@ public class FunctionSignatureTests
     [DataRow("approve(address,uint256)", "095ea7b3")]
     public void GetSelector_ReturnsCorrectBytes(string fullSignature, string expectedHex)
     {
-        var signature = FunctionSignature.Parse(fullSignature);
+        var signature = AbiSignature.Parse(AbiItemType.Function, fullSignature);
         var selector = signature.GetSelectorBytes();
         CollectionAssert.AreEqual(Convert.FromHexString(expectedHex), selector);
     }
@@ -163,7 +163,7 @@ public class FunctionSignatureTests
         string m;
 
         // Arrange
-        var signature = FunctionSignature.Parse("transfer(address,uint256)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address,uint256)");
         var values = new List<object?>
         {
             new EthereumAddress("0x1234567890123456789012345678901234567890"),
@@ -180,7 +180,7 @@ public class FunctionSignatureTests
         string m;
 
         // Arrange
-        var signature = FunctionSignature.Parse("transfer(address,uint256)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address,uint256)");
 
         // Act & Assert
         Assert.IsFalse(signature.ValidateParameters(this.validator, new List<object?> { "not an address", 123 }, out m), m); // Wrong types
@@ -194,7 +194,7 @@ public class FunctionSignatureTests
         string m;
 
         // Arrange
-        var signature = FunctionSignature.Parse("complexFunction(bytes32,uint8[],bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "complexFunction(bytes32,uint8[],bool)");
         var values = new List<object?>
         {
             new byte[32],
@@ -216,7 +216,7 @@ public class FunctionSignatureTests
     public void GetParameterTypes_WithTuple_ReturnsCorrectTypes()
     {
         // Single tuple parameter
-        var signature = FunctionSignature.Parse("setPerson((string,uint256,address))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPerson((string,uint256,address))");
         var types = signature.GetInputParameterTypes();
 
         Assert.AreEqual(1, types.Length);
@@ -227,7 +227,7 @@ public class FunctionSignatureTests
     public void GetParameterTypes_WithTupleAndOtherTypes_ReturnsCorrectTypes()
     {
         // Tuple and bool parameters
-        var signature = FunctionSignature.Parse("setPersonData((string,uint256,address),bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPersonData((string,uint256,address),bool)");
         var types = signature.GetInputParameterTypes();
 
         Assert.IsTrue(types.Any());
@@ -239,7 +239,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithSimpleReturnType_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("transfer(address,uint256) returns (bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address,uint256) returns (bool)");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
     }
@@ -247,7 +247,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithMultipleReturnTypes_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getDetails(address) returns (string,uint256,bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getDetails(address) returns (string,uint256,bool)");
         Assert.AreEqual("getDetails(address)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(string,uint256,bool)", signature.GetCanonicalOutputsSignature());
     }
@@ -255,7 +255,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithTupleReturnType_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getPerson(uint256) returns ((string,uint256,address))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getPerson(uint256) returns ((string,uint256,address))");
         Assert.AreEqual("getPerson(uint256)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("((string,uint256,address))", signature.GetCanonicalOutputsSignature());
     }
@@ -263,7 +263,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithNestedTupleReturnType_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getComplex(bytes32) returns ((string,uint256,(bool,address)))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getComplex(bytes32) returns ((string,uint256,(bool,address)))");
         Assert.AreEqual("getComplex(bytes32)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("((string,uint256,(bool,address)))", signature.GetCanonicalOutputsSignature());
     }
@@ -271,7 +271,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithArrayReturnType_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getList(uint256) returns (address[])");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getList(uint256) returns (address[])");
         Assert.AreEqual("getList(uint256)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(address[])", signature.GetCanonicalOutputsSignature());
     }
@@ -279,7 +279,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithTupleArrayReturnType_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getPersons(bool) returns ((string,uint256,address)[])");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getPersons(bool) returns ((string,uint256,address)[])");
         Assert.AreEqual("getPersons(bool)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("((string,uint256,address)[])", signature.GetCanonicalOutputsSignature());
     }
@@ -287,7 +287,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithComplexReturnTypes_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
         Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(uint256,(bool,string)[],(address,bytes32)[3])", signature.GetCanonicalOutputsSignature());
     }
@@ -295,7 +295,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithEmptyInput_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getEverything()");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getEverything()");
         Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("()", signature.GetCanonicalOutputsSignature());
     }
@@ -303,7 +303,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithNamedReturnParameters_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getValues(address) returns (uint256 balance, bool active)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getValues(address) returns (uint256 balance, bool active)");
         Assert.AreEqual("getValues(address)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(uint256,bool)", signature.GetCanonicalOutputsSignature());
     }
@@ -311,7 +311,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithNamedTupleReturnParameters_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getUserData(address) returns ((string name, uint256 age, bool active) userData)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getUserData(address) returns ((string name, uint256 age, bool active) userData)");
         Assert.AreEqual("getUserData(address)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("((string,uint256,bool))", signature.GetCanonicalOutputsSignature());
     }
@@ -320,7 +320,7 @@ public class FunctionSignatureTests
     public void FromString_WithRealWorldExample_ParsesCorrectly()
     {
         // Based on the getAttestation function from EAS
-        var signature = FunctionSignature.Parse("getAttestation(bytes32) returns ((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getAttestation(bytes32) returns ((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))");
         Assert.AreEqual("getAttestation(bytes32)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("((bytes32,bytes32,uint64,uint64,uint64,bytes32,address,address,bool,bytes))", signature.GetCanonicalOutputsSignature());
     }
@@ -328,7 +328,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void Constructor_WithInputsAndOutputs_CreatesCorrectSignature()
     {
-        var signature = new FunctionSignature("transfer", "address,uint256", "bool");
+        var signature = new AbiSignature(AbiItemType.Function, "transfer", "address,uint256", "bool");
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(bool)", signature.GetCanonicalOutputsSignature());
     }
@@ -336,7 +336,8 @@ public class FunctionSignatureTests
     [TestMethod]
     public void Constructor_WithComplexInputsAndOutputs_CreatesCorrectSignature()
     {
-        var signature = new FunctionSignature(
+        var signature = new AbiSignature(
+            AbiItemType.Function,
             "complexFunction",
             "address,(uint256,bytes32),((bool,(string,uint8))[]))",
             "(bytes32,uint64,address)");
@@ -348,7 +349,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void GetOutputParameterTypes_WithSimpleTypes_ReturnsCorrectTypes()
     {
-        var signature = FunctionSignature.Parse("getValues() returns (uint256,bool,address)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getValues() returns (uint256,bool,address)");
         var types = signature.GetOutputParameterTypes();
 
         Assert.AreEqual(3, types.Length);
@@ -360,7 +361,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void GetOutputParameterTypes_WithTupleType_ReturnsCorrectTypes()
     {
-        var signature = FunctionSignature.Parse("getPerson() returns ((string,uint256,address))");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getPerson() returns ((string,uint256,address))");
         var types = signature.GetOutputParameterTypes();
 
         Assert.AreEqual(1, types.Length);
@@ -370,7 +371,7 @@ public class FunctionSignatureTests
     [TestMethod]
     public void FromString_WithEmptyInputAndComplexReturnTypes_ParsesCorrectly()
     {
-        var signature = FunctionSignature.Parse("getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getEverything() returns (uint256,(bool,string)[],(address,bytes32)[3])");
         Assert.AreEqual("getEverything()", signature.GetCanonicalInputsSignature());
         Assert.AreEqual("(uint256,(bool,string)[],(address,bytes32)[3])", signature.GetCanonicalOutputsSignature());
     }
@@ -379,7 +380,7 @@ public class FunctionSignatureTests
     public void FunctionSignature_CapturesParameterNames_ForBasicTypes()
     {
         // Arrange
-        var signature = FunctionSignature.Parse("transfer(address recipient, uint256 amount)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address recipient, uint256 amount)");
 
         // Act
         var inputs = signature.Inputs;
@@ -396,7 +397,7 @@ public class FunctionSignatureTests
     public void FunctionSignature_CapturesParameterNames_ForTupleTypes()
     {
         // Arrange
-        var signature = FunctionSignature.Parse("setPerson((string name, uint256 age, address wallet) person)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPerson((string name, uint256 age, address wallet) person)");
 
         // Act
         var inputs = signature.Inputs;
@@ -419,7 +420,7 @@ public class FunctionSignatureTests
     public void FunctionSignature_CapturesParameterNames_ForOutputParameters()
     {
         // Arrange
-        var signature = FunctionSignature.Parse("getValues(address account) returns (uint256 balance, bool active)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getValues(address account) returns (uint256 balance, bool active)");
 
         // Act
         var outputs = signature.Outputs;
@@ -437,7 +438,7 @@ public class FunctionSignatureTests
     public void FunctionSignature_CapturesParameterNames_ForNestedTuples()
     {
         // Arrange
-        var signature = FunctionSignature.Parse("complexFunction((uint256 id, (string firstName, string lastName) fullName) userData)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "complexFunction((uint256 id, (string firstName, string lastName) fullName) userData)");
 
         // Act
         var inputs = signature.Inputs;
@@ -465,7 +466,7 @@ public class FunctionSignatureTests
     public void FunctionSignature_CapturesParameterNames_ForArraysWithNames()
     {
         // Arrange
-        var signature = FunctionSignature.Parse("batchTransfer(address[] recipients, uint256[] amounts)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "batchTransfer(address[] recipients, uint256[] amounts)");
 
         // Act
         var inputs = signature.Inputs;

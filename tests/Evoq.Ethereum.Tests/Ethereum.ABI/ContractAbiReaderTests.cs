@@ -38,7 +38,7 @@ public class ContractAbiReaderTests
         """;
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        ContractAbi abi = ContractAbiReader.Read(stream);
+        ContractAbi abi = AbiJsonReader.Read(stream);
 
         Assert.AreEqual(1, abi.Items.Count);
         var function = abi.Items[0];
@@ -112,7 +112,7 @@ public class ContractAbiReaderTests
         """;
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        ContractAbi abi = ContractAbiReader.Read(stream);
+        ContractAbi abi = AbiJsonReader.Read(stream);
 
         Assert.AreEqual(2, abi.Items.Count);
 

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Text;
 using Evoq.Ethereum.Crypto;
 
@@ -11,20 +10,23 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Represents an Ethereum function signature and provides methods to generate function selectors.
 /// </summary>
-public class FunctionSignature
+public class AbiSignature
 {
     /// <summary>
     /// Creates a new function signature from a name and parameter descriptor.
     /// </summary>
+    /// <param name="type">The type of the item.</param>
     /// <param name="name">The function name.</param>
     /// <param name="inputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
     /// <param name="outputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
-    public FunctionSignature(string name, string inputsSignature, string outputsSignature = "")
+    public AbiSignature(AbiItemType type, string name, string inputsSignature, string outputsSignature = "")
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("Function name cannot be empty", nameof(name));
         }
+
+        this.ItemType = type;
 
         inputsSignature = inputsSignature.Trim();
         outputsSignature = outputsSignature.Trim();
@@ -55,14 +57,20 @@ public class FunctionSignature
         }
     }
 
-    private FunctionSignature(string name, IEnumerable<AbiParam> inputs, IEnumerable<AbiParam> outputs)
+    private AbiSignature(AbiItemType type, string name, IEnumerable<AbiParam> inputs, IEnumerable<AbiParam> outputs)
     {
+        this.ItemType = type;
         this.Name = name;
         this.Inputs = new AbiParameters(inputs.ToList());
         this.Outputs = new AbiParameters(outputs.ToList());
     }
 
     //
+
+    /// <summary>
+    /// Gets the type of the item.
+    /// </summary>
+    public AbiItemType ItemType { get; }
 
     /// <summary>
     /// Gets the name of the function.
@@ -78,6 +86,11 @@ public class FunctionSignature
     /// Gets the parameters of the function signature.
     /// </summary>
     public AbiParameters? Outputs { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the function is anonymous.
+    /// </summary>
+    public bool IsAnonymous { get; init; }
 
     //
 
@@ -198,6 +211,7 @@ public class FunctionSignature
     /// <summary>
     /// Creates a function signature from a full signature string.
     /// </summary>
+    /// <param name="type">The type of the item.</param>
     /// <param name="fullSignature">The full function signature in one of these formats:
     /// <list type="bullet">
     /// <item><description>Simple types: "transfer(address,uint256) returns (bool)"</description></item>
@@ -212,7 +226,7 @@ public class FunctionSignature
     /// </param>
     /// <returns>A new FunctionSignature instance.</returns>
     /// <exception cref="ArgumentException">If the signature format is invalid.</exception>
-    public static FunctionSignature Parse(string fullSignature)
+    public static AbiSignature Parse(AbiItemType type, string fullSignature)
     {
         // Split the signature into inputs and outputs
         var parts = fullSignature.Split(" returns ", StringSplitOptions.None);
@@ -239,7 +253,7 @@ public class FunctionSignature
         var ins = AbiParameters.Parse(nameAndInputs[startIndex..]);
         var outs = AbiParameters.Parse(outputs);
 
-        return new FunctionSignature(name, ins, outs);
+        return new AbiSignature(type, name, ins, outs);
     }
 
     //
@@ -287,9 +301,9 @@ public class FunctionSignature
 }
 
 /// <summary>
-/// Extension methods for <see cref="FunctionSignature"/>.
+/// Extension methods for <see cref="AbiSignature"/>.
 /// </summary>
-public static class FunctionSignatureExtensions
+public static class AbiSignatureExtensions
 {
     /// <summary>
     /// Encodes a single parameter for a function signature.
@@ -300,7 +314,7 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature<T>(
-        this FunctionSignature signature, IAbiEncoder encoder, string key, T value)
+        this AbiSignature signature, IAbiEncoder encoder, string key, T value)
         where T : struct, IConvertible
     {
         return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
@@ -314,7 +328,7 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The string value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, string key, string value)
+        this AbiSignature signature, IAbiEncoder encoder, string key, string value)
     {
         return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
@@ -327,7 +341,7 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The BigInteger value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, string key, BigInteger value)
+        this AbiSignature signature, IAbiEncoder encoder, string key, BigInteger value)
     {
         return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
@@ -340,7 +354,7 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The byte array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, string key, byte[] value)
+        this AbiSignature signature, IAbiEncoder encoder, string key, byte[] value)
     {
         return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }
@@ -353,7 +367,7 @@ public static class FunctionSignatureExtensions
     /// <param name="value">The array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
-        this FunctionSignature signature, IAbiEncoder encoder, string key, Array value)
+        this AbiSignature signature, IAbiEncoder encoder, string key, Array value)
     {
         return signature.AbiEncodeCallValues(encoder, new Dictionary<string, object?> { { key, value } });
     }

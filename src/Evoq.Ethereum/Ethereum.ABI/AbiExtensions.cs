@@ -86,7 +86,7 @@ public static class AbiExtensions
     /// <param name="item">The ABI item.</param>
     /// <returns>The function signature.</returns>
     /// <exception cref="ArgumentException">If the item is not a function.</exception>
-    public static FunctionSignature GetFunctionSignature(this ContractAbiItem item)
+    public static AbiSignature GetFunctionSignature(this ContractAbiItem item)
     {
         if (item.Type != "function")
         {
@@ -103,7 +103,47 @@ public static class AbiExtensions
         string outputsSignature = format(item.Outputs);
 
         // Create a new FunctionSignature using the string representations
-        return new FunctionSignature(item.Name, inputsSignature, outputsSignature);
+        return new AbiSignature(AbiItemType.Function, item.Name, inputsSignature, outputsSignature);
+
+        //
+
+        static string format(IEnumerable<ContractAbiParameter>? parameters)
+        {
+            if (parameters == null || !parameters.Any())
+            {
+                return string.Empty;
+            }
+
+            var formattedParams = AbiParameterFormatter.FormatParameters(parameters, includeNames: true);
+
+            return formattedParams;
+        }
+    }
+
+    /// <summary>
+    /// Gets the event signature for an ABI item.
+    /// </summary>
+    /// <param name="item">The ABI item.</param>
+    /// <returns>The event signature.</returns>
+    /// <exception cref="ArgumentException">If the item is not an event.</exception>
+    public static AbiSignature GetEventSignature(this ContractAbiItem item)
+    {
+        if (item.Type != "event")
+        {
+            throw new ArgumentException("ABI item must be an event", nameof(item));
+        }
+
+        if (string.IsNullOrEmpty(item.Name))
+        {
+            throw new ArgumentException("Event must have a name", nameof(item));
+        }
+
+        string inputsSignature = format(item.Inputs);
+
+        return new AbiSignature(AbiItemType.Event, item.Name, inputsSignature)
+        {
+            IsAnonymous = item.Anonymous ?? false
+        };
 
         //
 

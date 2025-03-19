@@ -28,7 +28,7 @@ public class AbiDecoderTests
     public void Decode_TestCase_ReturnsCorrectValues(int caseNumber, AbiTestCase testCase)
     {
         // Arrange
-        var signature = FunctionSignature.Parse(testCase.Signature);
+        var signature = AbiSignature.Parse(AbiItemType.Function, testCase.Signature);
 
         var expectedHexList = testCase.ExpectedLines
             .Select(line => Hex.Parse(FormatHexLine(line)))

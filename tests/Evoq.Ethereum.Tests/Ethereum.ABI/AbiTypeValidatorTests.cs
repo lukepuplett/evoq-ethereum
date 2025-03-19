@@ -111,7 +111,7 @@ public class AbiTypeValidatorTests
     {
         string m;
 
-        var signature = FunctionSignature.Parse("transfer(address,uint256)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "transfer(address,uint256)");
         var values = new List<object?>
         {
             new EthereumAddress("0x1234567890123456789012345678901234567890"),
@@ -377,7 +377,7 @@ public class AbiTypeValidatorTests
     {
         string m;
 
-        var signature = FunctionSignature.Parse("setPersonData((string,uint256,address),bool)");
+        var signature = AbiSignature.Parse(AbiItemType.Function, "setPersonData((string,uint256,address),bool)");
 
         var validParams = new List<object?>
         {

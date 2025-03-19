@@ -30,7 +30,7 @@ public class Contract
     /// <param name="address">The address of the contract.</param>
     public Contract(ChainClient chainClient, ContractClient contractClient, Stream abiDocument, EthereumAddress address)
     {
-        this.abi = ContractAbiReader.Read(abiDocument);
+        this.abi = AbiJsonReader.Read(abiDocument);
         this.contractClient = contractClient;
         this.Address = address;
         this.Chain = new Chain(chainClient);
@@ -54,7 +54,7 @@ public class Contract
     /// <param name="methodName">The name of the method.</param>
     /// <returns>The function signature.</returns>
     /// <exception cref="Exception">Thrown when the method is not found in the ABI.</exception>
-    public FunctionSignature GetFunctionSignature(string methodName)
+    public AbiSignature GetFunctionSignature(string methodName)
     {
         if (this.abi.TryGetFunction(methodName, out var function))
         {
@@ -67,6 +67,28 @@ public class Contract
             throw new Exception($"Function {methodName} not found in ABI. Available functions: {string.Join(", ", functions)}");
         }
     }
+
+    /// <summary>
+    /// Gets the event signature for an event.
+    /// </summary>
+    /// <param name="eventName">The name of the event.</param>
+    /// <returns>The event signature.</returns>
+    /// <exception cref="Exception">Thrown when the event is not found in the ABI.</exception>
+    public AbiSignature GetEventSignature(string eventName)
+    {
+        if (this.abi.TryGetEvent(eventName, out var @event))
+        {
+            return @event.GetEventSignature();
+        }
+        else
+        {
+            var events = this.abi.GetEvents().Select(e => e.Name);
+
+            throw new Exception($"Event {eventName} not found in ABI. Available events: {string.Join(", ", events)}");
+        }
+    }
+
+    //
 
     /// <summary>
     /// Calls a method on a contract, off-chain, without creating a transaction.

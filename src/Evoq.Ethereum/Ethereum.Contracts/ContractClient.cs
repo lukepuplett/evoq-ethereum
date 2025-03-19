@@ -50,6 +50,7 @@ public class ContractClient
         this.abiDecoder = abiDecoder;
         this.transactionSigner = transactionSigner;
         this.rlpEncoder = rlpEncoder;
+
         this.ChainId = chainId;
     }
 
@@ -190,7 +191,7 @@ public class ContractClient
 
     //
 
-    private async Task<(Hex Results, FunctionSignature Function)> ExecuteCallAsync(
+    private async Task<(Hex Results, AbiSignature Function)> ExecuteCallAsync(
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,

@@ -226,7 +226,7 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <param name="tryEncoding">If true, the method will try to encode the values which is more expensive but more robust.</param>
     /// <param name="message">The message if the values are not compatible</param>
     /// <returns>True if all values are compatible, false otherwise.</returns>
-    public bool ValidateParameters(FunctionSignature signature, IReadOnlyList<object?> values, out string message, bool tryEncoding = false)
+    public bool ValidateParameters(AbiSignature signature, IReadOnlyList<object?> values, out string message, bool tryEncoding = false)
     {
         var parameterTypes = signature.GetInputParameterTypes();
 
