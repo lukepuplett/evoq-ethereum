@@ -22,7 +22,7 @@ namespace Evoq.Ethereum.Accounts.Blockchain;
 /// the RPC node and the nonce store.
 /// </remarks>
 public sealed class TransactionRunnerNethereum
-    : TransactionRunner<Contract, (TransactionFees Fees, ulong Nonce), object[], Nethereum.RPC.Eth.DTOs.TransactionReceipt>
+    : TransactionRunner<Contract, TransactionFees, object[], Nethereum.RPC.Eth.DTOs.TransactionReceipt>
 {
     private readonly Hex privateKey;
 
@@ -50,6 +50,7 @@ public sealed class TransactionRunnerNethereum
     /// </summary>
     /// <param name="contract">The contract to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to pass to the function.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -61,7 +62,8 @@ public sealed class TransactionRunnerNethereum
     protected async override Task<Nethereum.RPC.Eth.DTOs.TransactionReceipt> SubmitTransactionAsync(
         Contract contract,
         string functionName,
-        (TransactionFees Fees, ulong Nonce) options,
+        ulong nonce,
+        TransactionFees options,
         object[] args,
         CancellationToken cancellationToken)
     {
@@ -77,11 +79,11 @@ public sealed class TransactionRunnerNethereum
         var input = new TransactionInput
         {
             From = account.Address,
-            Gas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.GasLimit),
-            MaxFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.MaxFeePerGas),
-            MaxPriorityFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.MaxPriorityFeePerGas),
-            Value = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.Value),
-            Nonce = new Nethereum.Hex.HexTypes.HexBigInteger(options.Nonce)
+            Gas = new Nethereum.Hex.HexTypes.HexBigInteger(options.GasLimit),
+            MaxFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.MaxFeePerGas),
+            MaxPriorityFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.MaxPriorityFeePerGas),
+            Value = new Nethereum.Hex.HexTypes.HexBigInteger(options.Value),
+            Nonce = new Nethereum.Hex.HexTypes.HexBigInteger(nonce)
         };
 
         try
@@ -89,8 +91,8 @@ public sealed class TransactionRunnerNethereum
             this.logger.LogDebug(
                 "Submitting transaction: Nonce={Nonce}, Contract={ContractAddress}, Function={FunctionName}, " +
                 "GasLimit={GasLimit}, MaxFeePerGas={MaxFeePerGas}, MaxPriorityFeePerGas={MaxPriorityFeePerGas}, Value={Value}",
-                options.Nonce, contract.Address, functionName,
-                options.Fees.GasLimit, options.Fees.MaxFeePerGas, options.Fees.MaxPriorityFeePerGas, options.Fees.Value);
+                nonce, contract.Address, functionName,
+                options.GasLimit, options.MaxFeePerGas, options.MaxPriorityFeePerGas, options.Value);
 
             var startTime = DateTime.UtcNow;
 
@@ -120,7 +122,7 @@ public sealed class TransactionRunnerNethereum
                 "Transaction completed in {Duration:g}: Nonce={Nonce}, Contract={ContractAddress}, Function={FunctionName}, " +
                 "TransactionHash={TransactionHash}, From={From}, GasUsed={GasUsed}, " +
                 "CumulativeGasUsed={CumulativeGasUsed}, EffectiveGasPrice={EffectiveGasPrice}, Status={Status}",
-                duration, options.Nonce, contract.Address, functionName,
+                duration, nonce, contract.Address, functionName,
                 receipt.TransactionHash, receipt.From, receipt.GasUsed,
                 receipt.CumulativeGasUsed, receipt.EffectiveGasPrice, receipt.Status);
 

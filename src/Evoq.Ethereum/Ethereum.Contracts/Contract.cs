@@ -206,19 +206,19 @@ public class Contract
     /// Invokes a method on a contract, creating a transaction.
     /// </summary>
     /// <param name="methodName">The name of the method to invoke.</param>
-    /// <param name="senderAddress">The address of the sender.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
     public async Task<Hex> InvokeMethodAsync(
         string methodName,
-        EthereumAddress senderAddress,
+        ulong nonce,
         ContractInvocationOptions options,
         IDictionary<string, object?> arguments,
         CancellationToken cancellationToken = default)
     {
         return await this.contractClient.InvokeMethodAsync(
-            this, methodName, senderAddress, options, arguments, cancellationToken);
+            this, methodName, nonce, options, arguments, cancellationToken);
     }
 }

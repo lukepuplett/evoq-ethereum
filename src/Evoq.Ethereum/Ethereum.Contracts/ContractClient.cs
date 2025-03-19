@@ -96,7 +96,7 @@ public class ContractClient
     internal async Task<Hex> InvokeMethodAsync(
         Contract contract,
         string methodName,
-        EthereumAddress senderAddress,
+        ulong nonce,
         ContractInvocationOptions options,
         IDictionary<string, object?> arguments,
         CancellationToken cancellationToken = default)
@@ -113,7 +113,7 @@ public class ContractClient
             // TODO / construct a legacy transaction
 
             var transaction = new Transaction(
-                nonce: options.Nonce,
+                nonce: nonce,
                 gasPrice: legacyGasOptions.Price.ToBigBouncy(),
                 gasLimit: options.Gas.GasLimit,
                 to: contract.Address.ToByteArray(),
@@ -130,7 +130,7 @@ public class ContractClient
 
             var transaction = new TransactionEIP1559(
                 chainId: this.ChainId,
-                nonce: options.Nonce,
+                nonce: nonce,
                 maxPriorityFeePerGas: eip1559GasOptions.MaxPriorityFeePerGas.ToBigBouncy(),
                 maxFeePerGas: eip1559GasOptions.MaxFeePerGas.ToBigBouncy(),
                 gasLimit: options.Gas.GasLimit,

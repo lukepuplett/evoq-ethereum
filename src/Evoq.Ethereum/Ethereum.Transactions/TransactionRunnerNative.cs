@@ -41,6 +41,7 @@ public class TransactionRunnerNative
     /// </summary>
     /// <param name="contract">The contract to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to pass to the function.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -48,6 +49,7 @@ public class TransactionRunnerNative
     protected override async Task<TransactionReceipt> SubmitTransactionAsync(
         Contract contract,
         string functionName,
+        ulong nonce,
         ContractInvocationOptions options,
         IDictionary<string, object?> args,
         CancellationToken cancellationToken = default)
@@ -58,7 +60,7 @@ public class TransactionRunnerNative
 
             var id = await contract.InvokeMethodAsync(
                 functionName,
-                this.sender.SenderAccount.Address,
+                nonce,
                 options,
                 args,
                 cancellationToken);
@@ -92,6 +94,23 @@ public class TransactionRunnerNative
     /// <returns>The expected failure.</returns>
     protected override CommonTransactionFailure GetExpectedFailure(Exception ex)
     {
-        throw new NotImplementedException();
+        var messages = string.Join(", ", ex.GetAllMessages());
+
+        if (messages.Contains("out of gas", StringComparison.OrdinalIgnoreCase))
+        {
+            return CommonTransactionFailure.OutOfGas;
+        }
+
+        if (messages.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
+        {
+            return CommonTransactionFailure.NonceTooLow;
+        }
+
+        if (messages.Contains("reverted", StringComparison.OrdinalIgnoreCase))
+        {
+            return CommonTransactionFailure.Reverted;
+        }
+
+        return CommonTransactionFailure.Other;
     }
 }

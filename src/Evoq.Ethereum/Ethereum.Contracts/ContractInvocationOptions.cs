@@ -10,20 +10,13 @@ public class ContractInvocationOptions
     /// <summary>
     /// Initializes a new instance of the ContractInvocationOptions class.
     /// </summary>
-    /// <param name="nonce">Transaction sequence number to prevent replay attacks (null = auto-detect)</param>
     /// <param name="gas">Gas pricing and limit configuration for the transaction</param>
     /// <param name="value">Amount of ETH (in wei) to send with the transaction</param>
-    public ContractInvocationOptions(ulong nonce, GasOptions gas, EtherAmount value)
+    public ContractInvocationOptions(GasOptions gas, EtherAmount value)
     {
-        this.Nonce = nonce;
         this.Gas = gas;
         this.Value = value;
     }
-
-    /// <summary>
-    /// Transaction sequence number to prevent replay attacks (null = auto-detect)
-    /// </summary>
-    public ulong Nonce { get; }
 
     /// <summary>
     /// Gas pricing and limit configuration for the transaction

@@ -103,7 +103,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 this.semaphore.Wait(cancellationToken); // thread blocking wait; not expecting high contention
 
                 TReceipt receipt = await this.SubmitTransactionAsync(
-                    contract, functionName, options, args, cancellationToken);
+                    contract, functionName, nonce, options, args, cancellationToken);
 
                 await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
 
@@ -243,12 +243,13 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     /// </summary>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     protected abstract Task<TReceipt> SubmitTransactionAsync(
-        TContract contract, string functionName, TOptions options, TArgs args, CancellationToken cancellationToken);
+        TContract contract, string functionName, ulong nonce, TOptions options, TArgs args, CancellationToken cancellationToken);
 
     /// <summary>
     /// Implementors should return the expected failure of a transaction.

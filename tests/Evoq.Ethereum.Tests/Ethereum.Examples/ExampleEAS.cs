@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
@@ -17,7 +16,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    [Ignore]
+    // [Ignore]
     public async Task ExampleEAS_Send()
     {
         string baseUrl, chainName;
@@ -66,9 +65,7 @@ public class ExampleEAS
 
         //
 
-        var n = 1u; // await nonceStore.BeforeSubmissionAsync();
-
-        var registerOptions = new ContractInvocationOptions(n, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+        var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
         var registerResult = await runner.RunTransactionAsync(
@@ -140,12 +137,12 @@ public class ExampleEAS
 
         var n = 1u;// await nonceStore.BeforeSubmissionAsync();
 
-        var registerOptions = new ContractInvocationOptions(n, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+        var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
         try
         {
-            Hex registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
+            Hex registerResult = await contract.InvokeMethodAsync("register", n, registerOptions, registerArgs);
         }
         catch (Exception ex)
         {
