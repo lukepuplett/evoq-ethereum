@@ -17,7 +17,7 @@ public class FileSystemNonceStore : INonceStore
     private readonly string path;
     private readonly ILogger<FileSystemNonceStore> logger;
     private readonly object nonceStoreLock = new();
-    private readonly Func<Task<BigInteger>>? getNonce;
+    private readonly Func<Task<BigInteger>>? getTransactionCount;
 
     //
 
@@ -26,11 +26,11 @@ public class FileSystemNonceStore : INonceStore
     /// </summary>
     /// <param name="path">The path to the nonce store.</param>
     /// <param name="loggerFactory">The logger factory.</param>
-    /// <param name="getNonce">Optional function to get the current nonce from an external source (e.g., blockchain).</param>
+    /// <param name="getTransactionCount">Optional function to get the current transaction count from an external source (e.g., blockchain).</param>
     public FileSystemNonceStore(
         string path,
         ILoggerFactory loggerFactory,
-        Func<Task<BigInteger>>? getNonce = null)
+        Func<Task<BigInteger>>? getTransactionCount = null)
     {
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException("Path cannot be empty", nameof(path));
@@ -51,7 +51,7 @@ public class FileSystemNonceStore : INonceStore
         this.path = fullPath;
         this.logger = loggerFactory?.CreateLogger<FileSystemNonceStore>()
             ?? throw new ArgumentNullException(nameof(loggerFactory));
-        this.getNonce = getNonce;
+        this.getTransactionCount = getTransactionCount;
 
         EnsureDirectoryExists();
     }
@@ -73,11 +73,11 @@ public class FileSystemNonceStore : INonceStore
                 uint startingNonce = 0;
 
                 // If getNonce is provided, try to get the current nonce from external source
-                if (getNonce != null)
+                if (getTransactionCount != null)
                 {
                     try
                     {
-                        var currentNonce = getNonce().Result;
+                        var currentNonce = getTransactionCount().Result;
                         startingNonce = (uint)currentNonce;
                         logger.LogDebug("Got starting nonce {Nonce} from external source", startingNonce);
                     }

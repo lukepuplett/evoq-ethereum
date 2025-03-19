@@ -26,6 +26,10 @@ public enum CommonTransactionFailure
     /// The transaction failed because the nonce was too low.
     /// </summary>
     NonceTooLow,
+    /// <summary>
+    /// The transaction failed because the nonce was too high.
+    /// </summary>
+    NonceTooHigh,
 }
 
 /// <summary>
@@ -199,6 +203,10 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 // the transaction failed to submit, could be a network issue between us and the RPC node
                 // or it could be a bug in the .NET SDK or the RPC node - usually we need to just try again
                 // but that depends on the nonce store response
+
+                // "nonce too high" is a special case that we can retry because other nodes may be processing
+                // other transactions and we just need to wait for our node to catch up, otherwise it indicates
+                // a bug in the nonce store or the node is misbehaving
 
                 this.logger.LogError(other, $"{functionName}: transaction failed to submit: '{other.Message}'");
 
