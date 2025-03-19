@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
+using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.RLP;
@@ -64,10 +66,12 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     where T : new()
     {
-        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, arguments);
+        var (result, signature) = await this.ExecuteCallAsync(
+            contract, methodName, senderAddress, arguments, cancellationToken);
 
         var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
 
@@ -78,9 +82,11 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
-        var (result, signature) = await this.ExecuteCallAsync(contract, methodName, senderAddress, arguments);
+        var (result, signature) = await this.ExecuteCallAsync(
+            contract, methodName, senderAddress, arguments, cancellationToken);
 
         var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
 
@@ -92,7 +98,8 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
         // TODO / research access list usage for the transaction
 
@@ -147,7 +154,8 @@ public class ContractClient
 
         var transactionHex = new Hex(rlpEncoded);
 
-        var result = await this.jsonRpc.SendRawTransactionAsync(transactionHex, id: this.GetRandomId());
+        var result = await this.jsonRpc.SendRawTransactionAsync(
+            transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
 
         return result;
     }
@@ -157,7 +165,8 @@ public class ContractClient
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
         if (value.HasValue && value.Value < 0)
         {
@@ -175,7 +184,8 @@ public class ContractClient
             Value = value.ToHexStringForJsonRpc()
         };
 
-        return await this.jsonRpc.EstimateGasAsync(transactionParams, id: this.GetRandomId());
+        return await this.jsonRpc.EstimateGasAsync(
+            transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
     }
 
     //
@@ -184,7 +194,8 @@ public class ContractClient
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
         var signature = contract.GetFunctionSignature(methodName);
         var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
@@ -196,7 +207,8 @@ public class ContractClient
             Input = new Hex(encoded).ToString(),
         };
 
-        var result = await this.jsonRpc.CallAsync(ethCallParams, id: this.GetRandomId());
+        var result = await this.jsonRpc.CallAsync(
+            ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
 
         return (result, signature);
     }
@@ -216,7 +228,7 @@ public class ContractClient
     /// <param name="endpoint">The endpoint to use to call the contract.</param>
     /// <param name="sender">The sender; if null, the ContractCaller will be read-only; attempts to send transactions will throw.</param>
     /// <returns>The ContractCaller instance.</returns>
-    public static ContractClient CreateDefault(
+    internal static ContractClient CreateDefault(
         Endpoint endpoint,
         Sender? sender)
     {
@@ -231,7 +243,7 @@ public class ContractClient
 
         if (sender.HasValue)
         {
-            var transactionSigner = TransactionSigner.CreateDefault(sender.Value.PrivateKey.ToByteArray());
+            var transactionSigner = TransactionSigner.CreateDefault(sender.Value.SenderAccount.PrivateKey.ToByteArray());
 
             return new ContractClient(jsonRpc, abiEncoder, abiDecoder, transactionSigner, rlpEncoder, chainId);
         }

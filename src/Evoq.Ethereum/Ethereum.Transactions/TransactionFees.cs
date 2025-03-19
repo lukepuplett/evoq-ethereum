@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// The finance data to go into a transaction.

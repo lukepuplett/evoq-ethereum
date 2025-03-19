@@ -1,15 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// The expected failure of a transaction.
 /// </summary>
-public enum ExpectedFailure
+public enum CommonTransactionFailure
 {
     /// <summary>
     /// The transaction failed for an unexpected reason.
@@ -41,21 +40,25 @@ public enum ExpectedFailure
 /// correct nonce incrementing and gap detection is critical to successful blockchain operation.
 /// </remarks>
 /// <typeparam name="TContract">The type of the contract or blockchain gateway.</typeparam>
+/// <typeparam name="TOptions">The type of the transaction options.</typeparam>
 /// <typeparam name="TArgs">The type of the transaction arguments.</typeparam>
 /// <typeparam name="TReceipt">The type of the transaction receipt.</typeparam>
-public abstract class TransactionRunner<TContract, TArgs, TReceipt>
+public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
 {
     // obviously useless between processes and container instances but
     // at least helps a little to mitigate nonce issues
     private readonly SemaphoreSlim semaphore = new(1, 1);
     private readonly INonceStore nonceStore;
 
+    /// <summary>
+    /// The logger to use for the transaction.
+    /// </summary>
     protected readonly ILogger logger;
 
     //
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="TransactionRunner{TContract, TArgs, TReceipt}"/> class.
+    /// Initializes a new instance of the <see cref="TransactionRunner{TContract, TOptions, TArgs, TReceipt}"/> class.
     /// </summary>
     /// <param name="nonceStore">The nonce store to use for the transaction.</param>
     /// <param name="loggerFactory">The logger factory to use for the transaction.</param>
@@ -64,7 +67,7 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
         ILoggerFactory loggerFactory)
     {
         this.nonceStore = nonceStore;
-        this.logger = loggerFactory.CreateLogger<TransactionRunner<TContract, TArgs, TReceipt>>();
+        this.logger = loggerFactory.CreateLogger<TransactionRunner<TContract, TOptions, TArgs, TReceipt>>();
     }
 
     //
@@ -74,14 +77,15 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
     /// </summary>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
-    /// <param name="fees">The fees for the transaction.</param>
+    /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
     /// <exception cref="OutOfGasTransactionException">Thrown if the transaction is out of gas.</exception>
     /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
     public async Task<TReceipt> RunTransactionAsync(
-        TContract contract, string functionName, TransactionFees fees, TArgs args)
+        TContract contract, string functionName, TOptions options, TArgs args, CancellationToken cancellationToken)
     {
         var deadline = DateTimeOffset.UtcNow.AddMinutes(1);
         var nonce = await this.nonceStore.BeforeSubmissionAsync();
@@ -96,16 +100,17 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
 
             try
             {
-                this.semaphore.Wait(); // thread blocking wait; not expecting high contention
+                this.semaphore.Wait(cancellationToken); // thread blocking wait; not expecting high contention
 
-                TReceipt receipt = await this.SubmitTransactionAsync(contract, functionName, fees, nonce, args);
+                TReceipt receipt = await this.SubmitTransactionAsync(
+                    contract, functionName, options, args, cancellationToken);
 
                 await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
 
                 return receipt;
             }
             catch (Exception nonceTooLow)
-            when (this.GetExpectedFailure(nonceTooLow) == ExpectedFailure.NonceTooLow)
+            when (this.GetExpectedFailure(nonceTooLow) == CommonTransactionFailure.NonceTooLow)
             {
                 // nonce too low, we need to increment the nonce and retry
 
@@ -114,7 +119,7 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
                 nonce = await this.nonceStore.AfterNonceTooLowAsync(nonce);
             }
             catch (Exception outOfGas)
-            when (this.GetExpectedFailure(outOfGas) == ExpectedFailure.OutOfGas)
+            when (this.GetExpectedFailure(outOfGas) == CommonTransactionFailure.OutOfGas)
             {
                 // transaction out of gas
 
@@ -152,7 +157,7 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
                 }
             }
             catch (Exception reverted)
-            when (this.GetExpectedFailure(reverted) == ExpectedFailure.Reverted)
+            when (this.GetExpectedFailure(reverted) == CommonTransactionFailure.Reverted)
             {
                 // transaction reverted
 
@@ -238,12 +243,12 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
     /// </summary>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
-    /// <param name="fees">The fees for the transaction.</param>
-    /// <param name="nonce">The nonce to use for the transaction.</param>
+    /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     protected abstract Task<TReceipt> SubmitTransactionAsync(
-        TContract contract, string functionName, TransactionFees fees, uint nonce, TArgs args);
+        TContract contract, string functionName, TOptions options, TArgs args, CancellationToken cancellationToken);
 
     /// <summary>
     /// Implementors should return the expected failure of a transaction.
@@ -255,5 +260,5 @@ public abstract class TransactionRunner<TContract, TArgs, TReceipt>
     /// </remarks>
     /// <param name="ex">The exception that occurred.</param>
     /// <returns>The expected failure of the transaction.</returns>
-    protected abstract ExpectedFailure GetExpectedFailure(Exception ex);
+    protected abstract CommonTransactionFailure GetExpectedFailure(Exception ex);
 }

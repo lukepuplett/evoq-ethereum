@@ -78,13 +78,18 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="ethCallParams">The eth_call parameters, which looks similar to a transaction object but is not a transaction</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The return data from the call as a hex value.</returns>
     /// <exception cref="JsonRpcNullResultException">Thrown when the JSON-RPC response has a null result.</exception>
-    public async Task<Hex> CallAsync(EthCallParamObjectDto ethCallParams, string blockParameter = "latest", int id = 1)
+    public async Task<Hex> CallAsync(
+        EthCallParamObjectDto ethCallParams,
+        string blockParameter = "latest",
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateCallRequest(ethCallParams, blockParameter, id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -94,12 +99,16 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="transactionParams">The transaction parameters.</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The estimated gas required to invoke the method.</returns>
-    public async Task<Hex> EstimateGasAsync(TransactionParamsDto transactionParams, int id = 1)
+    public async Task<Hex> EstimateGasAsync(
+        TransactionParamsDto transactionParams,
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateEstimateGasRequest(transactionParams, id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -108,12 +117,13 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// Gets the current gas price.
     /// </summary>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The current gas price.</returns>
-    public async Task<Hex> GasPriceAsync(int id = 1)
+    public async Task<Hex> GasPriceAsync(int id = 1, CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateGasPriceRequest(id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -124,9 +134,14 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="address">The Ethereum address.</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The balance of the Ethereum address.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
+    public Task<Hex> GetBalanceAsync(
+        EthereumAddress address,
+        string blockParameter = "latest",
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
         // Implements eth_getBalance
         throw new NotImplementedException("eth_getBalance method not implemented. This method retrieves the balance of an Ethereum address.");
@@ -138,12 +153,17 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="address">The Ethereum address.</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction count of the Ethereum address.</returns>
-    public async Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest", int id = 1)
+    public async Task<Hex> GetTransactionCountAsync(
+        EthereumAddress address,
+        string blockParameter = "latest",
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateGetTransactionCountRequest(address.ToString(), blockParameter, id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -153,15 +173,19 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="signedTransaction">The signed transaction.</param>
     /// <param name="id">The ID of the request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The hash of the transaction.</returns>
     /// <exception cref="JsonRpcNullResultException">
     /// Thrown when the JSON-RPC response has a null result.
     /// </exception>
-    public async Task<Hex> SendRawTransactionAsync(Hex signedTransaction, int id = 1)
+    public async Task<Hex> SendRawTransactionAsync(
+        Hex signedTransaction,
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateSendRawTransactionRequest(signedTransaction.ToString(), id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -171,8 +195,10 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="transactionParams">The transaction parameters.</param>
     /// <param name="id">The ID of the request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The hash of the transaction.</returns>
-    public Task<Hex> SendTransactionAsync(TransactionParamsDto transactionParams, int id = 1)
+    public Task<Hex> SendTransactionAsync(
+        TransactionParamsDto transactionParams, int id = 1, CancellationToken cancellationToken = default)
     {
         // Implements eth_sendTransaction
         throw new NotImplementedException("eth_sendTransaction method not implemented. This method creates and sends a new transaction from a local account.");
@@ -183,12 +209,14 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="address">The Ethereum address.</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The code of the contract.</returns>
-    public async Task<Hex> GetCodeAsync(EthereumAddress address, int id = 1)
+    public async Task<Hex> GetCodeAsync(
+        EthereumAddress address, int id = 1, CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateGetCodeRequest(address.ToString(), "latest", id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -197,12 +225,14 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// Gets the chain ID.
     /// </summary>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The chain ID.</returns>
-    public async Task<Hex> ChainIdAsync(int id = 1)
+    public async Task<Hex> ChainIdAsync(
+        int id = 1, CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateChainIdRequest(id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -211,13 +241,15 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// Gets the block number.
     /// </summary>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The block number.</returns>
     /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public async Task<Hex> BlockNumberAsync(int id = 1)
+    public async Task<Hex> BlockNumberAsync(
+        int id = 1, CancellationToken cancellationToken = default)
     {
         var request = JsonRpcRequestDtoFactory.CreateBlockNumberRequest(id);
 
-        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return ParseHexResponse(response);
     }
@@ -227,15 +259,17 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The block information.</returns>
-    public async Task<BlockDataDto<string>?> GetBlockByNumberWithTxHashesAsync(string blockNumberOrTag, int id = 1)
+    public async Task<BlockDataDto<string>?> GetBlockByNumberWithTxHashesAsync(
+        string blockNumberOrTag, int id = 1, CancellationToken cancellationToken = default)
     {
         // Ensure blockNumberOrTag is properly formatted
         blockNumberOrTag = FormatBlockParameter(blockNumberOrTag);
 
         var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxHashesRequest(blockNumberOrTag, id);
 
-        var response = await this.SendAsync<BlockDataDto<string>>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<BlockDataDto<string>>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return response.Result; // This can be null if the block doesn't exist
     }
@@ -245,15 +279,17 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// </summary>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The block information.</returns>   
-    public async Task<BlockDataDto<TransactionDataDto>?> GetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag, int id = 1)
+    public async Task<BlockDataDto<TransactionDataDto>?> GetBlockByNumberWithTxObjectsAsync(
+        string blockNumberOrTag, int id = 1, CancellationToken cancellationToken = default)
     {
         // Ensure blockNumberOrTag is properly formatted
         blockNumberOrTag = FormatBlockParameter(blockNumberOrTag);
 
         var request = JsonRpcRequestDtoFactory.CreateGetBlockByNumberWithTxObjectsRequest(blockNumberOrTag, id);
 
-        var response = await this.SendAsync<BlockDataDto<TransactionDataDto>>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<BlockDataDto<TransactionDataDto>>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return response.Result; // This can be null if the block doesn't exist
     }
@@ -265,8 +301,10 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="newestBlock">The newest block.</param>
     /// <param name="rewardPercentiles">The reward percentiles.</param>
     /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The fee history.</returns>
-    public async Task<FeeHistoryDto?> FeeHistoryAsync(Hex blockCount, string newestBlock, double[] rewardPercentiles, int id = 1)
+    public async Task<FeeHistoryDto?> FeeHistoryAsync(
+        Hex blockCount, string newestBlock, double[] rewardPercentiles, int id = 1, CancellationToken cancellationToken = default)
     {
         // Ensure newestBlock is properly formatted
         newestBlock = FormatBlockParameter(newestBlock);
@@ -277,16 +315,35 @@ public class JsonRpcClient : IEthereumJsonRpc
             rewardPercentiles,
             id);
 
-        var response = await this.SendAsync<FeeHistoryDto>(request, new MethodInfo(request.Method, id));
+        var response = await this.SendAsync<FeeHistoryDto>(request, new MethodInfo(request.Method, id), cancellationToken);
 
         return response.Result;
+    }
+
+    /// <summary>
+    /// Gets the transaction receipt for a given transaction hash.
+    /// </summary>
+    /// <param name="transactionHash">The hash of the transaction.</param>
+    /// <param name="id">The request identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The transaction receipt, or null if the transaction is not found or pending.</returns>
+    public async Task<TransactionReceiptDto?> GetTransactionReceiptAsync(
+        Hex transactionHash, int id = 1, CancellationToken cancellationToken = default)
+    {
+        var request = JsonRpcRequestDtoFactory.CreateGetTransactionReceiptRequest(
+            transactionHash.ToString(), id);
+
+        var response = await this.SendAsync<TransactionReceiptDto>(request, new MethodInfo(request.Method, id), cancellationToken);
+
+        return response.Result; // Can be null if transaction is pending or not found
     }
 
     //
 
     private async Task<JsonRpcResponseDto<TResponseResult>> SendAsync<TResponseResult>(
         JsonRpcRequestDto request,
-        MethodInfo methodInfo)
+        MethodInfo methodInfo,
+        CancellationToken cancellationToken = default)
         where TResponseResult : class
     {
         var httpClient = this.CreateHttpClient(true);
@@ -301,7 +358,7 @@ public class JsonRpcClient : IEthereumJsonRpc
             methodInfo,
             this.ShouldRetry ?? ((faultInfo) => Task.FromResult(false)),
             TimeSpan.FromSeconds(90),
-            CancellationToken.None);
+            cancellationToken);
 
         if (response.Error != null)
         {

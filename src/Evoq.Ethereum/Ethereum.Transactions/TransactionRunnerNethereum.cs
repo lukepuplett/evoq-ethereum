@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Transactions;
@@ -11,6 +12,7 @@ using Nethereum.RPC.Eth.DTOs;
 
 namespace Evoq.Ethereum.Accounts.Blockchain;
 
+
 /// <summary>
 /// A transaction runner that depends on Nethereum to submit transactions.
 /// </summary>
@@ -19,7 +21,8 @@ namespace Evoq.Ethereum.Accounts.Blockchain;
 /// using Nethereum. The job of the base class is to manage retries based on the response from
 /// the RPC node and the nonce store.
 /// </remarks>
-public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, object[], TransactionReceipt>
+public sealed class TransactionRunnerNethereum
+    : TransactionRunner<Contract, (TransactionFees Fees, ulong Nonce), object[], Nethereum.RPC.Eth.DTOs.TransactionReceipt>
 {
     private readonly Hex privateKey;
 
@@ -47,16 +50,20 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
     /// </summary>
     /// <param name="contract">The contract to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
-    /// <param name="fees">The fees for the transaction.</param>
-    /// <param name="nonce">The nonce to use for the transaction.</param>
+    /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to pass to the function.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <exception cref="InvalidOperationException">Thrown if the private key is not set.</exception>
     /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
     /// <exception cref="OutOfGasTransactionException">Thrown if the transaction is out of gas.</exception>
     /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
     /// <returns>The transaction receipt.</returns>
-    protected async override Task<TransactionReceipt> SubmitTransactionAsync(
-        Contract contract, string functionName, TransactionFees fees, uint nonce, object[] args)
+    protected async override Task<Nethereum.RPC.Eth.DTOs.TransactionReceipt> SubmitTransactionAsync(
+        Contract contract,
+        string functionName,
+        (TransactionFees Fees, ulong Nonce) options,
+        object[] args,
+        CancellationToken cancellationToken)
     {
         var f = contract.GetFunction(functionName);
 
@@ -70,11 +77,11 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
         var input = new TransactionInput
         {
             From = account.Address,
-            Gas = new Nethereum.Hex.HexTypes.HexBigInteger(fees.GasLimit),
-            MaxFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(fees.MaxFeePerGas),
-            MaxPriorityFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(fees.MaxPriorityFeePerGas),
-            Value = new Nethereum.Hex.HexTypes.HexBigInteger(fees.Value),
-            Nonce = new Nethereum.Hex.HexTypes.HexBigInteger(nonce)
+            Gas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.GasLimit),
+            MaxFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.MaxFeePerGas),
+            MaxPriorityFeePerGas = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.MaxPriorityFeePerGas),
+            Value = new Nethereum.Hex.HexTypes.HexBigInteger(options.Fees.Value),
+            Nonce = new Nethereum.Hex.HexTypes.HexBigInteger(options.Nonce)
         };
 
         try
@@ -82,11 +89,10 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
             this.logger.LogDebug(
                 "Submitting transaction: Nonce={Nonce}, Contract={ContractAddress}, Function={FunctionName}, " +
                 "GasLimit={GasLimit}, MaxFeePerGas={MaxFeePerGas}, MaxPriorityFeePerGas={MaxPriorityFeePerGas}, Value={Value}",
-                nonce, contract.Address, functionName,
-                fees.GasLimit, fees.MaxFeePerGas, fees.MaxPriorityFeePerGas, fees.Value);
+                options.Nonce, contract.Address, functionName,
+                options.Fees.GasLimit, options.Fees.MaxFeePerGas, options.Fees.MaxPriorityFeePerGas, options.Fees.Value);
 
             var startTime = DateTime.UtcNow;
-
 
             // Previous code just called this, but this only worked for Google Cloud's RPC
             // provider and Hardhart local node. On Alchemy this caused a HTTP 400 and on
@@ -104,9 +110,9 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
             input = f.CreateTransactionInput(input, args); // sets the Data of the input
 
             var signedTransaction = await account.TransactionManager.SignTransactionAsync(input);
-            var receipt = await f.SendTransactionAndWaitForReceiptAsync(signedTransaction);
 
-
+            var receipt = await f.SendTransactionAndWaitForReceiptAsync(
+                signedTransaction, cancellationToken);
 
             var duration = DateTime.UtcNow - startTime;
 
@@ -114,7 +120,7 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
                 "Transaction completed in {Duration:g}: Nonce={Nonce}, Contract={ContractAddress}, Function={FunctionName}, " +
                 "TransactionHash={TransactionHash}, From={From}, GasUsed={GasUsed}, " +
                 "CumulativeGasUsed={CumulativeGasUsed}, EffectiveGasPrice={EffectiveGasPrice}, Status={Status}",
-                duration, nonce, contract.Address, functionName,
+                duration, options.Nonce, contract.Address, functionName,
                 receipt.TransactionHash, receipt.From, receipt.GasUsed,
                 receipt.CumulativeGasUsed, receipt.EffectiveGasPrice, receipt.Status);
 
@@ -138,27 +144,27 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
     /// </summary>
     /// <param name="ex">The exception that occurred.</param>
     /// <returns>The expected failure of the transaction.</returns>
-    protected override ExpectedFailure GetExpectedFailure(Exception ex)
+    protected override CommonTransactionFailure GetExpectedFailure(Exception ex)
     {
         if (ex is Nethereum.JsonRpc.Client.RpcResponseException rpc)
         {
             if (rpc.Message.Contains("out of gas"))
             {
-                return ExpectedFailure.OutOfGas;
+                return CommonTransactionFailure.OutOfGas;
             }
 
             if (rpc.Message.Contains("reverted"))
             {
-                return ExpectedFailure.Reverted;
+                return CommonTransactionFailure.Reverted;
             }
 
             if (rpc.Message.Contains("nonce too low"))
             {
-                return ExpectedFailure.NonceTooLow;
+                return CommonTransactionFailure.NonceTooLow;
             }
         }
 
-        return ExpectedFailure.Other;
+        return CommonTransactionFailure.Other;
     }
 
     //
@@ -169,7 +175,7 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
     /// <typeparam name="TEventDto">The type of the event to decode.</typeparam>
     /// <param name="receipt">The transaction receipt to decode events from.</param>
     /// <returns>A list of decoded events.</returns>
-    public IReadOnlyList<TEventDto> DecodeEvents<TEventDto>(TransactionReceipt receipt)
+    public IReadOnlyList<TEventDto> DecodeEvents<TEventDto>(Nethereum.RPC.Eth.DTOs.TransactionReceipt receipt)
         where TEventDto : IEventDTO, new()
     {
         this.logger.LogDebug(
@@ -208,7 +214,7 @@ public sealed class TransactionRunnerNethereum : TransactionRunner<Contract, obj
     /// <param name="receipt">The transaction receipt to decode the event from.</param>
     /// <returns>The decoded event.</returns>
     /// <exception cref="MissingEventLogException">Thrown when no events are found in the receipt.</exception>
-    public TEventDto DecodeEvent<TEventDto>(TransactionReceipt receipt) where TEventDto : IEventDTO, new()
+    public TEventDto DecodeEvent<TEventDto>(Nethereum.RPC.Eth.DTOs.TransactionReceipt receipt) where TEventDto : IEventDTO, new()
     {
         var events = this.DecodeEvents<TEventDto>(receipt);
 

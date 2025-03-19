@@ -478,5 +478,40 @@ public class EthereumAddressTests
         Assert.IsNotNull(bytes);
         Assert.AreEqual(0, bytes.Length); // Should return empty array for default address
     }
+
+    [TestMethod]
+    public void Empty_Address_Properties()
+    {
+        // Arrange
+        var emptyAddress = EthereumAddress.Empty;
+
+        // Assert
+        Assert.IsTrue(emptyAddress.IsEmpty);
+        Assert.IsFalse(emptyAddress.IsZero);
+        Assert.IsFalse(emptyAddress.HasValue);
+        Assert.AreEqual("0x", emptyAddress.ToString());
+    }
+
+    [TestMethod]
+    public void Empty_And_Zero_Are_Different()
+    {
+        // Assert
+        Assert.AreNotEqual(EthereumAddress.Empty, EthereumAddress.Zero);
+        Assert.IsFalse(EthereumAddress.Empty == EthereumAddress.Zero);
+        Assert.IsTrue(EthereumAddress.Empty != EthereumAddress.Zero);
+    }
+
+    [TestMethod]
+    public void Empty_Addresses_Are_Equal()
+    {
+        // Arrange
+        var empty1 = EthereumAddress.Empty;
+        var empty2 = default(EthereumAddress);
+
+        // Assert
+        Assert.AreEqual(empty1, empty2);
+        Assert.IsTrue(empty1 == empty2);
+        Assert.IsFalse(empty1 != empty2);
+    }
 }
 

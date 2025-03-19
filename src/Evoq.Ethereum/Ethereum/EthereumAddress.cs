@@ -38,6 +38,15 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// </remarks>
     public static readonly EthereumAddress Zero = new(new byte[20]);
 
+    /// <summary>
+    /// Represents an empty or uninitialized address.
+    /// </summary>
+    /// <remarks>
+    /// This is different from the Zero address which has semantic meaning in Ethereum.
+    /// Empty addresses are used to represent null or uninitialized states.
+    /// </remarks>
+    public static readonly EthereumAddress Empty = default;
+
     //
 
     /// <summary>
@@ -50,7 +59,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     {
         if (address.Length == 0)
         {
-            throw new ArgumentException("An empty address is not permitted. Use Zero instead.", nameof(address));
+            throw new ArgumentException("An empty address is not permitted. Use Empty or Zero instead.", nameof(address));
         }
 
         if (address.Length != 20)
@@ -76,7 +85,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
         if (address.Length == 0)
         {
-            throw new ArgumentException("An empty address is not permitted. Use Zero instead.", nameof(address));
+            throw new ArgumentException("An empty address is not permitted. Use Empty or Zero instead.", nameof(address));
         }
 
         bool isZero = address.Length == 1 && address[0] == 0;

@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// Thrown when a function call fails.

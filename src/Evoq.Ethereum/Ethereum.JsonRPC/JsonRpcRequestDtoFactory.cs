@@ -201,4 +201,18 @@ internal static class JsonRpcRequestDtoFactory
             new List<object> { address, blockParameter },
             id);
     }
+
+    /// <summary>
+    /// Creates a request for the eth_getTransactionReceipt method.
+    /// </summary>
+    /// <param name="transactionHash">The hash of the transaction to get the receipt for.</param>
+    /// <param name="id">The request identifier.</param>
+    /// <returns>A JSON-RPC request for the eth_getTransactionReceipt method.</returns>
+    public static JsonRpcRequestDto CreateGetTransactionReceiptRequest(string transactionHash, int id = 1)
+    {
+        return new JsonRpcRequestDto(
+            "eth_getTransactionReceipt",
+            new List<object> { transactionHash },
+            id);
+    }
 }

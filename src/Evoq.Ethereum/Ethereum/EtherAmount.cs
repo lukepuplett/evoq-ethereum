@@ -82,6 +82,16 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
     }
 
     /// <summary>
+    /// Creates a new amount in Wei from a hexadecimal representation.
+    /// </summary>
+    /// <param name="hex">The hexadecimal representation of the amount.</param>
+    /// <returns>A new EthereumAmount with Wei as the display unit.</returns>
+    public static EtherAmount FromWei(Hex hex)
+    {
+        return new EtherAmount(hex.ToBigInteger(), EthereumUnit.Wei);
+    }
+
+    /// <summary>
     /// Creates a new amount in Ether.
     /// </summary>
     /// <param name="ether">The amount in Ether.</param>
@@ -96,6 +106,16 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
         return new EtherAmount(
             (BigInteger)(ether * 1_000_000_000_000_000_000m),
             EthereumUnit.Ether);
+    }
+
+    /// <summary>
+    /// Creates a new amount in Ether from a hexadecimal representation.
+    /// </summary>
+    /// <param name="hex">The hexadecimal representation of the amount.</param>
+    /// <returns>A new EthereumAmount with Ether as the display unit.</returns>
+    public static EtherAmount FromEther(Hex hex)
+    {
+        return new EtherAmount(hex.ToBigInteger(), EthereumUnit.Ether);
     }
 
     /// <summary>

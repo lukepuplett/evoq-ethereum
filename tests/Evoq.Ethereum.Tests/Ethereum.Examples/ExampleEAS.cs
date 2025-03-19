@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
@@ -16,94 +17,108 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    // [Ignore]
-    public async Task ExampleEAS_CreateWallet()
+    [Ignore]
+    public async Task ExampleEAS_Send()
     {
-        // Call the GetSchema method on Ethereum Attestation Service
+        string baseUrl, chainName;
+        IConfigurationRoot configuration;
+        ulong chainId;
+        ILoggerFactory loggerFactory;
 
-        // What do we need?
-        //
-        // ABI of EAS contract in order to call the GetSchema method
-        // Address of EAS contract
-        //
-        // How do we get this?
-        //
-        // Use the ContractAbiReader to read the ABI from the EAS contract
+        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
 
-        // A hypothetical Contract class would be able to produce function
-        // signatures for the methods in the ABI, and hold the address of
-        // the contract.
-        //
-        // contract.CallAsync("GetSchema", schemaId);
-        //
-        // contractCaller.CallAsync(contract, "GetSchema", schemaId);
-        //
-        // ContractCaller is a class that can be used to call methods on a
-        // contract. Is is configured with a IEthereumJsonRpc, IAbiEncoder,
-        // IAbiDecode, and a ITransactionSigner, and a INonceStore.
-        //
-        // !! We need something to compute the gas price.
         //
 
-        // Then what?
+        EthereumAddress senderAddress;
+        SenderAccount senderAccount;
+
+        SetupAccount(configuration, out senderAddress, out senderAccount);
+
         //
-        // Get the function signature of the GetSchema method
-        //
-        // Call the GetSchema method with a value for the schemaId.
-        //
-        // This means ABI encoding the function signature and the schemaId.
-        //
-        // We don't need a signed transaction because we are not mutating the state.
-        //
-        // We do need to select a HTTP provider, and a JSON-RPC method.
 
-        string infuraBaseUrl = "https://mainnet.infura.io/v3/";
-        string hardhatBaseUrl = "http://localhost:8545";
-
-        string chainName = ChainNames.Hardhat;
-        ulong chainId = ulong.Parse(ChainNames.GetChainId(chainName));
-
-        var configuration = new ConfigurationBuilder()
-            .AddEnvironmentVariables()
-            .AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    { "GoogleCloud:ProjectName", "evoq-capricorn-timesheets" },                                 // for GCP
-                    { "Blockchain:Ethereum:JsonRPC:GoogleSepolia:ProjectId", "evoq-capricorn-timesheets" }      // for GCP
-                })
-            .Build();
-
-        using var loggerFactory = LoggerFactory.Create(
-            builder => builder.AddSimpleConsole(
-                options => options.SingleLine = true).SetMinimumLevel(LogLevel.Debug));
-
-        var privateKeyStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
-        var privateKeyHex = Hex.Parse(privateKeyStr);
-
-        var senderAddressStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1Address")!;
-        var senderAddress = new EthereumAddress(senderAddressStr);
-
-        var chainClient = ChainClient.CreateDefault(chainId, new Uri(hardhatBaseUrl), loggerFactory!);
-        var chain = new Chain(chainClient);
+        var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
 
         var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
 
-        var path = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddressStr));
-        var nonceStore = new FileSystemNonceStore(path, loggerFactory, getStartingNonce);
+        var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
+        var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
+        var sender = new Sender(senderAccount, nonceStore);
+
+        var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+        //
+
+        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
+        var abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
+        var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
+
+        var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
+
+        //
+
+        var registerEstimate = await contract.EstimateTransactionFeeAsync(
+            "register",
+            senderAddress,
+            null,
+            AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true));
+
+        registerEstimate = registerEstimate.InEther();
+
+        //
+
+        var n = 1u; // await nonceStore.BeforeSubmissionAsync();
+
+        var registerOptions = new ContractInvocationOptions(n, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+        var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
+
+        var registerResult = await runner.RunTransactionAsync(
+            contract,
+            "register",
+            registerOptions,
+            registerArgs,
+            CancellationToken.None);
+
+        Console.WriteLine(registerResult);
+
+        Assert.IsNotNull(registerResult);
+        Assert.IsTrue(registerResult.Success);
+    }
+
+    [TestMethod]
+    [Ignore]
+    public async Task ExampleEAS_SendManually()
+    {
+        string baseUrl, chainName;
+        IConfigurationRoot configuration;
+        ulong chainId;
+        ILoggerFactory loggerFactory;
+
+        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+
+        EthereumAddress senderAddress;
+        SenderAccount senderAccount;
+
+        SetupAccount(configuration, out senderAddress, out senderAccount);
+
+        var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
+
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+
+        var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
+        var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
 
         // Read the ABI file using our helper method
         Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
 
+        var sender = new Sender(senderAccount, nonceStore);
+        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
-        var sender = new Sender(privateKeyHex, nonceStore);
-        var endpoint = new Endpoint(chainName, chainName, hardhatBaseUrl, loggerFactory!);
-        var contractClient = ContractClient.CreateDefault(endpoint, sender);
-        var contract = new Contract(contractClient, abiStream, schemaRegistryAddress);
+
+        var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
 
         // guess gas price
 
         var registerEstimate = await contract.EstimateTransactionFeeAsync(
-            chain,
             "register",
             senderAddress,
             null,
@@ -123,13 +138,19 @@ public class ExampleEAS
 
         // call register
 
-        var n = await nonceStore.BeforeSubmissionAsync();
+        var n = 1u;// await nonceStore.BeforeSubmissionAsync();
 
         var registerOptions = new ContractInvocationOptions(n, registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
-        // JSON-RPC error: -32602 - leading zero
-        var registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
+        try
+        {
+            Hex registerResult = await contract.InvokeMethodAsync("register", senderAddress, registerOptions, registerArgs);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.GetType().Name + ": " + ex.Message);
+        }
 
         // get schema
 
@@ -158,6 +179,38 @@ public class ExampleEAS
         Assert.IsNotNull(obj, "The call to getSchema returned an unexpected result");
 
         getSchemaResult.DeepVisitEach(pair => Console.WriteLine($"Result: {pair.Key}: {pair.Value}"));
+    }
+
+    //
+
+    private static void SetupAccount(IConfigurationRoot configuration, out EthereumAddress senderAddress, out SenderAccount senderAccount)
+    {
+        var privateKeyStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
+        var privateKeyHex = Hex.Parse(privateKeyStr);
+
+        var senderAddressStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1Address")!;
+        senderAddress = new EthereumAddress(senderAddressStr);
+        senderAccount = new SenderAccount(privateKeyHex, senderAddress);
+    }
+
+    private static void SetupBasics(out string baseUrl, out IConfigurationRoot configuration, out string chainName, out ulong chainId, out ILoggerFactory loggerFactory)
+    {
+        // baseUrl = "https://mainnet.infura.io/v3/";
+        baseUrl = "http://localhost:8545";
+        configuration = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    { "GoogleCloud:ProjectName", "evoq-capricorn-timesheets" },                                 // for GCP
+                    { "Blockchain:Ethereum:JsonRPC:GoogleSepolia:ProjectId", "evoq-capricorn-timesheets" }      // for GCP
+                })
+            .Build();
+        chainName = ChainNames.Hardhat;
+        chainId = ulong.Parse(ChainNames.GetChainId(chainName));
+        loggerFactory = LoggerFactory.Create(
+            builder => builder.AddSimpleConsole(
+                options => options.SingleLine = true).SetMinimumLevel(LogLevel.Debug));
     }
 }
 

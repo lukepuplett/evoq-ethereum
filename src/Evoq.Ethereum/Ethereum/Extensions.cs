@@ -31,6 +31,16 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Converts a <see cref="Hex"/> to a <see cref="ulong"/>.
+    /// </summary>
+    /// <param name="hex">The hex to convert.</param>
+    /// <returns>The ulong.</returns>
+    public static ulong ToUInt64(this Hex hex)
+    {
+        return (ulong)hex.ToBigInteger();
+    }
+
+    /// <summary>
     /// Converts a <see cref="BigInteger"/> to a big-endian hex string.
     /// </summary>
     /// <param name="value">The value to convert.</param>

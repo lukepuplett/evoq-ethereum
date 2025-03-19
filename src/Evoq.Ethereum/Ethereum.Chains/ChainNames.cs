@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Chains;
 
 /// <summary>
 /// Chain names as defined by EIP-7472.

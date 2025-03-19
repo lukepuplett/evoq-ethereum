@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace Evoq.Ethereum;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// An exception that is thrown when a transaction is out of gas.

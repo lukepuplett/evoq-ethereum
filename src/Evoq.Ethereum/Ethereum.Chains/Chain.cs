@@ -1,6 +1,13 @@
 using System;
+using System.IO;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
+using Evoq.Blockchain;
+using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.JsonRPC;
+using Evoq.Ethereum.Transactions;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
 
@@ -9,7 +16,7 @@ namespace Evoq.Ethereum.Chains;
 /// <summary>
 /// A class that represents a chain.
 /// </summary>
-public class Chain
+public partial class Chain
 {
     private readonly ChainClient chainClient;
 
@@ -162,5 +169,66 @@ public class Chain
     {
         var hex = await this.chainClient.GetTransactionCountAsync(address, blockParameter);
         return hex.ToBigInteger();
+    }
+
+    //
+
+    /// <summary>
+    /// Gets a contract instance.
+    /// </summary>
+    /// <param name="address">The address of the contract.</param>
+    /// <param name="endpoint">The endpoint to use to call the contract.</param>
+    /// <param name="sender">The sender; if null, the ContractCaller will be read-only; attempts to send transactions will throw.</param>
+    /// <param name="abiDocument">The ABI document for the contract.</param>
+    /// <returns>A contract instance.</returns>
+    public Contract GetContract(EthereumAddress address, Endpoint endpoint, Sender sender, Stream abiDocument)
+    {
+        var contractClient = ContractClient.CreateDefault(endpoint, sender);
+
+        return new Contract(this.chainClient, contractClient, abiDocument, address);
+    }
+
+    /// <summary>
+    /// Creates a default chain instance.
+    /// </summary>
+    /// <param name="chainId">The chain ID.</param>
+    /// <param name="uri">The URI of the chain.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
+    {
+        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory);
+
+        return new Chain(chainClient);
+    }
+
+    /// <summary>
+    /// Waits for a transaction to be mined and returns its receipt.
+    /// </summary>
+    /// <param name="transactionHash">The transaction hash to wait for.</param>
+    /// <param name="timeout">The maximum time to wait. Defaults to 5 minutes if not specified.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The transaction receipt.</returns>
+    /// <exception cref="TransactionNotFoundException">Thrown when the transaction is not found within the timeout period.</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
+    public async Task<(TransactionReceipt? Receipt, bool DeadlineReached)> TryWaitForTransactionAsync(
+        Hex transactionHash,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        timeout ??= TimeSpan.FromMinutes(5);
+        var deadline = DateTime.UtcNow + timeout.Value;
+
+        var (receipt, deadlineReached) = await this.chainClient.TryWaitForTransactionReceiptAsync(
+            transactionHash,
+            deadline,
+            cancellationToken);
+
+        if (receipt == null)
+        {
+            throw new TransactionNotFoundException(transactionHash);
+        }
+
+        return (receipt, deadlineReached);
     }
 }

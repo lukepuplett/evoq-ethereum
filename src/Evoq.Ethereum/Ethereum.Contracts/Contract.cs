@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
@@ -23,20 +24,27 @@ public class Contract
     /// <summary>
     /// Initializes a new instance of the Contract class.   
     /// </summary>
+    /// <param name="chainClient">The chain client.</param>
     /// <param name="contractClient">The contract client.</param>
     /// <param name="abiDocument">The stream containing the ABI.</param>
     /// <param name="address">The address of the contract.</param>
-    public Contract(ContractClient contractClient, Stream abiDocument, EthereumAddress address)
+    public Contract(ChainClient chainClient, ContractClient contractClient, Stream abiDocument, EthereumAddress address)
     {
         this.abi = ContractAbiReader.Read(abiDocument);
         this.contractClient = contractClient;
         this.Address = address;
+        this.Chain = new Chain(chainClient);
     }
 
     /// <summary>
     /// Gets or sets the address of the contract.
     /// </summary>  
-    public EthereumAddress Address { get; set; }
+    public EthereumAddress Address { get; }
+
+    /// <summary>
+    /// Gets the chain.
+    /// </summary>
+    public Chain Chain { get; }
 
     //
 
@@ -66,14 +74,17 @@ public class Contract
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
     public async Task<T> CallAsync<T>(
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     where T : new()
     {
-        return await this.contractClient.CallAsync<T>(this, methodName, senderAddress, arguments);
+        return await this.contractClient.CallAsync<T>(
+            this, methodName, senderAddress, arguments, cancellationToken);
     }
 
     /// <summary>
@@ -82,13 +93,16 @@ public class Contract
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into a dictionary.</returns>
     public async Task<IDictionary<string, object?>> CallAsync(
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
-        return await this.contractClient.CallAsync(this, methodName, senderAddress, arguments);
+        return await this.contractClient.CallAsync(
+            this, methodName, senderAddress, arguments, cancellationToken);
     }
 
     /// <summary>
@@ -98,14 +112,17 @@ public class Contract
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="value">The value to send with the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The estimated gas required to invoke the method.</returns>
     public async Task<BigInteger> EstimateGasAsync(
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
-        var hex = await this.contractClient.EstimateGasAsync(this, methodName, senderAddress, value, arguments);
+        var hex = await this.contractClient.EstimateGasAsync(
+            this, methodName, senderAddress, value, arguments, cancellationToken);
 
         return hex.ToBigInteger();
     }
@@ -113,30 +130,31 @@ public class Contract
     /// <summary>
     /// Estimates the transaction fee for calling a contract method.
     /// </summary>
-    /// <param name="chain">The blockchain to interact with.</param>
     /// <param name="methodName">The name of the contract method to call.</param>
     /// <param name="senderAddress">The address that will send the transaction.</param>
     /// <param name="value">The amount of Ether to send with the transaction (in wei).</param>
     /// <param name="arguments">The arguments to pass to the method.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A detailed estimate of the transaction fees.</returns>
     public async Task<TransactionFeeEstimate> EstimateTransactionFeeAsync(
-        Chain chain,
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
         // Step 1: Estimate the gas limit - the maximum amount of computational work
         // the transaction is allowed to use
-        var gasLimit = await this.EstimateGasAsync(methodName, senderAddress, value, arguments);
+        var gasLimit = await this.EstimateGasAsync(
+            methodName, senderAddress, value, arguments, cancellationToken);
 
         // Step 2: Get the current fee market conditions for EIP-1559 transactions
         // This includes suggested values for maxFeePerGas and maxPriorityFeePerGas
-        var suggestion = await chain.SuggestEip1559FeesAsync();
+        var suggestion = await this.Chain.SuggestEip1559FeesAsync();
 
         // Step 3: Get the current base fee from the network
         // This will throw if the network doesn't support EIP-1559 (pre-London fork)
-        var baseFeeInWei = await chain.GetBaseFeeAsync();
+        var baseFeeInWei = await this.Chain.GetBaseFeeAsync();
 
         // Step 4: Calculate the estimated total transaction fee
         // Formula: (baseFee + priorityFee) * gasLimit
@@ -191,13 +209,16 @@ public class Contract
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
     public async Task<Hex> InvokeMethodAsync(
         string methodName,
         EthereumAddress senderAddress,
         ContractInvocationOptions options,
-        IDictionary<string, object?> arguments)
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken = default)
     {
-        return await this.contractClient.InvokeMethodAsync(this, methodName, senderAddress, options, arguments);
+        return await this.contractClient.InvokeMethodAsync(
+            this, methodName, senderAddress, options, arguments, cancellationToken);
     }
 }

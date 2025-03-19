@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.JsonRPC;
+using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
@@ -19,6 +21,8 @@ public class ChainClient
 
     private readonly IEthereumJsonRpc jsonRpc;
 
+    private readonly ChainPollingStrategy.PollingIntervals pollingIntervals;
+
     //
 
     /// <summary>
@@ -30,6 +34,7 @@ public class ChainClient
     {
         this.ChainId = chainId;
         this.jsonRpc = jsonRpc;
+        this.pollingIntervals = ChainPollingStrategy.GetForChain(chainId);
     }
 
     //
@@ -130,6 +135,61 @@ public class ChainClient
     public async Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest")
     {
         return await this.jsonRpc.GetTransactionCountAsync(address, blockParameter, this.GetRandomId());
+    }
+
+    /// <summary>
+    /// Gets the transaction receipt for a given transaction hash.
+    /// </summary>
+    /// <param name="transactionHash">The hash of the transaction.</param>
+    /// <returns>The transaction receipt, or null if the transaction is not found or pending.</returns>
+    public async Task<TransactionReceipt?> TryGetTransactionReceiptAsync(Hex transactionHash)
+    {
+        var dto = await this.jsonRpc.GetTransactionReceiptAsync(transactionHash, this.GetRandomId());
+
+        return TransactionReceipt.FromDto(dto);
+    }
+
+    /// <summary>
+    /// Waits for a transaction receipt until a deadline is reached.
+    /// </summary>
+    /// <param name="transactionHash">The transaction hash to wait for.</param>
+    /// <param name="deadline">The absolute deadline after which polling will stop.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The transaction receipt, or null if not found before the deadline.</returns>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
+    public async Task<(TransactionReceipt? Receipt, bool DeadlineReached)> TryWaitForTransactionReceiptAsync(
+        Hex transactionHash,
+        DateTime deadline,
+        CancellationToken cancellationToken = default)
+    {
+        var currentInterval = pollingIntervals.Initial;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var receipt = await TryGetTransactionReceiptAsync(transactionHash);
+            if (receipt != null)
+            {
+                return (receipt, false);
+            }
+
+            var delayTime = DateTime.UtcNow + currentInterval < deadline
+                ? currentInterval
+                : deadline - DateTime.UtcNow;
+
+            if (delayTime > TimeSpan.Zero)
+            {
+                await Task.Delay(delayTime, cancellationToken);
+            }
+
+            // Implement exponential backoff with chain-specific maximum
+            currentInterval = TimeSpan.FromTicks(Math.Min(
+                currentInterval.Ticks * 2,
+                pollingIntervals.Maximum.Ticks));
+        }
+
+        return (null, true);
     }
 
     //
