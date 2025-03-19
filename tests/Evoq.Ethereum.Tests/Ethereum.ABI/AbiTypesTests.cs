@@ -903,4 +903,50 @@ public class AbiTypesTests
     }
 
     #endregion
+
+    #region IsHashedInTopic Tests
+
+    [TestMethod]
+    [DataRow("uint8", false)]      // Value type - stored directly
+    [DataRow("uint256", false)]    // Value type - stored directly
+    [DataRow("int8", false)]       // Value type - stored directly
+    [DataRow("int256", false)]     // Value type - stored directly
+    [DataRow("bool", false)]       // Value type - stored directly
+    [DataRow("address", false)]    // Value type - stored directly
+    [DataRow("bytes1", false)]     // Fixed bytes - stored directly
+    [DataRow("bytes32", false)]    // Fixed bytes - stored directly
+    [DataRow("string", true)]      // Dynamic type - hashed
+    [DataRow("bytes", true)]       // Dynamic type - hashed
+    [DataRow("uint8[]", true)]     // Array - hashed
+    [DataRow("uint8[2]", true)]    // Fixed array - hashed
+    [DataRow("bytes1[]", true)]    // Array of fixed bytes - hashed
+    [DataRow("bytes32[1]", true)]  // Fixed array of fixed bytes - hashed
+    [DataRow("(uint256,bool)", true)]  // Tuple - hashed
+    [DataRow("(address,uint8)", true)] // Tuple - hashed
+    [DataRow("(uint8,bytes32)", true)] // Tuple - hashed
+    public void IsHashedInTopic_ReturnsExpectedResult(string type, bool expected)
+    {
+        // Act
+        bool result = AbiTypes.IsHashedInTopic(type);
+
+        // Assert
+        Assert.AreEqual(expected, result, $"Type '{type}' should {(expected ? "" : "not ")}be hashed in topic");
+    }
+
+    [TestMethod]
+    [DataRow("uint257")]       // Invalid uint size
+    [DataRow("int512")]        // Invalid int size
+    [DataRow("bytes33")]       // Invalid bytes size
+    [DataRow("notAType")]      // Invalid type name
+    [DataRow("uint[")]         // Incomplete array
+    [DataRow("uint[0]")]       // Invalid array size
+    [DataRow("(uint8,")]       // Incomplete tuple
+    public void IsHashedInTopic_InvalidType_ThrowsArgumentException(string type)
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => AbiTypes.IsHashedInTopic(type),
+            $"Should throw ArgumentException for invalid type '{type}'");
+    }
+
+    #endregion
 }

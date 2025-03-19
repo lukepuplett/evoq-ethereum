@@ -16,7 +16,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    // [Ignore]
+    [Ignore]
     public async Task ExampleEAS_Send()
     {
         string baseUrl, chainName;

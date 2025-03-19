@@ -74,7 +74,7 @@ public class ContractClient
         var (result, signature) = await this.ExecuteCallAsync(
             contract, methodName, senderAddress, arguments, cancellationToken);
 
-        var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
+        var decoded = signature.AbiDecodeOutputs(this.abiDecoder, result.ToByteArray());
 
         return decoded.Parameters.ToObject<T>();
     }
@@ -89,7 +89,7 @@ public class ContractClient
         var (result, signature) = await this.ExecuteCallAsync(
             contract, methodName, senderAddress, arguments, cancellationToken);
 
-        var decoded = signature.AbiDecodeReturnValues(this.abiDecoder, result.ToByteArray());
+        var decoded = signature.AbiDecodeOutputs(this.abiDecoder, result.ToByteArray());
 
         return decoded.Parameters.ToDictionary(false);
     }

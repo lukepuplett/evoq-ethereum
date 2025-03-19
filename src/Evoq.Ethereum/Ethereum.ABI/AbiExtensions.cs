@@ -99,15 +99,15 @@ public static class AbiExtensions
         }
 
         // Format the inputs and outputs using FormatParameterSignature
-        string inputsSignature = format(item.Inputs);
-        string outputsSignature = format(item.Outputs);
+        string inputsSignature = formatSigStr(item.Inputs);
+        string outputsSignature = formatSigStr(item.Outputs);
 
         // Create a new FunctionSignature using the string representations
         return new AbiSignature(AbiItemType.Function, item.Name, inputsSignature, outputsSignature);
 
         //
 
-        static string format(IEnumerable<ContractAbiParameter>? parameters)
+        static string formatSigStr(IEnumerable<ContractAbiParameter>? parameters)
         {
             if (parameters == null || !parameters.Any())
             {
@@ -138,7 +138,7 @@ public static class AbiExtensions
             throw new ArgumentException("Event must have a name", nameof(item));
         }
 
-        string inputsSignature = format(item.Inputs);
+        string inputsSignature = formatSigStr(item.Inputs);
 
         return new AbiSignature(AbiItemType.Event, item.Name, inputsSignature)
         {
@@ -147,7 +147,7 @@ public static class AbiExtensions
 
         //
 
-        static string format(IEnumerable<ContractAbiParameter>? parameters)
+        static string formatSigStr(IEnumerable<ContractAbiParameter>? parameters)
         {
             if (parameters == null || !parameters.Any())
             {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.ABI;
@@ -104,7 +105,7 @@ public class AbiSignature
     {
         var result = encoder.EncodeParameters(this.Inputs, values);
 
-        var selectorBytes = this.GetSelectorBytes();
+        var selectorBytes = this.GetSelector().ToByteArray();
         var resultBytes = result.ToByteArray();
 
         var fullBytes = new byte[selectorBytes.Length + resultBytes.Length];
@@ -120,7 +121,7 @@ public class AbiSignature
     /// <param name="decoder">The decoder to use.</param>
     /// <param name="data">The data to decode.</param>
     /// <returns>The decoded return values.</returns>
-    public AbiDecodingResult AbiDecodeReturnValues(IAbiDecoder decoder, byte[] data)
+    public AbiDecodingResult AbiDecodeOutputs(IAbiDecoder decoder, byte[] data)
     {
         if (this.Outputs == null || this.Outputs.Count == 0)
         {
@@ -133,6 +134,10 @@ public class AbiSignature
     /// <summary>
     /// Gets the canonical signature string, e.g. "transfer(address,uint256)" or "setPerson((string,uint256,address),bool)".
     /// </summary>
+    /// <remarks>
+    /// Use this for function signatures and producing hashes.
+    /// For events, the signature is the same as the canonical inputs signature.
+    /// </remarks>
     /// <returns>The canonical signature.</returns>
     public string GetCanonicalInputsSignature()
     {
@@ -157,11 +162,21 @@ public class AbiSignature
     /// Gets the 4-byte function selector.
     /// </summary>
     /// <returns>The function selector.</returns>
-    public byte[] GetSelectorBytes()
+    public Hex GetSelector()
+    {
+        return this.GetSignatureHash().ToByteArray().Take(4).ToArray().ToHexStruct();
+    }
+
+    /// <summary>
+    /// Gets the full signature.
+    /// </summary>
+    /// <returns>The full signature.</returns>
+    public Hex GetSignatureHash()
     {
         var signature = this.GetCanonicalInputsSignature();
+        var utf8 = Encoding.UTF8.GetBytes(signature);
 
-        return KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
+        return KeccakHash.ComputeHash(utf8).ToHexStruct();
     }
 
     /// <summary>
@@ -228,8 +243,18 @@ public class AbiSignature
     /// <exception cref="ArgumentException">If the signature format is invalid.</exception>
     public static AbiSignature Parse(AbiItemType type, string fullSignature)
     {
-        // Split the signature into inputs and outputs
-        var parts = fullSignature.Split(" returns ", StringSplitOptions.None);
+        bool isAnonymous = false;
+        string[] parts;
+
+        if (type == AbiItemType.Event)
+        {
+            parts = fullSignature.Split(" anonymous", StringSplitOptions.None);
+            isAnonymous = parts.Length > 1;
+        }
+        else
+        {
+            parts = fullSignature.Split(" returns ", StringSplitOptions.None);
+        }
 
         var nameAndInputs = parts[0].Trim();
         var outputs = parts.Length > 1 ? parts[1].Trim() : string.Empty;
@@ -253,7 +278,10 @@ public class AbiSignature
         var ins = AbiParameters.Parse(nameAndInputs[startIndex..]);
         var outs = AbiParameters.Parse(outputs);
 
-        return new AbiSignature(type, name, ins, outs);
+        return new AbiSignature(type, name, ins, outs)
+        {
+            IsAnonymous = isAnonymous
+        };
     }
 
     //

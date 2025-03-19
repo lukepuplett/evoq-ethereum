@@ -153,8 +153,8 @@ public class AbiSignatureTests
     public void GetSelector_ReturnsCorrectBytes(string fullSignature, string expectedHex)
     {
         var signature = AbiSignature.Parse(AbiItemType.Function, fullSignature);
-        var selector = signature.GetSelectorBytes();
-        CollectionAssert.AreEqual(Convert.FromHexString(expectedHex), selector);
+        var selector = signature.GetSelector();
+        CollectionAssert.AreEqual(Convert.FromHexString(expectedHex), selector.ToByteArray());
     }
 
     [TestMethod]
@@ -477,5 +477,190 @@ public class AbiSignatureTests
         Assert.AreEqual("amounts", inputs[1].Name);
         Assert.AreEqual("address[]", inputs[0].AbiType);
         Assert.AreEqual("uint256[]", inputs[1].AbiType);
+    }
+
+    [TestMethod]
+    public void EventSignature_SimpleEvent_ParsesCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event, "Transfer(address indexed from, address indexed to, uint256 value)");
+
+        // Assert
+        Assert.AreEqual("Transfer(address,address,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual(3, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+        Assert.IsTrue(signature.Inputs[1].IsIndexed);
+        Assert.IsFalse(signature.Inputs[2].IsIndexed);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithoutIndexed_ParsesCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event, "ValueUpdated(uint256 oldValue, uint256 newValue)");
+
+        // Assert
+        Assert.AreEqual("ValueUpdated(uint256,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual(2, signature.Inputs.Count);
+        Assert.IsFalse(signature.Inputs[0].IsIndexed);
+        Assert.IsFalse(signature.Inputs[1].IsIndexed);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithTupleParameter_ParsesCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event, "PersonUpdated((string name, uint256 age, address wallet) indexed person)");
+
+        // Assert
+        Assert.AreEqual("PersonUpdated((string,uint256,address))", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual(1, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+        Assert.IsTrue(signature.Inputs[0].TryParseComponents(out var components));
+        Assert.AreEqual(3, components!.Count);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithComplexTypes_ParsesCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event, "ComplexUpdate(bytes32 indexed id, (uint256 value, bool active)[] data)");
+
+        // Assert
+        Assert.AreEqual("ComplexUpdate(bytes32,(uint256,bool)[])", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual(2, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+        Assert.IsFalse(signature.Inputs[1].IsIndexed);
+    }
+
+    [TestMethod]
+    public void GetSignatureHash_ForEvent_ReturnsCorrectHash()
+    {
+        // Common ERC20 Transfer event
+        var signature = AbiSignature.Parse(AbiItemType.Event, "Transfer(address indexed from, address indexed to, uint256 value)");
+        var expectedHash = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+        var selector = signature.GetSignatureHash();
+        Assert.AreEqual(expectedHash[2..], Convert.ToHexString(selector.ToByteArray()).ToLower());
+    }
+
+    [TestMethod]
+    public void EventSignature_WithMaxIndexedParameters_ParsesCorrectly()
+    {
+        // Solidity allows up to 3 indexed parameters for events
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "TripleIndex(address indexed one, bytes32 indexed two, uint256 indexed three, string four)");
+
+        Assert.AreEqual(4, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+        Assert.IsTrue(signature.Inputs[1].IsIndexed);
+        Assert.IsTrue(signature.Inputs[2].IsIndexed);
+        Assert.IsFalse(signature.Inputs[3].IsIndexed);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithAnonymousFlag_ParsesCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "AnonymousEvent(address indexed sender, uint256 value) anonymous");
+
+        // Assert
+        Assert.AreEqual("AnonymousEvent(address,uint256)", signature.GetCanonicalInputsSignature());
+        Assert.IsTrue(signature.IsAnonymous);
+        Assert.AreEqual(2, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+        Assert.IsFalse(signature.Inputs[1].IsIndexed);
+    }
+
+    [TestMethod]
+    public void EventSignature_RealWorldExamples_ParseCorrectly()
+    {
+        // ERC721 Transfer event
+        var transfer = AbiSignature.Parse(AbiItemType.Event,
+            "Transfer(address indexed from, address indexed to, uint256 indexed tokenId)");
+        Assert.AreEqual("Transfer(address,address,uint256)", transfer.GetCanonicalInputsSignature());
+        Assert.IsTrue(transfer.Inputs.All(i => i.IsIndexed));
+
+        // ERC1155 TransferSingle event
+        var transferSingle = AbiSignature.Parse(AbiItemType.Event,
+            "TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)");
+        Assert.AreEqual("TransferSingle(address,address,address,uint256,uint256)",
+            transferSingle.GetCanonicalInputsSignature());
+        Assert.AreEqual(3, transferSingle.Inputs.Count(i => i.IsIndexed));
+    }
+
+    [TestMethod]
+    public void EventSignature_WithIndexedTuple_ParsesCorrectly()
+    {
+        // Arrange & Act
+        // This is valid - indexing the entire tuple
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "PersonEvent((string name, address wallet, uint256 age) indexed person)");
+
+        // Assert
+        Assert.AreEqual("PersonEvent((string,address,uint256))", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual(1, signature.Inputs.Count);
+        Assert.IsTrue(signature.Inputs[0].IsIndexed);
+    }
+
+    [TestMethod]
+    public void EventSignature_IdentifiesTopicAndDataParameters()
+    {
+        // Arrange
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "Transfer(address indexed from, address indexed to, uint256 value)");
+
+        // Act
+        var topicParams = signature.Inputs.Where(p => p.IsIndexed).ToList();
+        var dataParams = signature.Inputs.Where(p => !p.IsIndexed).ToList();
+
+        // Assert
+        Assert.AreEqual(2, topicParams.Count);
+        Assert.AreEqual("from", topicParams[0].Name);
+        Assert.AreEqual("to", topicParams[1].Name);
+
+        Assert.AreEqual(1, dataParams.Count);
+        Assert.AreEqual("value", dataParams[0].Name);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithAnonymousEvent_HasNoSignatureTopicButStillHasIndexedTopics()
+    {
+        // Arrange
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "AnonymousTransfer(address indexed from, uint256 value) anonymous");
+
+        // Act
+        var topicParams = signature.Inputs.Where(p => p.IsIndexed).ToList();
+        var dataParams = signature.Inputs.Where(p => !p.IsIndexed).ToList();
+
+        // Assert
+        Assert.IsTrue(signature.IsAnonymous); // No topics[0]
+        Assert.AreEqual(1, topicParams.Count); // But still has indexed param in topics[1]
+        Assert.AreEqual("from", topicParams[0].Name);
+
+        Assert.AreEqual(1, dataParams.Count);
+        Assert.AreEqual("value", dataParams[0].Name);
+    }
+
+    [TestMethod]
+    public void EventSignature_WithIndexedTuple_CountsAsOneTopicSlot()
+    {
+        // Arrange
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "ComplexEvent((uint256 id, address owner) indexed data, address indexed user, uint256 value)");
+
+        // Act
+        var topicParams = signature.Inputs.Where(p => p.IsIndexed).ToList();
+        var dataParams = signature.Inputs.Where(p => !p.IsIndexed).ToList();
+
+        // Assert
+        Assert.AreEqual(2, topicParams.Count); // Tuple counts as one topic
+        Assert.AreEqual("data", topicParams[0].Name);
+        Assert.AreEqual("user", topicParams[1].Name);
+
+        Assert.AreEqual(1, dataParams.Count);
+        Assert.AreEqual("value", dataParams[0].Name);
     }
 }

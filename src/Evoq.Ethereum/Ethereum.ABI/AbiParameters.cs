@@ -144,8 +144,9 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
         descriptor = descriptor[1..^1].Trim() + ',';
 
         var ordinal = 0;
-        var isHarvestingParamType = true;
+        var harvesting = HarvestingMode.Type;
         var skipWhitespace = false;
+        var isCurrentIndexed = false;
         var currentParamType = new List<char>();
         var currentParamName = new List<char>();
         var currentParams = new List<AbiParam>();
@@ -166,7 +167,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
                     currentNestedParams = SplitParams(currentNestedDesc); // recurse
                     i = nextCloseParen; // jump to the closing parenthesis
                     Debug.Assert(descriptor[i] == ')');
-                    isHarvestingParamType = false; // we're now harvesting the param name
+                    harvesting = HarvestingMode.Name; // we're now harvesting the param name
                     skipWhitespace = true; // expect a space then a name, or another paren, or a comma next
                     break;
                 case ')':
@@ -174,7 +175,21 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
                 case ' ':
                     if (skipWhitespace)
                         break;
-                    isHarvestingParamType = !isHarvestingParamType; // toggle between type and name
+                    if (harvesting == HarvestingMode.Type)
+                    {
+                        harvesting = HarvestingMode.Name;
+                    }
+                    else if (new string(currentParamName.ToArray()) == "indexed")
+                    {
+                        // another space after a name will occur if the name was actually the keyword "indexed"
+                        // so we need to stay harvesting the name
+                        isCurrentIndexed = true;
+                        currentParamName.Clear();
+                    }
+                    else
+                    {
+                        harvesting = HarvestingMode.Type;
+                    }
                     skipWhitespace = true; // don't process consecutive spaces
                     break;
                 case ',': // end of param or descriptor, perform reset ready for next param
@@ -185,7 +200,8 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
                     currentParamType.Clear();
                     currentParamName.Clear();
                     currentArrayLengths.Clear();
-                    isHarvestingParamType = true;
+                    harvesting = HarvestingMode.Type;
+                    isCurrentIndexed = false;
                     skipWhitespace = true; // don't process whitespace after the comma
                     ordinal++;
                     break;
@@ -206,10 +222,14 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
                     break;
                 default:
                     skipWhitespace = false;
-                    if (isHarvestingParamType)
+                    if (harvesting == HarvestingMode.Type)
+                    {
                         currentParamType.Add(c);
+                    }
                     else
+                    {
                         currentParamName.Add(c);
+                    }
                     break;
             }
         }
@@ -219,10 +239,12 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
         AbiParam makeParam(string? tupleDescriptor)
         {
             var name = new string(currentParamName.ToArray());
+            var type = tupleDescriptor ?? new string(currentParamType.ToArray());
 
-            string type = tupleDescriptor ?? new string(currentParamType.ToArray());
-
-            return new AbiParam(ordinal, name, type, currentArrayLengths.ToArray());
+            return new AbiParam(ordinal, name, type, currentArrayLengths.ToArray())
+            {
+                IsIndexed = isCurrentIndexed,
+            };
         }
 
         int findClosingParen(string descriptor, int start)
@@ -244,4 +266,10 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
         }
     }
 
+
+    enum HarvestingMode
+    {
+        Type,
+        Name,
+    }
 }

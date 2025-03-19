@@ -907,4 +907,43 @@ public static class AbiTypes
         // All basic types and dynamic types are supported
         return true;
     }
+
+    /// <summary>
+    /// Determines if an indexed parameter's value is hashed in the event topic.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the indexed parameter is hashed in the topic, false if stored directly.</returns>
+    /// <remarks>
+    /// According to Solidity documentation:
+    /// - Value types (uint, address, bool) are stored directly in topics
+    /// - Everything else (arrays, strings, bytes, structs) is stored as its keccak256 hash
+    /// </remarks>
+    public static bool IsHashedInTopic(string type)
+    {
+        if (!IsValidType(type))
+        {
+            throw new ArgumentException($"Invalid type: {type}", nameof(type));
+        }
+
+        // Arrays (fixed or dynamic) are always hashed
+        if (IsArray(type))
+        {
+            return true;
+        }
+
+        // Tuples are always hashed
+        if (IsTuple(type, includeArrays: false))
+        {
+            return true;
+        }
+
+        // Dynamic types (string, bytes) are always hashed
+        if (type == AbiTypeNames.String || type == AbiTypeNames.Bytes)
+        {
+            return true;
+        }
+
+        // Value types are stored directly
+        return false;
+    }
 }

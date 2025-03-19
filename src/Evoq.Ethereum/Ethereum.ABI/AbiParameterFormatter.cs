@@ -13,8 +13,10 @@ internal static class AbiParameterFormatter
     /// </summary>
     /// <param name="parameters">The parameters to format.</param>
     /// <param name="includeNames">Whether to include parameter names in the output.</param>
+    /// <param name="includeIndexed">Whether to include indexed in the output.</param>
     /// <returns>A formatted signature string.</returns>
-    public static string FormatParameters(IEnumerable<ContractAbiParameter>? parameters, bool includeNames = false)
+    public static string FormatParameters(
+        IEnumerable<ContractAbiParameter>? parameters, bool includeNames = false, bool includeIndexed = false)
     {
         if (parameters == null || !parameters.Any())
         {
@@ -24,7 +26,7 @@ internal static class AbiParameterFormatter
         var formattedParams = string.Join(",", parameters.Select(p =>
         {
             // Use FormatParameter for all parameters to ensure consistency
-            return FormatParameter(p, includeNames);
+            return FormatParameter(p, includeNames, includeIndexed);
         }));
 
         return $"({formattedParams})";
@@ -35,8 +37,10 @@ internal static class AbiParameterFormatter
     /// </summary>
     /// <param name="parameter">The parameter to format.</param>
     /// <param name="includeNames">Whether to include parameter names in the output.</param>
+    /// <param name="includeIndexed">Whether to include indexed in the output.</param>
     /// <returns>The formatted parameter type.</returns>
-    public static string FormatParameter(ContractAbiParameter parameter, bool includeNames = false)
+    public static string FormatParameter(
+        ContractAbiParameter parameter, bool includeNames = false, bool includeIndexed = false)
     {
         string typeStr;
 
@@ -44,7 +48,7 @@ internal static class AbiParameterFormatter
         if (parameter.IsTuple)
         {
             // Format the tuple components
-            var componentsString = FormatTupleComponents(parameter.Components, includeNames);
+            var componentsString = FormatTupleComponents(parameter.Components, includeNames, includeIndexed);
 
             // Check if this is an array type
             if (parameter.Type.Contains("["))
@@ -68,13 +72,29 @@ internal static class AbiParameterFormatter
             typeStr = parameter.Type;
         }
 
-        // Include the name if requested and available
-        if (includeNames && !string.IsNullOrEmpty(parameter.Name))
+        return $"{typeStr}{indexed()}{name()}";
+
+        //
+
+        string name()
         {
-            return $"{typeStr} {parameter.Name}";
+            if (includeNames)
+            {
+                return $" {parameter.Name}";
+            }
+
+            return "";
         }
 
-        return typeStr;
+        string indexed()
+        {
+            if (includeIndexed && parameter.Indexed)
+            {
+                return " indexed";
+            }
+
+            return "";
+        }
     }
 
     /// <summary>
@@ -82,14 +102,16 @@ internal static class AbiParameterFormatter
     /// </summary>
     /// <param name="components">The tuple components.</param>
     /// <param name="includeNames">Whether to include parameter names in the output.</param>
+    /// <param name="includeIndexed">Whether to include indexed in the output.</param>
     /// <returns>A formatted string of the tuple components.</returns>
-    private static string FormatTupleComponents(IEnumerable<ContractAbiParameter>? components, bool includeNames = false)
+    internal static string FormatTupleComponents(
+        IEnumerable<ContractAbiParameter>? components, bool includeNames = false, bool includeIndexed = false)
     {
         if (components == null || !components.Any())
         {
             return "";
         }
 
-        return string.Join(",", components.Select(c => FormatParameter(c, includeNames)));
+        return string.Join(",", components.Select(c => FormatParameter(c, includeNames, includeIndexed)));
     }
 }

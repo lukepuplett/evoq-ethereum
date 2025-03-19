@@ -327,12 +327,8 @@ public class AbiParameterFormatterTests
     [TestMethod]
     public void FormatTupleComponents_EmptyComponents_ReturnsEmptyString()
     {
-        // We need to use reflection to test this private method
-        var method = typeof(AbiParameterFormatter).GetMethod("FormatTupleComponents",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-
         // Act
-        var result = method.Invoke(null, new object[] { new List<ContractAbiParameter>(), false }) as string;
+        var result = AbiParameterFormatter.FormatTupleComponents(new List<ContractAbiParameter>(), false);
 
         // Assert
         Assert.AreEqual("", result);
@@ -341,12 +337,8 @@ public class AbiParameterFormatterTests
     [TestMethod]
     public void FormatTupleComponents_NullComponents_ReturnsEmptyString()
     {
-        // We need to use reflection to test this private method
-        var method = typeof(AbiParameterFormatter).GetMethod("FormatTupleComponents",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-
         // Act
-        var result = method.Invoke(null, new object[] { null, false }) as string;
+        var result = AbiParameterFormatter.FormatTupleComponents(null!, false);
 
         // Assert
         Assert.AreEqual("", result);
@@ -539,5 +531,71 @@ public class AbiParameterFormatterTests
 
         // Assert
         Assert.AreEqual("(uint256 id,(string firstName,string lastName) fullName) userData", result);
+    }
+
+    [TestMethod]
+    public void FormatParameter_IndexedEventParameter_ReturnsCorrectFormat()
+    {
+        // Arrange
+        var param = new ContractAbiParameter
+        {
+            Type = "address",
+            Name = "sender",
+            Indexed = true
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameter(
+            param, includeNames: true, includeIndexed: true);
+
+        // Assert
+        Assert.AreEqual("address indexed sender", result);
+    }
+
+    [TestMethod]
+    public void FormatParameters_EventWithMixedIndexedParameters_ReturnsCorrectFormat()
+    {
+        // Arrange
+        var parameters = new List<ContractAbiParameter>
+        {
+            new ContractAbiParameter { Type = "address", Name = "from", Indexed = true },
+            new ContractAbiParameter { Type = "address", Name = "to", Indexed = true },
+            new ContractAbiParameter { Type = "uint256", Name = "value" }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameters(
+            parameters, includeNames: true, includeIndexed: true);
+
+        // Assert
+        Assert.AreEqual("(address indexed from,address indexed to,uint256 value)", result);
+    }
+
+    [TestMethod]
+    public void FormatParameters_ComplexEventWithIndexedTuple_ReturnsCorrectFormat()
+    {
+        // Arrange
+        var parameters = new List<ContractAbiParameter>
+        {
+            new ContractAbiParameter
+            {
+                Type = "tuple",
+                Name = "data",
+                Indexed = true,
+                Components = new List<ContractAbiParameter>
+                {
+                    new ContractAbiParameter { Type = "uint256", Name = "id" },
+                    new ContractAbiParameter { Type = "address", Name = "owner" }
+                }
+            },
+            new ContractAbiParameter { Type = "string", Name = "description" }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameters(
+            parameters, includeNames: true, includeIndexed: true);
+
+        // Assert
+        Assert.AreEqual("((uint256 id,address owner) indexed data,string description)", result);
     }
 }

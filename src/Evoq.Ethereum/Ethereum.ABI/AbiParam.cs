@@ -46,7 +46,7 @@ public class AbiParam
     /// </summary>
     /// <param name="position">The ordinal of the param within its parent.</param>
     /// <param name="name">The name of the param.</param>
-    /// <param name="descriptor">The type descriptor of the param.</param>
+    /// <param name="descriptor">The type descriptor of the param e.g. "uint256" or "uint256[]" or "uint256[2][3]" or "(uint256,uint256)" or "(uint256,uint256)[]".</param>
     /// <param name="arrayLengths">The lengths of the arrays if the param is an array.</param>
     /// <exception cref="ArgumentException">Thrown when the components contain nested params.</exception>
     internal AbiParam(
@@ -146,6 +146,11 @@ public class AbiParam
     public bool IsArray => this.ArrayLengths != null && this.ArrayLengths.Count > 0;
 
     /// <summary>
+    /// Whether the param is an indexed param.
+    /// </summary>
+    public bool IsIndexed { get; init; } = false;
+
+    /// <summary>
     /// The ordinal of the param.
     /// </summary>
     public int Position { get; init; }
@@ -169,11 +174,6 @@ public class AbiParam
     /// The lengths of the array.
     /// </summary>
     public IReadOnlyList<int>? ArrayLengths { get; init; }
-
-    // /// <summary>
-    // /// The components of the param.
-    // /// </summary>
-    // public IReadOnlyList<AbiParam>? Components { get; init; }
 
     //
 
