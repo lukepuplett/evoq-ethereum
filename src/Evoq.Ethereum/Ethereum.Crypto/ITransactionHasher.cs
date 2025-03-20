@@ -12,5 +12,5 @@ public interface ITransactionHasher
     /// </summary>
     /// <param name="encodedTransaction">The encoded transaction.</param>
     /// <returns>The hash.</returns>
-    Hex Hash(byte[] encodedTransaction);
+    byte[] Hash(byte[] encodedTransaction);
 }

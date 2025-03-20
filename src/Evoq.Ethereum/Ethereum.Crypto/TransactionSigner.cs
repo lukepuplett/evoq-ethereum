@@ -23,7 +23,7 @@ public interface ITransactionSigner
 /// </summary>
 public class TransactionSigner : ITransactionSigner
 {
-    private readonly ISignPayload signer;
+    private readonly IECSignPayload signer;
     private readonly IRlpTransactionEncoder rlpEncoder;
     private readonly ITransactionHasher hasher;
 
@@ -36,7 +36,7 @@ public class TransactionSigner : ITransactionSigner
     /// <param name="rlpEncoder">The RLP encoder to use.</param>
     /// <param name="hasher">The hasher to use.</param>
     public TransactionSigner(
-        ISignPayload signer,
+        IECSignPayload signer,
         IRlpTransactionEncoder rlpEncoder,
         ITransactionHasher hasher)
     {
@@ -83,9 +83,7 @@ public class TransactionSigner : ITransactionSigner
 
         return this.signer.Sign(new SigningPayload
         {
-            Data = hash.ToByteArray(),
-            IsEIP155 = false,
-            ChainId = null
+            Data = hash
         });
     }
 
@@ -103,10 +101,9 @@ public class TransactionSigner : ITransactionSigner
 
         var hash = this.hasher.Hash(this.rlpEncoder.Encode(transaction));
 
-        return this.signer.Sign(new SigningPayload
+        return this.signer.Sign(new ChainAssociatedSigningPayload
         {
-            Data = hash.ToByteArray(),
-            IsEIP155 = true,
+            Data = hash,
             ChainId = BigInteger.ValueOf((long)transaction.ChainId)
         });
     }

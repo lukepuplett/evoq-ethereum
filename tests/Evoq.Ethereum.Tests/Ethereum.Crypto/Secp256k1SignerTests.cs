@@ -73,10 +73,9 @@ public class Secp256k1SignerTests
 
         // Create signer and payload
         var signer = new Secp256k1Signer(privateKey.ToByteArray());
-        var payload = new SigningPayload
+        var payload = new ChainAssociatedSigningPayload
         {
             Data = messageHash.ToByteArray(),
-            IsEIP155 = true,
             ChainId = BigInteger.ValueOf(1)
         };
 

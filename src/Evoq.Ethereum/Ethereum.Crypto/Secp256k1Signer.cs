@@ -31,9 +31,9 @@ namespace Evoq.Ethereum.Crypto;
 /// <summary>
 /// Signs a payload using the secp256k1 curve.
 /// </summary>
-internal class Secp256k1Signer : ISignPayload
+internal class Secp256k1Signer : IECSignPayload
 {
-    private readonly byte[] _privateKey;
+    private readonly byte[] privateKey;
 
     /// <summary>
     /// Initializes a new instance of the Secp256k1Signer class.
@@ -46,7 +46,7 @@ internal class Secp256k1Signer : ISignPayload
             throw new ArgumentException("Private key must be 32 bytes", nameof(privateKey));
         }
 
-        _privateKey = privateKey;
+        this.privateKey = privateKey;
     }
 
     /// <summary>
@@ -57,33 +57,14 @@ internal class Secp256k1Signer : ISignPayload
     /// <exception cref="ArgumentException">Thrown when a chain ID is required for EIP-155 signatures but is not provided.</exception>
     public RsvSignature Sign(SigningPayload payload)
     {
-        if (payload.IsEIP155 && payload.ChainId == null)
-        {
-            throw new ArgumentException("Chain ID is required for EIP-155 signatures", nameof(payload));
-        }
-
-        var (r, s, v) = SignImpl(payload);
+        var (r, s, v) = this.SignPayloadInternal(payload);
 
         return new RsvSignature(v, r, s);
     }
 
-    [Obsolete("Needs to return a Hex but creating a byte array from ECPoint is not trivial")]
-    public ECPoint RecoverPublicKey(byte[] hash, byte[] r, byte[] s, byte v, long? chainId)
-    {
-        var curve = SecNamedCurves.GetByName("secp256k1");
-        var domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
-        int recoveryId = chainId.HasValue ? v - (int)(chainId.Value * 2 + 35) : v - 27;
-        if (recoveryId < 0 || recoveryId > 1)
-        {
-            throw new ArgumentException("Invalid recovery ID");
-        }
-
-        return RecoverPublicKey(new BigInteger(1, r), new BigInteger(1, s), hash, recoveryId, domain);
-    }
-
     //
 
-    private (BigInteger R, BigInteger S, BigInteger V) SignImpl(SigningPayload payload)
+    private (BigInteger R, BigInteger S, BigInteger V) SignPayloadInternal(SigningPayload payload)
     {
         var payloadBytes = payload.Data;
 
@@ -92,7 +73,7 @@ internal class Secp256k1Signer : ISignPayload
         var domain = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H);
 
         // Create private key parameters
-        var d = new BigInteger(1, _privateKey);
+        var d = new BigInteger(1, privateKey);
         var privKey = new ECPrivateKeyParameters(d, domain);
         var Q = domain.G.Multiply(d);
 
@@ -123,7 +104,7 @@ internal class Secp256k1Signer : ISignPayload
 
         for (int recId = 0; recId < 2; recId++)
         {
-            var Q_recovered = RecoverPublicKey(r, s, payloadBytes, recId, domain);
+            var Q_recovered = Secp256k1Recovery.RecoverPublicKey(r, s, payloadBytes, recId);
             if (Q_recovered.Equals(Q))
             {
                 recoveryId = recId;
@@ -143,16 +124,15 @@ internal class Secp256k1Signer : ISignPayload
         BigInteger bigRecoveryId = BigInteger.ValueOf(recoveryId);
         BigInteger v;
 
-        if (payload.IsEIP155)
+        if (payload is ChainAssociatedSigningPayload cp)
         {
-            if (payload.ChainId == null)
+            if (cp.ChainId == null)
             {
                 throw new ArgumentException("Chain ID is required for EIP-155 signatures", nameof(payload));
             }
 
             v = Constants.Eip155BaseValue35
-                .Add(payload.ChainId
-                    .Multiply(Constants.Eip155ChainIdMultiplier2))
+                .Add(cp.ChainId.Multiply(Constants.Eip155ChainIdMultiplier2))
                 .Add(bigRecoveryId); // 35 + chainId * 2 + recoveryId
         }
         else
@@ -162,9 +142,48 @@ internal class Secp256k1Signer : ISignPayload
 
         return (r, s, v);
     }
+}
 
-    private static ECPoint RecoverPublicKey(BigInteger r, BigInteger s, byte[] hash, int recoveryId, ECDomainParameters domain)
+
+/// <summary>
+/// Recovers a public key from a signature.
+/// </summary>
+internal class Secp256k1Recovery : IECRecoverPublicKey
+{
+    /// <summary>
+    /// Initializes a new instance of the Secp256k1Recovery class.
+    /// </summary>
+    public Secp256k1Recovery()
     {
+    }
+
+    /// <summary>
+    /// Recovers an address from a message.
+    /// </summary>
+    /// <param name="recoveryId">The recovery ID.</param>
+    /// <param name="rsv">The RsvSignature.</param>
+    /// <param name="messageHash">The original message.</param>
+    /// <param name="shouldCompress">Whether the public key should be compressed.</param>
+    /// <returns>The recovered public key.</returns>
+    public byte[] RecoverPublicKey(int recoveryId, IRsvSignature rsv, byte[] messageHash, bool shouldCompress)
+    {
+        if (recoveryId < 0 || recoveryId > 1)
+        {
+            throw new ArgumentException("Invalid recovery ID");
+        }
+
+        var ecpoint = RecoverPublicKey(rsv.R, rsv.S, messageHash, recoveryId);
+
+        return ecpoint.GetEncoded(shouldCompress);
+    }
+
+    //
+
+    internal static ECPoint RecoverPublicKey(BigInteger r, BigInteger s, byte[] messageHash, int recoveryId)
+    {
+        var c = SecNamedCurves.GetByName("secp256k1");
+        var domain = new ECDomainParameters(c.Curve, c.G, c.N, c.H);
+
         // Get curve parameters
         var curve = domain.Curve;
         var n = domain.N;
@@ -187,7 +206,7 @@ internal class Secp256k1Signer : ISignPayload
         var R = curve.CreatePoint(x, yRecovered);
 
         // Recover Q = r^(-1) * (s * R - z * G)
-        var z = new BigInteger(1, hash);
+        var z = new BigInteger(1, messageHash);
         var rInv = r.ModInverse(n);
         var sR = R.Multiply(s);
         var zG = G.Multiply(z);

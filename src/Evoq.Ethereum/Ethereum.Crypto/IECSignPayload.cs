@@ -3,7 +3,7 @@ namespace Evoq.Ethereum.Crypto;
 /// <summary>
 /// Signs a payload.
 /// </summary>
-public interface ISignPayload
+public interface IECSignPayload
 {
     /// <summary>
     /// Signs the given payload.

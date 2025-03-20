@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using System.Text;
 using Evoq.Blockchain;
-using Nethereum.Signer;
+using Evoq.Ethereum.Crypto;
+// using Nethereum.Signer;
 
 namespace Evoq.Ethereum;
 
@@ -167,15 +169,47 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     {
         try
         {
-            var signer = new EthereumMessageSigner();
-            var recoveredAddress = signer.EncodeUTF8AndEcRecover(message, signature);
-            return string.Equals(recoveredAddress, expectedAddress, StringComparison.OrdinalIgnoreCase);
+            var messageBytes = Encoding.UTF8.GetBytes(message);
+            var signatureBytes = RsvSignature.FromHex(signature);
+            var expected = new EthereumAddress(expectedAddress);
+
+            return VerifySignature(messageBytes, signatureBytes, expected);
         }
-        catch (Exception)
+        catch
         {
-            // If signature is invalid or malformed, return false
             return false;
         }
+
+        // try
+        // {
+        //     var signer = new EthereumMessageSigner();
+        //     var recoveredAddress = signer.EncodeUTF8AndEcRecover(message, signature);
+
+        //     return string.Equals(recoveredAddress, expectedAddress, StringComparison.OrdinalIgnoreCase);
+        // }
+        // catch (Exception)
+        // {
+        //     // If signature is invalid or malformed, return false
+        //     return false;
+        // }
+    }
+
+    /// <summary>
+    /// Verifies if the given address signed the given message.
+    /// </summary>
+    /// <param name="message">The message that was signed</param>
+    /// <param name="signature">The signature to verify</param>
+    /// <param name="expectedAddress">The expected signer address</param>
+    /// <returns>True if the address signed the message, false otherwise</returns>
+    public static bool VerifySignature(byte[] message, IRsvSignature signature, EthereumAddress expectedAddress)
+    {
+        IECRecoverPublicKey recover = new Secp256k1Recovery();
+
+        var recoveryId = Signing.GetRecoveryId(signature.V);
+        var recoveredPublicKey = recover.RecoverPublicKey(recoveryId, signature, message, false);
+        var recoveredAddress = FromPublicKey(new Hex(recoveredPublicKey));
+
+        return recoveredAddress == expectedAddress;
     }
 
     /// <summary>
@@ -400,5 +434,33 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <param name="address">The Hex address to convert.</param>
     public static explicit operator EthereumAddress(Hex address) => new(address.ToByteArray());
 
+    /// <summary>
+    /// Creates an Ethereum address from a public key.
+    /// </summary>
+    /// <param name="publicKey">The public key in hex format. Can be compressed (33 bytes) or uncompressed (65 bytes).</param>
+    /// <returns>The Ethereum address derived from the public key.</returns>
+    /// <exception cref="ArgumentException">Thrown when the public key length is invalid.</exception>
+    public static EthereumAddress FromPublicKey(Hex publicKey)
+    {
+        // Public key should be either 33 bytes (compressed) or 65 bytes (uncompressed)
+        if (publicKey.Length != 33 && publicKey.Length != 65)
+        {
+            throw new ArgumentException("Public key must be either 33 or 65 bytes", nameof(publicKey));
+        }
+
+        // If compressed, we need to decompress it first
+        byte[] uncompressedKey = publicKey.Length == 33
+            ? throw new NotImplementedException("Compressed public key support not yet implemented")
+            : publicKey.ToByteArray();
+
+        // For uncompressed keys, skip the first byte (0x04 prefix)
+        var keyToHash = uncompressedKey.Skip(1).ToArray();
+
+        // Take Keccak-256 hash and get last 20 bytes
+        var hash = KeccakHash.ComputeHash(keyToHash);
+        var addressBytes = hash.Skip(12).Take(20).ToArray();
+
+        return new EthereumAddress(addressBytes);
+    }
 
 }

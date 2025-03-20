@@ -1,4 +1,5 @@
 using System;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Transactions;
 using Org.BouncyCastle.Math;
 
@@ -7,7 +8,28 @@ namespace Evoq.Ethereum.Crypto;
 /// <summary>
 /// Represents an Ethereum transaction signature with R, S, and V components.
 /// </summary>
-public struct RsvSignature
+public interface IRsvSignature
+{
+    /// <summary>
+    /// The V component of the signature.
+    /// </summary>
+    BigInteger V { get; }
+
+    /// <summary>
+    /// The R component of the signature.
+    /// </summary>
+    BigInteger R { get; }
+
+    /// <summary>
+    /// The S component of the signature.
+    /// </summary>
+    BigInteger S { get; }
+}
+
+/// <summary>
+/// Represents an Ethereum transaction signature with R, S, and V components.
+/// </summary>
+public struct RsvSignature : IRsvSignature
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="RsvSignature"/> struct.
@@ -100,4 +122,67 @@ public struct RsvSignature
 
         return Signing.GetYParityForFeatures(this.V, flags);
     }
+
+    /// <summary>
+    /// Converts the signature to a 65-byte array in RSV format.
+    /// </summary>
+    /// <returns>A byte array containing R (32 bytes), S (32 bytes), and V (1 byte).</returns>
+    public byte[] ToByteArray()
+    {
+        var result = new byte[65];
+
+        var rBytes = this.R.ToByteArrayUnsigned();
+        var sBytes = this.S.ToByteArrayUnsigned();
+
+        // Pad R to 32 bytes if necessary
+        Array.Copy(rBytes, 0, result, 32 - rBytes.Length, rBytes.Length);
+
+        // Pad S to 32 bytes if necessary
+        Array.Copy(sBytes, 0, result, 64 - sBytes.Length, sBytes.Length);
+
+        // V is stored in the last byte
+        result[64] = (byte)this.V.IntValue;
+
+        return result;
+    }
+
+    //
+
+    /// <summary>
+    /// Creates an RSV signature from a 65-byte signature array.
+    /// </summary>
+    /// <param name="signatureArray">The 65-byte signature array containing R (32 bytes), S (32 bytes), and V (1 byte).</param>
+    /// <returns>A new RsvSignature instance.</returns>
+    /// <exception cref="ArgumentException">Thrown when the signature array length is not 65 bytes.</exception>
+    public static RsvSignature FromBytes(byte[] signatureArray)
+    {
+        if (signatureArray.Length != 65)
+        {
+            throw new ArgumentException("Signature must be exactly 65 bytes", nameof(signatureArray));
+        }
+
+        var r = new byte[32];
+        var s = new byte[32];
+        Array.Copy(signatureArray, r, 32);
+        Array.Copy(signatureArray, 32, s, 0, 32);
+
+        var v = signatureArray[64];
+        if (v == 0 || v == 1)
+        {
+            v = (byte)(v + 27);
+        }
+
+        return new RsvSignature(
+            v: new BigInteger(new[] { v }),
+            r: new BigInteger(1, r),
+            s: new BigInteger(1, s)
+        );
+    }
+
+    /// <summary>
+    /// Creates an RSV signature from a hex string.
+    /// </summary>
+    /// <param name="hex">The hex string to convert.</param>
+    /// <returns>A new RsvSignature instance.</returns>
+    public static RsvSignature FromHex(string hex) => FromBytes(Hex.Parse(hex).ToByteArray());
 }

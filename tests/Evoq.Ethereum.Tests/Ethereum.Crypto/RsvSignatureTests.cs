@@ -3,6 +3,7 @@ using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.Transactions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Utilities;
 
 namespace Evoq.Ethereum.Tests.Ethereum.Crypto
 {
@@ -261,6 +262,57 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             // Also test the direct Constants.VToYParity method
             var yParityFromConstants = Signing.VToYParity(signature.V);
             Assert.AreEqual((ulong)1, yParityFromConstants);
+        }
+
+        [TestMethod]
+        public void ToByteArray_ReturnsCorrect65ByteArray()
+        {
+            // Arrange
+            var r = new BigInteger("123456789abcdef", 16);
+            var s = new BigInteger("fedcba987654321", 16);
+            var v = BigInteger.ValueOf(27);
+
+            var signature = new RsvSignature(v, r, s);
+
+            // Act
+            var bytes = signature.ToByteArray();
+
+            // Assert
+            Assert.AreEqual(65, bytes.Length);
+
+            // Extract components
+            var rBytes = new byte[32];
+            var sBytes = new byte[32];
+            Array.Copy(bytes, 0, rBytes, 0, 32);
+            Array.Copy(bytes, 32, sBytes, 0, 32);
+            var vByte = bytes[64];
+
+            // Verify R, S, V components
+            Assert.AreEqual(r, new BigInteger(1, rBytes));
+            Assert.AreEqual(s, new BigInteger(1, sBytes));
+            Assert.AreEqual(27, vByte);
+        }
+
+        [TestMethod]
+        public void ToByteArray_RoundTrip_PreservesValues()
+        {
+            // Arrange
+            var originalBytes = new byte[65];
+            for (int i = 0; i < 32; i++) originalBytes[i] = (byte)i;        // R values
+            for (int i = 0; i < 32; i++) originalBytes[32 + i] = (byte)i;   // S values
+            originalBytes[64] = 27;                                          // V value
+
+            var original = RsvSignature.FromBytes(originalBytes);
+
+            // Act
+            var roundTripBytes = original.ToByteArray();
+            var roundTrip = RsvSignature.FromBytes(roundTripBytes);
+
+            // Assert
+            Assert.AreEqual(original.R, roundTrip.R);
+            Assert.AreEqual(original.S, roundTrip.S);
+            Assert.AreEqual(original.V, roundTrip.V);
+            CollectionAssert.AreEqual(originalBytes, roundTripBytes);
         }
     }
 }

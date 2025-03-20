@@ -71,6 +71,13 @@ internal static class Signing
     }
 
     /// <summary>
+    /// Extracts the recovery ID from a V value for personal-sign messages.
+    /// </summary>
+    /// <param name="v">The V value.</param>
+    /// <returns>The recovery ID (0 or 1).</returns>
+    public static byte GetRecoveryId(BigInteger v) => VToYParity(v);
+
+    /// <summary>
     /// Converts a V value to the corresponding y-parity bit (0 or 1).
     /// </summary>
     /// <param name="v">The V value.</param>

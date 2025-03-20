@@ -513,5 +513,32 @@ public class EthereumAddressTests
         Assert.IsTrue(empty1 == empty2);
         Assert.IsFalse(empty1 != empty2);
     }
+
+    [TestMethod]
+    [DataRow(32)] // Too short
+    [DataRow(64)] // Wrong size
+    [DataRow(66)] // Too long
+    public void FromPublicKey_WithInvalidLength_ThrowsArgumentException(int length)
+    {
+        // Arrange
+        var invalidKey = new byte[length];
+        Array.Fill(invalidKey, (byte)0x42);
+        var hexKey = new Hex(invalidKey);
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => EthereumAddress.FromPublicKey(hexKey));
+    }
+
+    [TestMethod]
+    public void FromPublicKey_WithCompressedKey_ThrowsNotImplementedException()
+    {
+        // Arrange
+        var compressedKey = new byte[33];
+        Array.Fill(compressedKey, (byte)0x42);
+        var hexKey = new Hex(compressedKey);
+
+        // Act & Assert
+        Assert.ThrowsException<NotImplementedException>(() => EthereumAddress.FromPublicKey(hexKey));
+    }
 }
 

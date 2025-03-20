@@ -12,5 +12,5 @@ internal class DefaultTransactionHasher : ITransactionHasher
     /// </summary>
     /// <param name="encodedTransaction">The encoded transaction.</param>
     /// <returns>The hash.</returns>
-    public Hex Hash(byte[] encodedTransaction) => new Hex(KeccakHash.ComputeHash(encodedTransaction));
+    public byte[] Hash(byte[] encodedTransaction) => KeccakHash.ComputeHash(encodedTransaction);
 }
