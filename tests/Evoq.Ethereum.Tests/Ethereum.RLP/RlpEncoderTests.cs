@@ -439,17 +439,17 @@ public class RlpEncoderTests
     public void Encode_EmptyTransaction_ThrowsArgumentException()
     {
         // Use the Empty static property for a legacy transaction
-        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(Transaction.Empty));
+        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(TransactionType0.Empty));
 
         // Use the Empty static property for an EIP-1559 transaction
-        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(TransactionEIP1559.Empty));
+        Assert.ThrowsException<ArgumentException>(() => encoder.Encode(TransactionType2.Empty));
     }
 
     [TestMethod]
     public void Encode_EIP1559Transaction_ReturnsCorrectEncoding()
     {
         // Create a simple EIP-1559 transaction
-        var tx = new TransactionEIP1559(
+        var tx = new TransactionType2(
             chainId: 1, // Ethereum mainnet
             nonce: 9,
             maxPriorityFeePerGas: new BigInteger("2000000000"), // 2 Gwei
@@ -477,7 +477,7 @@ public class RlpEncoderTests
     public void EncodeForSigning_EIP1559Transaction_ExcludesSignatureComponents()
     {
         // Create a simple EIP-1559 transaction
-        var tx = new TransactionEIP1559(
+        var tx = new TransactionType2(
             chainId: 1, // Ethereum mainnet
             nonce: 9,
             maxPriorityFeePerGas: new BigInteger("2000000000"), // 2 Gwei
@@ -508,7 +508,7 @@ public class RlpEncoderTests
     public void EncodeForSigning_LegacyTransaction_IncludesChainIdAndEmptySignatureComponents()
     {
         // Create a simple legacy transaction
-        var tx = new Transaction(
+        var tx = new TransactionType0(
             nonce: 9,
             gasPrice: new BigInteger("20000000000"), // 20 Gwei
             gasLimit: 21000,
@@ -537,7 +537,7 @@ public class RlpEncoderTests
     public void Encode_UnsignedTransaction_OmitsSignatureComponents()
     {
         // Create an unsigned transaction
-        var unsignedTx = Transaction.CreateUnsigned(
+        var unsignedTx = TransactionType0.CreateUnsigned(
             nonce: 9,
             gasPrice: new BigInteger("20000000000"), // 20 Gwei
             gasLimit: 21000,
@@ -565,7 +565,7 @@ public class RlpEncoderTests
     public void Encode_UnsignedEIP1559Transaction_OmitsSignatureComponents()
     {
         // Create an unsigned EIP-1559 transaction
-        var unsignedTx = TransactionEIP1559.CreateUnsigned(
+        var unsignedTx = TransactionType2.CreateUnsigned(
             chainId: 1, // Ethereum mainnet
             nonce: 9,
             maxPriorityFeePerGas: new BigInteger("2000000000"), // 2 Gwei
@@ -595,7 +595,7 @@ public class RlpEncoderTests
     public void Encode_EIP1559Transaction_VerifyWithAndWithoutTypeByte()
     {
         // Arrange
-        var tx = new TransactionEIP1559(
+        var tx = new TransactionType2(
             chainId: 1, // Ethereum mainnet
             nonce: 123,
             maxPriorityFeePerGas: new BigInteger("2000000000"),  // 2 Gwei
@@ -697,7 +697,7 @@ public class RlpEncoderTests
         var _encoder = new RlpEncoder();
 
         // Create two identical transactions, one with y_parity=0 and one with y_parity=1
-        var txWithYParity0 = new TransactionEIP1559(
+        var txWithYParity0 = new TransactionType2(
             chainId: 1,
             nonce: 123,
             maxPriorityFeePerGas: new BigInteger("2000000000"),
@@ -714,7 +714,7 @@ public class RlpEncoderTests
             )
         );
 
-        var txWithYParity1 = new TransactionEIP1559(
+        var txWithYParity1 = new TransactionType2(
             chainId: 1,
             nonce: 123,
             maxPriorityFeePerGas: new BigInteger("2000000000"),
@@ -732,7 +732,7 @@ public class RlpEncoderTests
         );
 
         // Also test with legacy V values (27 and 28)
-        var txWithV27 = new TransactionEIP1559(
+        var txWithV27 = new TransactionType2(
             chainId: 1,
             nonce: 123,
             maxPriorityFeePerGas: new BigInteger("2000000000"),
@@ -749,7 +749,7 @@ public class RlpEncoderTests
             )
         );
 
-        var txWithV28 = new TransactionEIP1559(
+        var txWithV28 = new TransactionType2(
             chainId: 1,
             nonce: 123,
             maxPriorityFeePerGas: new BigInteger("2000000000"),

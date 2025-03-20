@@ -208,7 +208,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_NullToReferenceType_Succeeds()
     {
         // Arrange
-        object value = null;
+        object? value = null;
 
         // Act
         bool success = this.converter.TryConvert(value, typeof(string), out var result);
@@ -222,7 +222,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_NullToNullableValueType_Succeeds()
     {
         // Arrange
-        object value = null;
+        object? value = null;
 
         // Act
         bool success = this.converter.TryConvert(value, typeof(int?), out var result);
@@ -236,7 +236,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_NullToNonNullableValueType_Fails()
     {
         // Arrange
-        object value = null;
+        object? value = null;
 
         // Act
         bool success = this.converter.TryConvert(value, typeof(int), out var result);
@@ -250,7 +250,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_NullToBigInteger_Fails()
     {
         // Arrange
-        object value = null;
+        object? value = null;
 
         // Act
         bool success = this.converter.TryConvert(value, typeof(BigInteger), out var result);
@@ -264,7 +264,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_NullToNullableBigInteger_Succeeds()
     {
         // Arrange
-        object value = null;
+        object? value = null;
 
         // Act
         bool success = this.converter.TryConvert(value, typeof(BigInteger?), out var result);
@@ -278,7 +278,7 @@ public class AbiClrTypeConverterTests
     public void TryConvert_WithAbiTypeAndNullValue_HandlesCorrectly()
     {
         // Arrange
-        object value = null;
+        object? value = null;
         string abiType = "uint256";
 
         // Act

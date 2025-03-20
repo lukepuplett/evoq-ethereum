@@ -1,11 +1,7 @@
-using System;
-using System.IO;
 using System.Reflection;
 using System.Text.Json;
-using Evoq.Ethereum.Contracts;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Evoq.Ethereum.Tests.Contracts
+namespace Evoq.Ethereum.ABI
 {
     [TestClass]
     public class AbiFileHelperTests

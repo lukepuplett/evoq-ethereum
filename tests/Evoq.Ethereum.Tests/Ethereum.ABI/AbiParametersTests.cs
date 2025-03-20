@@ -86,7 +86,7 @@ public class AbiParametersTests
         var firstResult = result.ElementAtOrDefault(0);
 
         Assert.AreEqual(1, result.Count, "Should have exactly one parameter");
-        Assert.AreEqual("string", firstResult.AbiType, "Parameter should be of type 'string'");
+        Assert.AreEqual("string", firstResult!.AbiType, "Parameter should be of type 'string'");
         Assert.AreEqual(0, firstResult.Position, "Parameter should be at position 0");
         Assert.AreEqual("name", firstResult.Name, "Parameter should have name 'name'");
         Assert.IsFalse(firstResult.TryParseComponents(out var _), "Parameter should not have components");
@@ -101,7 +101,7 @@ public class AbiParametersTests
         var firstResult = result.ElementAtOrDefault(0);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("(string,uint256)", firstResult.AbiType, "First parameter should be of type '(string,uint256)'");
+        Assert.AreEqual("(string,uint256)", firstResult!.AbiType, "First parameter should be of type '(string,uint256)'");
         Assert.AreEqual("data", firstResult.Name, "First parameter should have name 'data'");
     }
 
@@ -115,12 +115,12 @@ public class AbiParametersTests
         var secondResult = result.ElementAtOrDefault(1);
 
         Assert.AreEqual(2, result.Count, "Should have exactly two parameters");
-        Assert.AreEqual("string", firstResult.AbiType, "First parameter should be of type 'string'");
+        Assert.AreEqual("string", firstResult!.AbiType, "First parameter should be of type 'string'");
         Assert.AreEqual(0, firstResult.Position, "First parameter should be at position 0");
         Assert.AreEqual("name", firstResult.Name, "First parameter should have name 'name'");
         Assert.IsFalse(firstResult.TryParseComponents(out var _), "First parameter should not have components");
 
-        Assert.AreEqual("uint256", secondResult.AbiType, "Second parameter should be of type 'uint256'");
+        Assert.AreEqual("uint256", secondResult!.AbiType, "Second parameter should be of type 'uint256'");
         Assert.AreEqual(1, secondResult.Position, "Second parameter should be at position 1");
         Assert.AreEqual("value", secondResult.Name, "Second parameter should have name 'value'");
         Assert.IsFalse(secondResult.TryParseComponents(out var _), "Second parameter should not have components");
@@ -384,7 +384,8 @@ public class AbiParametersTests
 
         var firstParam = parameters.ElementAtOrDefault(0);
 
-        Assert.AreEqual("items", firstParam.Name, "Parameter should have name 'items'");
+        Assert.IsNotNull(firstParam, "Parameter should not be null");
+        Assert.AreEqual("items", firstParam!.Name, "Parameter should have name 'items'");
         Assert.AreEqual(parameterString, result, "Should format tuple array correctly");
     }
 

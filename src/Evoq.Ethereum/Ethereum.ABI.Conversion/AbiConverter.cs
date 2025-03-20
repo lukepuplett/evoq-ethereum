@@ -26,7 +26,7 @@ public class AbiConverter
     /// Initializes a new instance of the <see cref="AbiConverter"/> class with a custom type converter.
     /// </summary>
     /// <param name="typeConverter">The type converter to use.</param>
-    public AbiConverter(AbiClrTypeConverter typeConverter)
+    internal AbiConverter(AbiClrTypeConverter typeConverter)
     {
         if (typeConverter == null)
         {

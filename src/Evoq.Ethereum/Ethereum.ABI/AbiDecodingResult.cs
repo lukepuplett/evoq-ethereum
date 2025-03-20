@@ -9,7 +9,7 @@ public class AbiDecodingResult
     /// Initializes a new instance of the <see cref="AbiDecodingResult"/> class.
     /// </summary>
     /// <param name="parameters">The parameters to decode.</param>
-    public AbiDecodingResult(AbiParameters parameters)
+    internal AbiDecodingResult(AbiParameters parameters)
     {
         this.Parameters = parameters;
     }

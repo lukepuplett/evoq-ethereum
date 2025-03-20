@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes a bytes type to its ABI binary representation.
 /// </summary>
-public class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
+internal class BytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="BytesTypeEncoder"/> class.

@@ -6,7 +6,7 @@ namespace Evoq.Ethereum.Chains;
 /// <summary>
 /// Provides chain-specific polling strategies based on expected block times.
 /// </summary>
-public class ChainPollingStrategy
+internal class ChainPollingStrategy
 {
     /// <summary>
     /// Gets the initial polling interval and maximum polling interval for a specific chain.

@@ -372,7 +372,20 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
     //
 
+    /// <summary>
+    /// Compares two Ethereum addresses for equality.
+    /// </summary>
+    /// <param name="left">The left address to compare.</param>
+    /// <param name="right">The right address to compare.</param>
+    /// <returns>True if the addresses are equal, otherwise false.</returns>
     public static bool operator ==(EthereumAddress left, EthereumAddress right) => left.Equals(right);
+
+    /// <summary>
+    /// Compares two Ethereum addresses for inequality.
+    /// </summary>
+    /// <param name="left">The left address to compare.</param>
+    /// <param name="right">The right address to compare.</param>
+    /// <returns>True if the addresses are not equal, otherwise false.</returns>
     public static bool operator !=(EthereumAddress left, EthereumAddress right) => !left.Equals(right);
 
     /// <summary>

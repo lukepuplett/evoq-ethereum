@@ -7,23 +7,18 @@ namespace Evoq.Ethereum.ABI;
 /// Base exception for all ABI encoding and decoding errors.
 /// </summary>
 [Serializable]
-public class AbiException : Exception
+public abstract class AbiException : Exception
 {
-    /// <summary>
-    /// Gets the ABI type that caused the exception, if applicable.
-    /// </summary>
-    public string? AbiType { get; }
-
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiException"/> class.
     /// </summary>
-    public AbiException() : base() { }
+    protected AbiException() : base() { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiException"/> class with a specified error message.
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
-    public AbiException(string message) : base(message) { }
+    protected AbiException(string message) : base(message) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiException"/> class with a specified error message
@@ -31,7 +26,7 @@ public class AbiException : Exception
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
     /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public AbiException(string message, Exception innerException) : base(message, innerException) { }
+    protected AbiException(string message, Exception innerException) : base(message, innerException) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiException"/> class with a specified error message
@@ -39,9 +34,9 @@ public class AbiException : Exception
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
     /// <param name="abiType">The ABI type that caused the exception.</param>
-    public AbiException(string message, string? abiType) : base(message)
+    protected AbiException(string message, string? abiType) : base(message)
     {
-        AbiType = abiType;
+        this.AbiType = abiType;
     }
 
     /// <summary>
@@ -51,8 +46,17 @@ public class AbiException : Exception
     /// <param name="context">The StreamingContext that contains contextual information about the source or destination.</param>
     protected AbiException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
-        AbiType = info.GetString(nameof(AbiType));
+        this.AbiType = info.GetString(nameof(AbiType));
     }
+
+    //
+
+    /// <summary>
+    /// Gets the ABI type that caused the exception, if applicable.
+    /// </summary>
+    public string? AbiType { get; }
+
+    //
 
     /// <summary>
     /// Sets the SerializationInfo with information about the exception.

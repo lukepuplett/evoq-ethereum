@@ -103,6 +103,6 @@ public class Secp256k1SignerTests
     public void Sign_NullPrivateKey_ThrowsArgumentException()
     {
         // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => new Secp256k1Signer(null));
+        Assert.ThrowsException<ArgumentException>(() => new Secp256k1Signer(null!));
     }
 }

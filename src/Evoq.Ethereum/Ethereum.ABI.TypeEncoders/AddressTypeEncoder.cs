@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Evoq.Blockchain;
 
 namespace Evoq.Ethereum.ABI.TypeEncoders;
@@ -8,7 +7,7 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// Encodes an address type to its ABI binary representation.
 /// </summary>
-public class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
+internal class AddressTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="AddressTypeEncoder"/> class.

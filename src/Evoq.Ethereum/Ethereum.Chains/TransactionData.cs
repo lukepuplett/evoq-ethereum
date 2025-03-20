@@ -7,7 +7,7 @@ namespace Evoq.Ethereum.Chains;
 /// <summary>
 /// Represents transaction data with proper .NET types.
 /// </summary>
-public class TransactionData
+internal class TransactionData
 {
     /// <summary>
     /// The hash of the block where this transaction was included.

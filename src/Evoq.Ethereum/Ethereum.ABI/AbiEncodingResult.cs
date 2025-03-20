@@ -18,7 +18,7 @@ public class AbiEncodingResult
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
     /// <param name="slots">The final slots.</param>
-    public AbiEncodingResult(SlotCollection slots)
+    internal AbiEncodingResult(SlotCollection slots)
     {
         this.slotCollection = slots;
     }
@@ -27,30 +27,12 @@ public class AbiEncodingResult
     /// Initializes a new instance of the <see cref="AbiEncodingResult"/> class.
     /// </summary>
     /// <param name="bytes">The final bytes.</param>
-    public AbiEncodingResult(byte[] bytes)
+    internal AbiEncodingResult(byte[] bytes)
     {
         this.bytes = bytes;
     }
 
     //
-
-    /// <summary>
-    /// Gets the slots of the slot space.
-    /// </summary>
-    /// <returns>The slots of the slot space.</returns>
-    public bool TryGetSlots(out IReadOnlyList<Slot>? slots)
-    {
-        if (this.slotCollection == null)
-        {
-            slots = null;
-            return false;
-        }
-
-        this.UpdateOffsetsAndEncodePointers();
-
-        slots = this.slotCollection.OrderBy(slot => slot.Order).ToList();
-        return true;
-    }
 
     /// <summary>
     /// Gets the combined static and dynamic data as a byte array.
@@ -73,6 +55,24 @@ public class AbiEncodingResult
     public Hex ToHexStruct()
     {
         return new Hex(this.ToByteArray());
+    }
+
+    /// <summary>
+    /// Gets the slots.
+    /// </summary>
+    /// <returns>The slots.</returns>
+    internal bool TryGetSlots(out IReadOnlyList<Slot>? slots)
+    {
+        if (this.slotCollection == null)
+        {
+            slots = null;
+            return false;
+        }
+
+        this.UpdateOffsetsAndEncodePointers();
+
+        slots = this.slotCollection.OrderBy(slot => slot.Order).ToList();
+        return true;
     }
 
     //

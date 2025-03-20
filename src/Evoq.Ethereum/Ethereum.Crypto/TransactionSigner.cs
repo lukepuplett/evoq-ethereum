@@ -15,11 +15,11 @@ public interface ITransactionSigner
     /// </summary>
     /// <param name="transaction">The transaction to sign.</param>
     /// <returns>The signed transaction.</returns>
-    IEthereumTransaction GetSignedTransaction(IEthereumTransaction transaction);
+    T GetSignedTransaction<T>(T transaction) where T : IEthereumTransaction;
 }
 
 /// <summary>
-/// Default implementation of ISignBytes that uses the secp256k1 curve.
+/// Default implementation of ITransactionSigner that uses the secp256k1 curve.
 /// </summary>
 public class TransactionSigner : ITransactionSigner
 {
@@ -48,11 +48,36 @@ public class TransactionSigner : ITransactionSigner
     //
 
     /// <summary>
+    /// Signs the given transaction.
+    /// </summary>
+    /// <param name="transaction">The transaction to sign.</param>
+    /// <returns>The signed transaction.</returns>
+    public T GetSignedTransaction<T>(T transaction) where T : IEthereumTransaction
+    {
+        if (transaction is IEthereumTransactionType0 type0)
+        {
+            var sig = this.GetSignature(type0);
+
+            return (T)transaction.WithSignature(sig);
+        }
+        else if (transaction is IEthereumTransactionType2 type2)
+        {
+            var sig = this.GetSignature(type2);
+
+            return (T)transaction.WithSignature(sig);
+        }
+
+        throw new ArgumentException($"Invalid transaction type '{transaction.GetType().Name}'", nameof(transaction));
+    }
+
+    //
+
+    /// <summary>
     /// Signs the given byte array.
     /// </summary>
     /// <param name="transaction">The transaction to sign.</param>
     /// <returns>The signature.</returns>
-    public RsvSignature GetSignature(Transaction transaction)
+    private RsvSignature GetSignature(IEthereumTransactionType0 transaction)
     {
         var hash = this.hasher.Hash(this.rlpEncoder.Encode(transaction));
 
@@ -68,18 +93,8 @@ public class TransactionSigner : ITransactionSigner
     /// Signs the given transaction.
     /// </summary>
     /// <param name="transaction">The transaction to sign.</param>
-    /// <returns>The signed transaction.</returns>
-    public Transaction GetSignedTransaction(Transaction transaction)
-    {
-        return transaction.WithSignature(GetSignature(transaction));
-    }
-
-    /// <summary>
-    /// Signs the given transaction.
-    /// </summary>
-    /// <param name="transaction">The transaction to sign.</param>
     /// <returns>The signature.</returns>
-    public RsvSignature GetSignature(TransactionEIP1559 transaction)
+    private RsvSignature GetSignature(IEthereumTransactionType2 transaction)
     {
         if (transaction.ChainId < 0)
         {
@@ -95,28 +110,10 @@ public class TransactionSigner : ITransactionSigner
             ChainId = BigInteger.ValueOf((long)transaction.ChainId)
         });
     }
-    /// <summary>
-    /// Signs the given transaction.
-    /// </summary>
-    /// <param name="transaction">The transaction to sign.</param>
-    /// <returns>The signed transaction.</returns>
-    public TransactionEIP1559 GetSignedTransaction(TransactionEIP1559 transaction)
-    {
-        return transaction.WithSignature(GetSignature(transaction));
-    }
 
-    IEthereumTransaction ITransactionSigner.GetSignedTransaction(IEthereumTransaction transaction)
+    T ITransactionSigner.GetSignedTransaction<T>(T transaction)
     {
-        if (transaction is TransactionEIP1559 eip1559Transaction)
-        {
-            return GetSignedTransaction(eip1559Transaction);
-        }
-        else if (transaction is Transaction legacyTransaction)
-        {
-            return GetSignedTransaction(legacyTransaction);
-        }
-
-        throw new ArgumentException("Unsupported transaction type", nameof(transaction));
+        return GetSignedTransaction(transaction);
     }
 
     //

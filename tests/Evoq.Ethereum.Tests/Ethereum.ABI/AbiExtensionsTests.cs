@@ -1,5 +1,6 @@
 namespace Evoq.Ethereum.ABI;
 using System.Collections.Generic;
+using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -22,26 +23,6 @@ public class AbiExtensionsTests
 
         var signature = item.GetFunctionSignature();
         Assert.AreEqual("transfer(address,uint256)", signature.GetCanonicalInputsSignature());
-    }
-
-    [TestMethod]
-    public void GetFunctionSelector_SimpleFunction_ReturnsCorrectSelector()
-    {
-        var item = new ContractAbiItem
-        {
-            Type = "function",
-            Name = "transfer",
-            Inputs = new List<ContractAbiParameter>
-            {
-                new() { Type = "address" },
-                new() { Type = "uint256" }
-            }
-        };
-
-        var selector = item.GetFunctionSelector();
-        CollectionAssert.AreEqual(
-            Convert.FromHexString("a9059cbb"),
-            selector);
     }
 
     [TestMethod]
@@ -98,143 +79,6 @@ public class AbiExtensionsTests
 
         // Finally, check the canonical signature
         Assert.AreEqual("tupleFunction((uint256,address))", signature.GetCanonicalInputsSignature());
-    }
-
-    [TestMethod]
-    public void GetFunctionSelector_WithNestedTuple_ReturnsCorrectSelector()
-    {
-        // Arrange
-        var function = new ContractAbiItem
-        {
-            Type = "function",
-            Name = "nestedTupleFunction",
-            Inputs = new List<ContractAbiParameter>
-            {
-                new ContractAbiParameter
-                {
-                    Type = "tuple",
-                    Components = new List<ContractAbiParameter>
-                    {
-                        new ContractAbiParameter { Type = "uint256" },
-                        new ContractAbiParameter
-                        {
-                            Type = "tuple",
-                            Components = new List<ContractAbiParameter>
-                            {
-                                new ContractAbiParameter { Type = "bool" },
-                                new ContractAbiParameter { Type = "string" }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        // Act
-        var selector = function.GetFunctionSelector();
-
-        // Assert
-        // Compute the expected selector
-        var signatureBytes = System.Text.Encoding.UTF8.GetBytes("nestedTupleFunction((uint256,(bool,string)))");
-        var fullHash = KeccakHash.ComputeHash(signatureBytes);
-        var expectedSelector = new byte[4];
-        Array.Copy(fullHash, expectedSelector, 4);
-
-        CollectionAssert.AreEqual(expectedSelector, selector);
-    }
-
-    [TestMethod]
-    public void GetFunctionSelector_WithTupleArray_ReturnsCorrectSelector()
-    {
-        // Arrange
-        var function = new ContractAbiItem
-        {
-            Type = "function",
-            Name = "tupleArrayFunction",
-            Inputs = new List<ContractAbiParameter>
-            {
-                new ContractAbiParameter
-                {
-                    Type = "tuple[]",
-                    Components = new List<ContractAbiParameter>
-                    {
-                        new ContractAbiParameter { Type = "uint256" },
-                        new ContractAbiParameter { Type = "address" }
-                    }
-                }
-            }
-        };
-
-        // Act
-        var selector = function.GetFunctionSelector();
-
-        // Assert
-        // Compute the expected selector
-        var signatureBytes = System.Text.Encoding.UTF8.GetBytes("tupleArrayFunction((uint256,address)[])");
-        var fullHash = KeccakHash.ComputeHash(signatureBytes);
-        var expectedSelector = new byte[4];
-        Array.Copy(fullHash, expectedSelector, 4);
-
-        CollectionAssert.AreEqual(expectedSelector, selector);
-    }
-
-    [TestMethod]
-    public void GetFunctionSelector_WithComplexTuples_ReturnsCorrectSelector()
-    {
-        // Arrange
-        var function = new ContractAbiItem
-        {
-            Type = "function",
-            Name = "complexFunction",
-            Inputs = new List<ContractAbiParameter>
-            {
-                new ContractAbiParameter { Type = "address" },
-                new ContractAbiParameter
-                {
-                    Type = "tuple",
-                    Components = new List<ContractAbiParameter>
-                    {
-                        new ContractAbiParameter { Type = "uint256" },
-                        new ContractAbiParameter { Type = "bytes32" }
-                    }
-                },
-                new ContractAbiParameter
-                {
-                    Type = "tuple[]",
-                    Components = new List<ContractAbiParameter>
-                    {
-                        new ContractAbiParameter { Type = "bool" },
-                        new ContractAbiParameter
-                        {
-                            Type = "tuple",
-                            Components = new List<ContractAbiParameter>
-                            {
-                                new ContractAbiParameter { Type = "string" },
-                                new ContractAbiParameter { Type = "uint8" }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        // Act
-        var selector = function.GetFunctionSelector();
-
-        // Assert
-        // Get the canonical signature from the function
-        var canonicalSignature = function.GetCanonicalSignature();
-
-        // Verify the canonical signature is in the expected format
-        Assert.AreEqual("complexFunction(address,(uint256,bytes32),(bool,(string,uint8))[])", canonicalSignature);
-
-        // Compute the expected selector using the canonical signature
-        var signatureBytes = System.Text.Encoding.UTF8.GetBytes(canonicalSignature);
-        var fullHash = KeccakHash.ComputeHash(signatureBytes);
-        var expectedSelector = new byte[4];
-        Array.Copy(fullHash, expectedSelector, 4);
-
-        CollectionAssert.AreEqual(expectedSelector, selector);
     }
 
     [TestMethod]
@@ -310,8 +154,7 @@ public class AbiExtensionsTests
         };
 
         // Act
-        // You'll need to make GetCanonicalType public or create a test helper method
-        var result = TestHelpers.GetCanonicalType(param);
+        var result = param.GetCanonicalType();
 
         // Assert
         Assert.AreEqual("(uint256,address)", result);
@@ -493,21 +336,5 @@ public class AbiExtensionsTests
         Assert.AreEqual("amounts", signature.Inputs[1].Name);
         Assert.AreEqual("address[]", signature.Inputs[0].AbiType);
         Assert.AreEqual("uint256[]", signature.Inputs[1].AbiType);
-    }
-}
-
-// Helper class to access private methods for testing
-public static class TestHelpers
-{
-    public static string GetCanonicalType(ContractAbiParameter param)
-    {
-        // This is a wrapper to call the private GetCanonicalType method
-        // You can implement this using reflection or by making the original method internal with [InternalsVisibleTo]
-
-        // Example using reflection:
-        var method = typeof(AbiExtensions).GetMethod("GetCanonicalType",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-
-        return (string)method.Invoke(null, new object[] { param });
     }
 }

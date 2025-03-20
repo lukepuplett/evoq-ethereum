@@ -128,7 +128,7 @@ public class TupleObjectConverterTests
 
 public class NullablePositionalUser
 {
-    public string FirstName { get; set; }
+    public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public BigInteger Age { get; set; }
 }

@@ -19,7 +19,7 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// - Uses ABI type information as conversion hints when available
 /// - Provides robust null handling
 /// </remarks>
-public class AbiClrTypeConverter
+internal class AbiClrTypeConverter
 {
     /// <summary>
     /// Attempts to convert a value to the specified target type, optionally using ABI type information to guide the conversion.

@@ -7,7 +7,7 @@ using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
 
-record class EncodingContext(
+internal record class EncodingContext(
     string AbiType,
     string Descriptor,
     string Key,
@@ -112,8 +112,6 @@ public class AbiEncoder : IAbiEncoder
     {
         this.staticTypeEncoders = new AbiStaticTypeEncoders();
         this.dynamicTypeEncoders = new AbiDynamicTypeEncoders();
-
-        this.Validator = new AbiTypeValidator(staticTypeEncoders, dynamicTypeEncoders);
     }
 
     /// <summary>
@@ -125,16 +123,7 @@ public class AbiEncoder : IAbiEncoder
     {
         this.staticTypeEncoders = staticTypeEncoders;
         this.dynamicTypeEncoders = dynamicTypeEncoders;
-
-        this.Validator = new AbiTypeValidator(staticTypeEncoders, dynamicTypeEncoders);
     }
-
-    //
-
-    /// <summary>
-    /// Gets the validator for the encoder.
-    /// </summary>
-    public AbiTypeValidator Validator { get; }
 
     //
 

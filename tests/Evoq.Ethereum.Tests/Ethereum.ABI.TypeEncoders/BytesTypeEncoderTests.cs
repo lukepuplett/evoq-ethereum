@@ -157,7 +157,7 @@ public class BytesTypeEncoderTests
     public void EncodeBytes_WithNull_ReturnsEmptyArray()
     {
         // Act
-        var encoded = BytesTypeEncoder.EncodeBytes(null);
+        var encoded = BytesTypeEncoder.EncodeBytes(null!);
 
         // Assert
         Assert.AreEqual(0, encoded.Length, "Should be empty");

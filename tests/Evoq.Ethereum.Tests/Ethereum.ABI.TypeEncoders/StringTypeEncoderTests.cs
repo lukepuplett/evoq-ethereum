@@ -280,7 +280,7 @@ public class StringTypeEncoderTests
     public void EncodeString_WithNull_ThrowsArgumentNullException()
     {
         // Act
-        StringTypeEncoder.EncodeString(null);
+        StringTypeEncoder.EncodeString(null!);
     }
 
     [TestMethod]

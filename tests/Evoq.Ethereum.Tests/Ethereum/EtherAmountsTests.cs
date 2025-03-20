@@ -140,7 +140,7 @@ public class EtherAmountsTests
         Assert.IsTrue(oneEther.Equals(oneEtherAgain), "Same Ether amounts should be equal");
         Assert.IsTrue(oneEther.Equals(oneEtherInWei), "Equivalent amounts in different units should be equal");
         Assert.IsFalse(oneEther.Equals(twoEther), "Different amounts should not be equal");
-        Assert.IsFalse(oneEther.Equals(null), "Amount should not equal null");
+        Assert.IsFalse(oneEther.Equals(null!), "Amount should not equal null");
         Assert.IsFalse(oneEther.Equals("not an EthereumAmount"), "Amount should not equal different type");
     }
 

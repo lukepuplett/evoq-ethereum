@@ -113,7 +113,7 @@ internal class ContractClient
         {
             // TODO / construct a legacy transaction
 
-            var transaction = new Transaction(
+            var transaction = new TransactionType0(
                 nonce: nonce,
                 gasPrice: legacyGasOptions.Price.ToBigBouncy(),
                 gasLimit: options.Gas.GasLimit,
@@ -122,14 +122,14 @@ internal class ContractClient
                 data: encoded,
                 signature: null);
 
-            transaction = (Transaction)this.transactionSigner!.GetSignedTransaction(transaction);
+            transaction = (TransactionType0)this.transactionSigner!.GetSignedTransaction(transaction);
             rlpEncoded = this.rlpEncoder.Encode(transaction);
         }
         else if (options.Gas is EIP1559GasOptions eip1559GasOptions)
         {
             // construct an EIP-1559 transaction
 
-            var transaction = new TransactionEIP1559(
+            var transaction = new TransactionType2(
                 chainId: this.ChainId,
                 nonce: nonce,
                 maxPriorityFeePerGas: eip1559GasOptions.MaxPriorityFeePerGas.ToBigBouncy(),
@@ -141,7 +141,7 @@ internal class ContractClient
                 accessList: null,
                 signature: null);
 
-            transaction = (TransactionEIP1559)this.transactionSigner!.GetSignedTransaction(transaction);
+            transaction = this.transactionSigner!.GetSignedTransaction(transaction);
             rlpEncoded = this.rlpEncoder.Encode(transaction);
         }
         else

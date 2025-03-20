@@ -7,11 +7,11 @@ namespace Evoq.Ethereum.ABI.TypeEncoders;
 /// <summary>
 /// A default compatibility checker that checks if the ABI type is supported and if the .NET type is supported.
 /// </summary>
-public class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
+internal abstract class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
 {
-    private readonly HashSet<string> _supportedAbiTypes;
-    private readonly HashSet<Type> _supportedDotNetTypes;
-    private readonly IAbiEncode? _encoder;
+    private readonly HashSet<string> supportedAbiTypes;
+    private readonly HashSet<Type> supportedDotNetTypes;
+    private readonly IAbiEncode? encoder;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiCompatChecker"/> class.
@@ -24,9 +24,9 @@ public class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
         HashSet<Type> supportedDotNetTypes,
         IAbiEncode? encoder = null)
     {
-        _supportedAbiTypes = supportedAbiTypes;
-        _supportedDotNetTypes = supportedDotNetTypes;
-        _encoder = encoder;
+        this.supportedAbiTypes = supportedAbiTypes;
+        this.supportedDotNetTypes = supportedDotNetTypes;
+        this.encoder = encoder;
     }
 
     /// <summary>
@@ -54,13 +54,13 @@ public class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
 
         // ABI type must be in its supported types, and .NET type must be in its supported types
 
-        if (!_supportedAbiTypes.Contains(abiType))
+        if (!supportedAbiTypes.Contains(abiType))
         {
             message = $"Unsupported ABI type: {abiType}";
             return false;
         }
 
-        if (!_supportedDotNetTypes.Contains(valueType))
+        if (!supportedDotNetTypes.Contains(valueType))
         {
             message = $"Unsupported .NET type: {valueType.FullName}";
             return false;
@@ -80,7 +80,7 @@ public class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
     /// <returns>True if the value is compatible, false otherwise</returns>
     public virtual bool IsCompatible(string abiType, object value, out string message, bool tryEncoding = false)
     {
-        if (tryEncoding && _encoder == null)
+        if (tryEncoding && encoder == null)
         {
             throw new InvalidOperationException("Cannot check compatibility by encoding because no encoder is set");
         }
@@ -90,9 +90,9 @@ public class AbiCompatChecker : IAbiTypeCompatible, IAbiValueCompatible
             return false;
         }
 
-        if (tryEncoding && _encoder != null)
+        if (tryEncoding && encoder != null)
         {
-            return _encoder.TryEncode(abiType, value, out var _);
+            return encoder.TryEncode(abiType, value, out var _);
         }
 
         message = "OK";

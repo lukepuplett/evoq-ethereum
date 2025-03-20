@@ -8,35 +8,72 @@ namespace Evoq.Ethereum.Chains;
 /// </summary>
 public static class ChainNames
 {
-    // Mainnets
+    /// <summary>The main Ethereum network.</summary>
     public const string EthereumMainnet = "Ethereum Mainnet";
+
+    /// <summary>The Optimism Layer 2 mainnet network.</summary>
     public const string OptimismMainnet = "Optimism Mainnet";
+
+    /// <summary>The Polygon PoS mainnet network.</summary>
     public const string PolygonMainnet = "Polygon Mainnet";
+
+    /// <summary>The Arbitrum One Layer 2 mainnet network.</summary>
     public const string ArbitrumMainnet = "Arbitrum Mainnet";
+
+    /// <summary>The Arbitrum Nova Layer 2 mainnet network.</summary>
     public const string ArbitrumNova = "Arbitrum Nova";
+
+    /// <summary>The Base Layer 2 mainnet network.</summary>
     public const string BaseMainnet = "Base Mainnet";
+
+    /// <summary>The Scroll Layer 2 mainnet network.</summary>
     public const string ScrollMainnet = "Scroll Mainnet";
+
+    /// <summary>The zkSync Era Layer 2 mainnet network.</summary>
     public const string ZkSyncMainnet = "ZkSync Mainnet";
+
+    /// <summary>The Celo mainnet network.</summary>
     public const string CeloMainnet = "Celo Mainnet";
+
+    /// <summary>The Blast Layer 2 mainnet network.</summary>
     public const string BlastMainnet = "Blast Mainnet";
+
+    /// <summary>The Linea Layer 2 mainnet network.</summary>
     public const string LineaMainnet = "Linea Mainnet";
 
-    // Testnets
+    /// <summary>The Ethereum Sepolia testnet.</summary>
     public const string EthereumSepolia = "Ethereum Sepolia";
+
+    /// <summary>The Optimism Sepolia testnet.</summary>
     public const string OptimismSepolia = "Optimism Sepolia";
+
+    /// <summary>The Optimism Goerli testnet.</summary>
     public const string OptimismGoerli = "Optimism Goerli";
+
+    /// <summary>The Base Sepolia testnet.</summary>
     public const string BaseSepolia = "Base Sepolia";
+
+    /// <summary>The Base Goerli testnet.</summary>
     public const string BaseGoerli = "Base Goerli";
+
+    /// <summary>The Arbitrum Goerli testnet.</summary>
     public const string ArbitrumGoerli = "Arbitrum Goerli";
+
+    /// <summary>The Polygon Amoy testnet.</summary>
     public const string PolygonAmoy = "Polygon Amoy";
+
+    /// <summary>The Scroll Sepolia testnet.</summary>
     public const string ScrollSepolia = "Scroll Sepolia";
+
+    /// <summary>The Linea Goerli testnet.</summary>
     public const string LineaGoerli = "Linea Goerli";
 
-    // Development
+    /// <summary>The local Hardhat development network.</summary>
     public const string Hardhat = "Hardhat";
 
-    //
-
+    /// <summary>
+    /// Dictionary mapping chain names to their corresponding chain IDs.
+    /// </summary>
     private static readonly Dictionary<string, string> _chainNames = new()
     {
         // Mainnets
@@ -67,14 +104,17 @@ public static class ChainNames
         { Hardhat, ChainIds.Hardhat },
     };
 
-    //
-
     /// <summary>
-    /// Get the ID of a chain from its name.
+    /// Gets the chain ID corresponding to a given chain name.
     /// </summary>
-    /// <param name="chainName">The name of the chain.</param>
-    /// <returns>The ID of the chain.</returns>
-    /// <exception cref="ArgumentException">Thrown if the chain name is not found.</exception>
+    /// <param name="chainName">The name of the chain to look up.</param>
+    /// <returns>The chain ID as a string.</returns>
+    /// <exception cref="ArgumentException">Thrown when the provided chain name is not found in the dictionary.</exception>
+    /// <remarks>
+    /// Chain names and IDs are defined according to EIP-7472.
+    /// For mainnet networks, these are canonical chain IDs registered in the Ethereum Chain Registry.
+    /// For testnet networks, these are well-known testing networks associated with their mainnet counterparts.
+    /// </remarks>
     public static string GetChainId(string chainName)
     {
         if (!_chainNames.TryGetValue(chainName, out var id))

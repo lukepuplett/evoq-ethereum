@@ -12,13 +12,13 @@ public class AbiInternalException : AbiException
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiInternalException"/> class.
     /// </summary>
-    public AbiInternalException() : base() { }
+    internal AbiInternalException() : base() { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiInternalException"/> class with a specified error message.
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
-    public AbiInternalException(string message) : base(message) { }
+    internal AbiInternalException(string message) : base(message) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiInternalException"/> class with a specified error message
@@ -26,7 +26,7 @@ public class AbiInternalException : AbiException
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
     /// <param name="abiType">The ABI type that caused the exception.</param>
-    public AbiInternalException(string message, string abiType) : base(message, abiType) { }
+    internal AbiInternalException(string message, string abiType) : base(message, abiType) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiInternalException"/> class with a specified error message
@@ -34,7 +34,7 @@ public class AbiInternalException : AbiException
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
     /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public AbiInternalException(string message, Exception innerException) : base(message, innerException) { }
+    internal AbiInternalException(string message, Exception innerException) : base(message, innerException) { }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiInternalException"/> class with serialized data.

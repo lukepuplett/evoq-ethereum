@@ -87,6 +87,7 @@ public class TransactionReceiptTests
         var result = TransactionReceipt.FromDto(dto);
 
         // Assert
+        Assert.IsNotNull(result);
         Assert.IsFalse(result.Success);
     }
 

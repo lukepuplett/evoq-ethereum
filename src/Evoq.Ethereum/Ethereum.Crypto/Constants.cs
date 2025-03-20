@@ -15,7 +15,7 @@ namespace Evoq.Ethereum.Crypto;
 /// 
 /// The constants in this class represent the special values and formulas used in these encoding schemes.
 /// </remarks>
-public static class Constants
+internal static class Constants
 {
     // Primitive type constants for common values
 

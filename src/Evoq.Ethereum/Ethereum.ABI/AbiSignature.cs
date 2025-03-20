@@ -339,6 +339,7 @@ public static class AbiSignatureExtensions
     /// <typeparam name="T">The type of the value to encode. Must be a value type or string.</typeparam>
     /// <param name="signature">The function signature.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="key">The key to encode.</param>
     /// <param name="value">The value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature<T>(
@@ -353,6 +354,7 @@ public static class AbiSignatureExtensions
     /// </summary>
     /// <param name="signature">The function signature.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="key">The key to encode.</param>
     /// <param name="value">The string value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
@@ -366,6 +368,7 @@ public static class AbiSignatureExtensions
     /// </summary>
     /// <param name="signature">The function signature.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="key">The key to encode.</param>
     /// <param name="value">The BigInteger value to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
@@ -379,6 +382,7 @@ public static class AbiSignatureExtensions
     /// </summary>
     /// <param name="signature">The function signature.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="key">The key to encode.</param>
     /// <param name="value">The byte array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(
@@ -392,6 +396,7 @@ public static class AbiSignatureExtensions
     /// </summary>
     /// <param name="signature">The function signature.</param>
     /// <param name="encoder">The encoder to use.</param>
+    /// <param name="key">The key to encode.</param>
     /// <param name="value">The array to encode.</param>
     /// <returns>The encoded full function signature.</returns>
     public static byte[] EncodeFullSignature(

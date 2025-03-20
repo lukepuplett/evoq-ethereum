@@ -62,7 +62,7 @@ public class FileSystemNonceStore : INonceStore
     /// Gets the next nonce to use.
     /// </summary>
     /// <returns>The next nonce to use.</returns>
-    public async Task<uint> BeforeSubmissionAsync()
+    public Task<uint> BeforeSubmissionAsync()
     {
         EnsureDirectoryExists();
 
@@ -98,7 +98,7 @@ public class FileSystemNonceStore : INonceStore
                         {
                             // File created successfully
                             logger.LogDebug("Reserved nonce {Nonce} at {Path}", startingNonce, noncePath);
-                            return startingNonce;
+                            return Task.FromResult(startingNonce);
                         }
                     }
                     catch (IOException) when (File.Exists(noncePath))

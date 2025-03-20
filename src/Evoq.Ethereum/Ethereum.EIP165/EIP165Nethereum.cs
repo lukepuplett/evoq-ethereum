@@ -38,6 +38,9 @@ public class EIP165Nethereum : IEIP165
 
     //
 
+    /// <summary>
+    /// Gets the address of the EIP-165 contract.
+    /// </summary>
     public EthereumAddress ContractAddress { get; }
 
     //

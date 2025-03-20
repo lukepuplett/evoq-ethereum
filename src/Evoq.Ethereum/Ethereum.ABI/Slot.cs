@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Evoq.Blockchain;
@@ -10,7 +9,7 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// Represents a 32-byte slot in the ABI encoding.
 /// </summary>
-public class Slot
+internal class Slot
 {
     private readonly Guid id = Guid.NewGuid();
     private byte[] data;

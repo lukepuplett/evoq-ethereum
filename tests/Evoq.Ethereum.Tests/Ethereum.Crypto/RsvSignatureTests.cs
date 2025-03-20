@@ -149,7 +149,7 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             var signature1 = new RsvSignature(BigInteger.One, BigInteger.One, BigInteger.One);
 
             // Create a mock EIP-1559 transaction
-            var eip1559Tx = new TransactionEIP1559(
+            var eip1559Tx = new TransactionType2(
                 chainId: 1,
                 nonce: 0,
                 maxPriorityFeePerGas: BigInteger.One,
@@ -197,7 +197,7 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
             var signature38 = new RsvSignature(new BigInteger("38"), BigInteger.One, BigInteger.One);
 
             // Create a mock legacy transaction
-            var legacyTx = new Transaction(
+            var legacyTx = new TransactionType0(
                 nonce: 0,
                 gasPrice: BigInteger.One,
                 gasLimit: 21000,
@@ -238,7 +238,7 @@ namespace Evoq.Ethereum.Tests.Ethereum.Crypto
                 new BigInteger("1234567890abcdef", 16));
 
             // Create a mock EIP-1559 transaction
-            var eip1559Tx = new TransactionEIP1559(
+            var eip1559Tx = new TransactionType2(
                 chainId: 1,
                 nonce: 123,
                 maxPriorityFeePerGas: new BigInteger("77359400", 16),

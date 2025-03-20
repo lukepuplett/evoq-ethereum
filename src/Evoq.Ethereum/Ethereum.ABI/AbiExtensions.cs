@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Text;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.ABI.TypeEncoders;
-using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -15,44 +14,11 @@ namespace Evoq.Ethereum.ABI;
 public static class AbiExtensions
 {
     /// <summary>
-    /// Converts an ITuple of two values to a KeyValuePair.
-    /// </summary>
-    /// <param name="tuple">The tuple to convert.</param>
-    /// <returns>A KeyValuePair.</returns>
-    /// <exception cref="ArgumentException">Thrown when the tuple has more than two elements.</exception>
-    internal static KeyValuePair<string, object?> ToKeyValue(this ITuple tuple)
-    {
-        if (tuple.Length != 2)
-        {
-            throw new ArgumentException("Tuple must have exactly two elements", nameof(tuple));
-        }
-
-        var elements = tuple.GetElements().ToList();
-
-        return new KeyValuePair<string, object?>(elements[0]!.ToString()!, elements[1]);
-    }
-
-    /// <summary>
-    /// Converts an ITuple to a list of object arrays.
-    /// </summary>
-    /// <param name="tuple">The tuple to convert.</param>
-    /// <returns>A list of object arrays.</returns>
-    internal static IReadOnlyList<object> ToList(this ITuple tuple)
-    {
-        var list = new List<object>();
-        for (int i = 0; i < tuple.Length; i++)
-        {
-            list.Add(tuple[i]);
-        }
-        return list;
-    }
-
-    /// <summary>
     /// Get the canonical signature for an item.
     /// </summary>
     /// <param name="item">The item to get the canonical signature for.</param>
     /// <returns>The canonical signature.</returns>
-    internal static string GetCanonicalSignature(this ContractAbiItem item)
+    public static string GetCanonicalSignature(this ContractAbiItem item)
     {
         if (item.Type != "function" && item.Type != "event" && item.Type != "error")
             throw new ArgumentException("Item must be a function, event, or error", nameof(item));
@@ -68,7 +34,7 @@ public static class AbiExtensions
     /// </summary>
     /// <param name="param">The parameter to get the canonical type for.</param>
     /// <returns>The canonical type.</returns>
-    private static string GetCanonicalType(ContractAbiParameter param)
+    public static string GetCanonicalType(this ContractAbiParameter param)
     {
         if (param.Components != null && param.Components.Any())
         {
@@ -86,7 +52,7 @@ public static class AbiExtensions
     /// <param name="item">The ABI item.</param>
     /// <returns>The function signature.</returns>
     /// <exception cref="ArgumentException">If the item is not a function.</exception>
-    internal static AbiSignature GetFunctionSignature(this ContractAbiItem item)
+    public static AbiSignature GetFunctionSignature(this ContractAbiItem item)
     {
         if (item.Type != "function")
         {
@@ -126,7 +92,7 @@ public static class AbiExtensions
     /// <param name="item">The ABI item.</param>
     /// <returns>The event signature.</returns>
     /// <exception cref="ArgumentException">If the item is not an event.</exception>
-    internal static AbiSignature GetEventSignature(this ContractAbiItem item)
+    public static AbiSignature GetEventSignature(this ContractAbiItem item)
     {
         if (item.Type != "event")
         {
@@ -161,15 +127,206 @@ public static class AbiExtensions
     }
 
     /// <summary>
-    /// Gets the function selector for an ABI item.
+    /// Converts an <see cref="AbiParameters"/> object to a strongly-typed object.
     /// </summary>
-    /// <param name="item">The ABI item.</param>
-    /// <returns>The 4-byte function selector.</returns>
-    internal static byte[] GetFunctionSelector(this ContractAbiItem item)
+    /// <typeparam name="T">The type of the object to convert to.</typeparam>
+    /// <param name="parameters">The parameters to convert.</param>
+    /// <returns>A strongly-typed object.</returns>
+    public static T ToObject<T>(this AbiParameters parameters) where T : new()
     {
-        // Use the canonical signature from GetCanonicalSignature
-        var signature = item.GetCanonicalSignature();
-        return KeccakHash.ComputeHash(Encoding.UTF8.GetBytes(signature)).Take(4).ToArray();
+        var converter = new AbiConverter();
+
+        return converter.DictionaryToObject<T>(parameters.ToDictionary(true));
+    }
+
+    // encode
+
+    /// <summary>
+    /// Encodes a single parameter.
+    /// </summary>
+    /// <typeparam name="T">The type of the value to encode. Must be a value type or string.</typeparam>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The value to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters<T>(
+        this IAbiEncoder encoder, AbiParameters parameters, T value)
+        where T : struct, IConvertible
+    {
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
+    }
+
+    /// <summary>
+    /// Encodes a single string parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The string value to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, AbiParameters parameters, string value)
+    {
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
+    }
+
+    /// <summary>
+    /// Encodes a BigInteger parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The BigInteger value to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, AbiParameters parameters, BigInteger value)
+    {
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="value">The byte array to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, AbiParameters parameters, byte[] value)
+    {
+        if (parameters.Count != 1)
+        {
+            throw new InvalidOperationException("Expected a single parameter");
+        }
+
+        var firstKey = parameters.First().Name;
+        var dictionary = new Dictionary<string, object?> { { firstKey, value } };
+
+        return encoder.EncodeParameters(parameters, dictionary);
+    }
+
+    /// <summary>
+    /// Encodes a byte array parameter.
+    /// </summary>
+    /// <param name="encoder">The encoder to use.</param>
+    /// <param name="parameters">The parameters to encode.</param>
+    /// <param name="tuple">The tuple to encode.</param>
+    /// <returns>The encoded parameters.</returns>
+    public static AbiEncodingResult EncodeParameters(
+        this IAbiEncoder encoder, AbiParameters parameters, ITuple tuple)
+    {
+        // zip the tuple with the parameters and place into a dictionary
+
+        if (parameters.Count != tuple.Length)
+        {
+            throw new InvalidOperationException("Expected a tuple with the same number of parameters");
+        }
+
+        var dictionary = new Dictionary<string, object?>();
+
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            var parameter = parameters[i];
+            var value = tuple[i];
+            dictionary.Add(parameter.Name, value);
+        }
+
+        return encoder.EncodeParameters(parameters, dictionary);
+    }
+
+    // decode
+
+    /// <summary>
+    /// Decodes a single parameter.
+    /// </summary>
+    /// <param name="decoder">The decoder.</param>
+    /// <param name="parameter">The parameter to decode.</param>
+    /// <param name="data">The data to decode.</param>
+    /// <returns>The decoded parameter.</returns>
+    public static object? DecodeParameter(this IAbiDecoder decoder, AbiParam parameter, byte[] data)
+    {
+        var parameters = new AbiParameters(new[] { parameter });
+        var r = decoder.DecodeParameters(parameters, data);
+
+        return r.Parameters.First().Value;
+    }
+
+    /// <summary>
+    /// Attempts to decode a value from its ABI binary representation
+    /// </summary>
+    /// <typeparam name="T">The type to decode to</typeparam>
+    /// <param name="decoder">The decoder to use</param>
+    /// <param name="abiType">The ABI type string (e.g. "uint256", "address")</param>
+    /// <param name="data">The data to decode</param>
+    /// <param name="decoded">The decoded value if successful</param>
+    /// <returns></returns>
+    public static bool TryDecode<T>(this IAbiDecode decoder, string abiType, byte[] data, out T decoded)
+    {
+        if (decoder.TryDecode(abiType, data, typeof(T), out var decodedObject) && decodedObject is T t)
+        {
+            decoded = t;
+            return true;
+        }
+
+        decoded = default!;
+        return false;
+    }
+
+    //
+
+    /// <summary>
+    /// Converts an ITuple of two values to a KeyValuePair.
+    /// </summary>
+    /// <param name="tuple">The tuple to convert.</param>
+    /// <returns>A KeyValuePair.</returns>
+    /// <exception cref="ArgumentException">Thrown when the tuple has more than two elements.</exception>
+    internal static KeyValuePair<string, object?> ToKeyValue(this ITuple tuple)
+    {
+        if (tuple.Length != 2)
+        {
+            throw new ArgumentException("Tuple must have exactly two elements", nameof(tuple));
+        }
+
+        var elements = tuple.GetElements().ToList();
+
+        return new KeyValuePair<string, object?>(elements[0]!.ToString()!, elements[1]);
+    }
+
+    /// <summary>
+    /// Converts an ITuple to a list of object arrays.
+    /// </summary>
+    /// <param name="tuple">The tuple to convert.</param>
+    /// <returns>A list of object arrays.</returns>
+    internal static IReadOnlyList<object> ToList(this ITuple tuple)
+    {
+        var list = new List<object>();
+        for (int i = 0; i < tuple.Length; i++)
+        {
+            list.Add(tuple[i]);
+        }
+        return list;
     }
 
     /// <summary>
@@ -192,40 +349,6 @@ public static class AbiExtensions
                 $"Value of type '{value?.GetType().Name}' is not compatible with the array element type '{array.GetType().GetElementType()?.Name}'.",
                 invalidCast);
         }
-    }
-
-    /// <summary>
-    /// Converts an <see cref="AbiParameters"/> object to a strongly-typed object.
-    /// </summary>
-    /// <typeparam name="T">The type of the object to convert to.</typeparam>
-    /// <param name="parameters">The parameters to convert.</param>
-    /// <returns>A strongly-typed object.</returns>
-    internal static T ToObject<T>(this AbiParameters parameters) where T : new()
-    {
-        var converter = new AbiConverter();
-
-        return converter.DictionaryToObject<T>(parameters.ToDictionary(true));
-    }
-
-    /// <summary>
-    /// Attempts to decode a value from its ABI binary representation
-    /// </summary>
-    /// <typeparam name="T">The type to decode to</typeparam>
-    /// <param name="decoder">The decoder to use</param>
-    /// <param name="abiType">The ABI type string (e.g. "uint256", "address")</param>
-    /// <param name="data">The data to decode</param>
-    /// <param name="decoded">The decoded value if successful</param>
-    /// <returns></returns>
-    internal static bool TryDecode<T>(this IAbiDecode decoder, string abiType, byte[] data, out T decoded)
-    {
-        if (decoder.TryDecode(abiType, data, typeof(T), out var decodedObject) && decodedObject is T t)
-        {
-            decoded = t;
-            return true;
-        }
-
-        decoded = default!;
-        return false;
     }
 
     /// <summary>

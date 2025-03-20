@@ -23,7 +23,7 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// </summary>
     /// <param name="tx">The transaction to encode.</param>
     /// <returns>The RLP encoded transaction.</returns>
-    public byte[] Encode(TransactionEIP1559 tx)
+    public byte[] Encode(IEthereumTransactionType2 tx)
     {
         // Validate the transaction
         tx.Validate();
@@ -113,7 +113,7 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// <param name="tx">The transaction to encode.</param>
     /// <param name="chainId">The chain ID to use for EIP-155 replay protection when signing an unsigned transaction.</param>
     /// <returns>The RLP encoded transaction.</returns>
-    public byte[] Encode(Transaction tx, ulong chainId = 0)
+    public byte[] Encode(IEthereumTransactionType0 tx, ulong chainId = 0)
     {
         // Validate the transaction
         tx.Validate();
@@ -185,10 +185,10 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// <param name="tx">The transaction to encode.</param>
     /// <param name="chainId">The chain ID to use for EIP-155 replay protection.</param>
     /// <returns>The RLP encoded transaction for signing.</returns>
-    public byte[] EncodeForSigning(Transaction tx, ulong chainId = 0)
+    public byte[] EncodeForSigning(IEthereumTransactionType0 tx, ulong chainId = 0)
     {
         // Create a copy of the transaction without a signature
-        var unsignedTx = new Transaction(
+        var unsignedTx = new TransactionType0(
             tx.Nonce,
             tx.GasPrice,
             tx.GasLimit,
@@ -207,10 +207,10 @@ internal class RlpEncoder : IRlpTransactionEncoder
     /// </summary>
     /// <param name="tx">The transaction to encode.</param>
     /// <returns>The RLP encoded transaction for signing.</returns>
-    public byte[] EncodeForSigning(TransactionEIP1559 tx)
+    public byte[] EncodeForSigning(IEthereumTransactionType2 tx)
     {
         // Create a copy of the transaction without a signature
-        var unsignedTx = new TransactionEIP1559(
+        var unsignedTx = new TransactionType2(
             tx.ChainId,
             tx.Nonce,
             tx.MaxPriorityFeePerGas,
@@ -354,8 +354,8 @@ internal class RlpEncoder : IRlpTransactionEncoder
             ulong ulongValue => Encode(ulongValue),
             BigInteger bigInt => Encode(bigInt),
             string str => Encode(str),
-            Transaction tx => Encode(tx),
-            TransactionEIP1559 tx1559 => Encode(tx1559),
+            TransactionType0 tx => Encode(tx),
+            TransactionType2 tx1559 => Encode(tx1559),
             Hex hex => Encode(hex.ToByteArray()),
             _ => throw new ArgumentException($"Unsupported type: {item?.GetType().Name ?? "null"}")
         };

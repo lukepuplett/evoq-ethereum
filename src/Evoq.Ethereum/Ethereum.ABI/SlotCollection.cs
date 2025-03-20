@@ -8,7 +8,7 @@ namespace Evoq.Ethereum.ABI;
 /// <summary>
 /// A collection of slots.
 /// </summary>
-public class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
+internal class SlotCollection : System.Collections.ObjectModel.Collection<Slot>
 {
     //
 

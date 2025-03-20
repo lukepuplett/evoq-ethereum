@@ -115,7 +115,7 @@ public class UintTypeEncoderTests
         Assert.IsFalse(_encoder.TryEncode("uint256", "not a number", out _));
         Assert.IsFalse(_encoder.TryEncode("uint256", 1.5, out _));
 
-        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("uint256", null, out _));
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("uint256", null!, out _));
     }
 
     [TestMethod]
@@ -215,7 +215,7 @@ public class UintTypeEncoderTests
         Assert.IsFalse(_encoder.TryDecode("uint256", data, typeof(string), out _));
         Assert.IsFalse(_encoder.TryDecode("uint256", data, typeof(double), out _));
 
-        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryDecode("uint256", null, typeof(uint), out _));
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryDecode("uint256", null!, typeof(uint), out _));
     }
 
     [TestMethod]

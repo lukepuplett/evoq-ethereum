@@ -8,12 +8,12 @@ namespace Evoq.Ethereum.Transactions;
 /// <summary>
 /// Represents a legacy Ethereum transaction (pre-EIP-1559).
 /// </summary>
-public struct Transaction : IEthereumTransaction
+internal struct TransactionType0 : IEthereumTransactionType0, ITransactionFeatures
 {
     /// <summary>
     /// An empty transaction instance.
     /// </summary>
-    public static Transaction Empty = new Transaction(
+    public static TransactionType0 Empty = new TransactionType0(
         nonce: 0,
         gasPrice: BigInteger.Zero,
         gasLimit: 0,
@@ -26,7 +26,7 @@ public struct Transaction : IEthereumTransaction
     //
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Transaction"/> struct.
+    /// Initializes a new instance of the <see cref="TransactionType0"/> struct.
     /// </summary>
     /// <param name="nonce">The nonce of the transaction.</param>
     /// <param name="gasPrice">The gas price of the transaction.</param>
@@ -35,7 +35,7 @@ public struct Transaction : IEthereumTransaction
     /// <param name="value">The value of the transaction.</param>
     /// <param name="data">The data of the transaction.</param>
     /// <param name="signature">The signature of the transaction. Null if the transaction is unsigned.</param>
-    public Transaction(
+    public TransactionType0(
         ulong nonce,
         BigInteger gasPrice,
         ulong gasLimit,
@@ -54,7 +54,7 @@ public struct Transaction : IEthereumTransaction
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Transaction"/> struct with separate signature components.
+    /// Initializes a new instance of the <see cref="TransactionType0"/> struct with separate signature components.
     /// </summary>
     /// <param name="nonce">The nonce of the transaction.</param>
     /// <param name="gasPrice">The gas price of the transaction.</param>
@@ -65,7 +65,7 @@ public struct Transaction : IEthereumTransaction
     /// <param name="v">The V component of the signature.</param>
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
-    public Transaction(
+    public TransactionType0(
         ulong nonce,
         BigInteger gasPrice,
         ulong gasLimit,
@@ -200,9 +200,9 @@ public struct Transaction : IEthereumTransaction
     /// </summary>
     /// <param name="signature">The signature to add.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(RsvSignature signature)
+    public IEthereumTransaction WithSignature(RsvSignature signature)
     {
-        return new Transaction(
+        return new TransactionType0(
             Nonce,
             GasPrice,
             GasLimit,
@@ -220,7 +220,7 @@ public struct Transaction : IEthereumTransaction
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public Transaction WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    public IEthereumTransaction WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
@@ -237,7 +237,7 @@ public struct Transaction : IEthereumTransaction
     /// <param name="value">The value of the transaction.</param>
     /// <param name="data">The data of the transaction.</param>
     /// <returns>An unsigned transaction.</returns>
-    public static Transaction CreateUnsigned(
+    public static TransactionType0 CreateUnsigned(
         ulong nonce,
         BigInteger gasPrice,
         ulong gasLimit,
@@ -245,7 +245,7 @@ public struct Transaction : IEthereumTransaction
         BigInteger value,
         byte[] data)
     {
-        return new Transaction(
+        return new TransactionType0(
             nonce,
             gasPrice,
             gasLimit,
@@ -257,12 +257,12 @@ public struct Transaction : IEthereumTransaction
     }
 
     // Also need to add explicit interface implementations for WithSignature
-    IEthereumTransaction IEthereumTransaction.WithSignature(RsvSignature signature)
+    IEthereumTransaction IWithSignature.WithSignature(RsvSignature signature)
     {
         return WithSignature(signature);
     }
 
-    IEthereumTransaction IEthereumTransaction.WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    IEthereumTransaction IWithSignature.WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(v, r, s);
     }

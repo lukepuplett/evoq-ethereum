@@ -7,7 +7,7 @@ namespace Evoq.Ethereum.Crypto;
 /// <summary>
 /// Static class for signing operations.
 /// </summary>
-public static class Signing
+internal static class Signing
 {
     /// <summary>
     /// Calculates the EIP-155 V value for a given chain ID and recovery ID.

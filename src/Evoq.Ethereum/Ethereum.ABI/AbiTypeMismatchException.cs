@@ -10,11 +10,6 @@ namespace Evoq.Ethereum.ABI;
 public class AbiTypeMismatchException : AbiException
 {
     /// <summary>
-    /// Gets the CLR type that caused the mismatch.
-    /// </summary>
-    public Type? ClrType { get; }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="AbiTypeMismatchException"/> class.
     /// </summary>
     public AbiTypeMismatchException() : base() { }
@@ -54,6 +49,15 @@ public class AbiTypeMismatchException : AbiException
     {
         ClrType = (Type?)info.GetValue(nameof(ClrType), typeof(Type));
     }
+
+    //
+
+    /// <summary>
+    /// Gets the CLR type that caused the mismatch.
+    /// </summary>
+    public Type? ClrType { get; }
+
+    //
 
     /// <summary>
     /// Sets the SerializationInfo with information about the exception.

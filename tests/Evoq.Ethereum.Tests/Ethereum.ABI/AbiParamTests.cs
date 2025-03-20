@@ -9,7 +9,7 @@ public class AbiParamTests
 
     public AbiParamTests()
     {
-        this.validator = new AbiEncoder().Validator;
+        this.validator = new AbiTypeValidator();
     }
 
     [TestMethod]

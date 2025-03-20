@@ -8,10 +8,10 @@ namespace Evoq.Ethereum.Transactions;
 /// <summary>
 /// An EIP-1559 Ethereum transaction with a signature.
 /// </summary>
-public struct TransactionEIP1559 : IEthereumTransaction
+internal struct TransactionType2 : IEthereumTransactionType2, ITransactionFeatures
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct.
+    /// Initializes a new instance of the <see cref="TransactionType2"/> struct.
     /// </summary>
     /// <param name="chainId">The chain ID of the network.</param>
     /// <param name="nonce">The nonce of the transaction.</param>
@@ -23,7 +23,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// <param name="data">The data of the transaction.</param>
     /// <param name="accessList">The access list for gas optimization.</param>
     /// <param name="signature">The signature of the transaction. Null if the transaction is unsigned.</param>
-    public TransactionEIP1559(
+    public TransactionType2(
         ulong chainId,
         ulong nonce,
         BigInteger maxPriorityFeePerGas,
@@ -48,7 +48,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="TransactionEIP1559"/> struct with separate signature components.
+    /// Initializes a new instance of the <see cref="TransactionType2"/> struct with separate signature components.
     /// </summary>
     /// <param name="chainId">The chain ID of the network.</param>
     /// <param name="nonce">The nonce of the transaction.</param>
@@ -62,7 +62,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// <param name="v">The V component of the signature.</param>
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
-    public TransactionEIP1559(
+    public TransactionType2(
         ulong chainId,
         ulong nonce,
         BigInteger maxPriorityFeePerGas,
@@ -176,9 +176,9 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// </summary>
     /// <param name="signature">The signature to add.</param>
     /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignature(RsvSignature signature)
+    public TransactionType2 WithSignature(RsvSignature signature)
     {
-        return new TransactionEIP1559(
+        return new TransactionType2(
             ChainId,
             Nonce,
             MaxPriorityFeePerGas,
@@ -199,17 +199,19 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// <param name="r">The R component of the signature.</param>
     /// <param name="s">The S component of the signature.</param>
     /// <returns>A signed transaction.</returns>
-    public TransactionEIP1559 WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    public TransactionType2 WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(new RsvSignature(v, r, s));
     }
 
-    IEthereumTransaction IEthereumTransaction.WithSignature(RsvSignature signature)
+    //
+
+    IEthereumTransaction IWithSignature.WithSignature(RsvSignature signature)
     {
         return WithSignature(signature);
     }
 
-    IEthereumTransaction IEthereumTransaction.WithSignature(BigInteger v, BigInteger r, BigInteger s)
+    IEthereumTransaction IWithSignature.WithSignature(BigInteger v, BigInteger r, BigInteger s)
     {
         return WithSignature(v, r, s);
     }
@@ -217,7 +219,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// <summary>
     /// Gets an empty EIP-1559 transaction instance.
     /// </summary>
-    public static TransactionEIP1559 Empty => new TransactionEIP1559(
+    public static TransactionType2 Empty => new TransactionType2(
         chainId: 0,
         nonce: 0,
         maxPriorityFeePerGas: BigInteger.Zero,
@@ -243,7 +245,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
     /// <param name="data">The data of the transaction.</param>
     /// <param name="accessList">The access list for gas optimization.</param>
     /// <returns>An unsigned transaction.</returns>
-    public static TransactionEIP1559 CreateUnsigned(
+    public static TransactionType2 CreateUnsigned(
         ulong chainId,
         ulong nonce,
         BigInteger maxPriorityFeePerGas,
@@ -254,7 +256,7 @@ public struct TransactionEIP1559 : IEthereumTransaction
         byte[] data,
         AccessListItem[]? accessList = null)
     {
-        return new TransactionEIP1559(
+        return new TransactionType2(
             chainId,
             nonce,
             maxPriorityFeePerGas,

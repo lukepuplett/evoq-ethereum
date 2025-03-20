@@ -1,15 +1,13 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace Evoq.Ethereum.ABI;
 
 /// <summary>
 /// Contains definitions and validation methods for Solidity types.
 /// </summary>
-public static class AbiTypes
+internal static class AbiTypes
 {
     // Define valid size ranges
     private static readonly Range IntegerSizeRange = new(8, 256);

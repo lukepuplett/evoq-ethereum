@@ -129,7 +129,6 @@ public class TransactionReceipt
     /// Creates a TransactionReceipt from its DTO representation
     /// </summary>
     /// <param name="dto">The DTO representation of the transaction receipt.</param>
-    /// <param name="reader">The event log reader.</param>
     /// <returns>The transaction receipt.</returns>
     internal static TransactionReceipt? FromDto(TransactionReceiptDto? dto)
     {

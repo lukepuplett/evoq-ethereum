@@ -184,7 +184,7 @@ public static class RlpTestCases
         [20] = new(
             "Basic Ethereum transaction (legacy format)",
             "Tests the RLP encoding of a legacy Ethereum transaction",
-            new Transaction(
+            new TransactionType0(
                 nonce: 42,
                 gasPrice: new BigInteger("30000000000"), // 30 Gwei
                 gasLimit: 21000,

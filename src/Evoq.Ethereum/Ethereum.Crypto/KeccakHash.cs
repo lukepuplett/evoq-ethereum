@@ -6,7 +6,7 @@ namespace Evoq.Ethereum.Crypto;
 /// <summary>
 /// Keccak-256 hashing utilities.
 /// </summary>
-internal static class KeccakHash
+public static class KeccakHash
 {
     /// <summary>
     /// Computes the Keccak-256 hash of the input data.

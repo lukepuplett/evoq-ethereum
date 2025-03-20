@@ -103,7 +103,7 @@ public class IntTypeEncoderTests
         Assert.IsFalse(_encoder.TryEncode("int256", "not a number", out _));
         Assert.IsFalse(_encoder.TryEncode("int256", 1.5, out _));
 
-        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("int256", null, out _));
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryEncode("int256", null!, out _));
     }
 
     [TestMethod]
@@ -196,7 +196,7 @@ public class IntTypeEncoderTests
         Assert.IsFalse(_encoder.TryDecode("int256", data, typeof(string), out _));
         Assert.IsFalse(_encoder.TryDecode("int256", data, typeof(double), out _));
 
-        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryDecode("int256", null, typeof(int), out _));
+        Assert.ThrowsException<ArgumentNullException>(() => _encoder.TryDecode("int256", null!, typeof(int), out _));
     }
 
     [TestMethod]

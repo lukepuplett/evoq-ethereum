@@ -20,6 +20,11 @@ public class AbiTypeValidator : IAbiValueCompatible
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiTypeValidator"/> class.
     /// </summary>
+    public AbiTypeValidator() { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiTypeValidator"/> class.
+    /// </summary>
     /// <param name="staticTypeEncoders">The static type encoders.</param>
     /// <param name="dynamicTypeEncoders">The dynamic type encoders.</param>
     public AbiTypeValidator(IReadOnlyList<IAbiEncode> staticTypeEncoders, IReadOnlyList<IAbiEncode> dynamicTypeEncoders)

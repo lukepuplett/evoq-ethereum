@@ -9,7 +9,7 @@ namespace Evoq.Ethereum.Chains;
 /// Represents a block with transaction data.
 /// </summary>
 /// <typeparam name="T">The type of the transaction data.</typeparam>
-public class BlockData<T>
+internal class BlockData<T>
 {
     /// <summary>   
     /// The block number.

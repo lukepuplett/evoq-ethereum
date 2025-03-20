@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -33,8 +32,6 @@ namespace Evoq.Ethereum.ABI;
 - This reads direct and avoids complex nesting
 
 */
-
-record class DecodingContext() { }
 
 /// <summary>
 /// A new and improved ABI decoder that uses a more efficient decoding scheme.
@@ -583,7 +580,7 @@ public class AbiDecoder : IAbiDecoder
                 }
                 else
                 {
-                    throw new AbiNotImplementedException(
+                    throw new AbiNotSupportedException(
                         $"Tuple components cannot be converted to collections other than IDictionary<string, object?>. " +
                         $"See {nameof(AbiTypes)}.{nameof(AbiTypes.TryGetDefaultClrType)} for supported " +
                         $"collection types for tuples.");
@@ -625,7 +622,7 @@ public class AbiDecoder : IAbiDecoder
             }
         }
 
-        throw new AbiNotImplementedException(
+        throw new AbiNotSupportedException(
             $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
             $"Please use a supported type combination or implement a custom decoder.",
             abiType,
@@ -659,7 +656,7 @@ public class AbiDecoder : IAbiDecoder
             return null;
         }
 
-        throw new AbiNotImplementedException(
+        throw new AbiNotSupportedException(
             $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
             $"Please use a supported type combination or implement a custom decoder.",
             abiType,
