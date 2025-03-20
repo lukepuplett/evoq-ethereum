@@ -13,13 +13,6 @@ public static class KeccakHash
     /// </summary>
     /// <param name="input">The input data to hash.</param>
     /// <returns>The 32-byte hash.</returns>
-    public static byte[] ComputeHash(Hex input) => ComputeHash(input.ToByteArray());
-
-    /// <summary>
-    /// Computes the Keccak-256 hash of the input data.
-    /// </summary>
-    /// <param name="input">The input data to hash.</param>
-    /// <returns>The 32-byte hash.</returns>
     public static byte[] ComputeHash(byte[] input)
     {
         var digest = new KeccakDigest(256);

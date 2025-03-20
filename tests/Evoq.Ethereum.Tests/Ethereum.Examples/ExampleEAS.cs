@@ -154,7 +154,7 @@ public class ExampleEAS
         var abiPacker = new AbiEncoderPacked();
         var easSchemaUidSchema = AbiParameters.Parse("string schema, address resolver, bool revocable");
         var easSchemaUidSchemaValues = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
-        var easSchemaUid = KeccakHash.ComputeHash(abiPacker.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToHexStruct());
+        var easSchemaUid = KeccakHash.ComputeHash(abiPacker.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToByteArray());
 
         var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", easSchemaUid));
 

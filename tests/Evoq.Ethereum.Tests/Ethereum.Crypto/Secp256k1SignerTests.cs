@@ -43,7 +43,6 @@ public class Secp256k1SignerTests
         keccak.DoFinal(hashBytes, 0);
         var ourHashHex = new Hex(hashBytes);
 
-        var chainId = 1;
 
         Assert.AreEqual(eipTransactionHashHex, ourHashHex, "The hash we produced does not match the expected hash from EIP155");
 
@@ -51,13 +50,18 @@ public class Secp256k1SignerTests
         var expectedS = new BigInteger(EIP155_EXPECTED_S);
         var expectedV = new BigInteger(EIP155_EXPECTED_V);
 
-        // Act
-        var signature = NethereumSigner.Sign(eipPrivateKeyHex, eipTransactionHashHex, (ulong)chainId);
+        // Remmed / no longer using Nethereum and referencing Nethereum.Signer causes
+        // a nightmare with our reference to BouncyCastle.NetCore.
+        //
+        // var chainId = 1;
 
-        // Assert
-        Assert.AreEqual(expectedR.ToHexStruct(), signature.R, "R component does not match");
-        Assert.AreEqual(expectedS.ToHexStruct(), signature.S, "S component does not match");
-        Assert.AreEqual(expectedV.ToHexStruct(), signature.V, "V component does not match");
+        // // Act
+        // var signature = NethereumSigner.Sign(eipPrivateKeyHex, eipTransactionHashHex, (ulong)chainId);
+
+        // // Assert
+        // Assert.AreEqual(expectedR.ToHexStruct(), signature.R, "R component does not match");
+        // Assert.AreEqual(expectedS.ToHexStruct(), signature.S, "S component does not match");
+        // Assert.AreEqual(expectedV.ToHexStruct(), signature.V, "V component does not match");
     }
 
     [TestMethod]

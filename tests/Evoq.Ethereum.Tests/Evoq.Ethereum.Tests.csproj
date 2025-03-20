@@ -23,6 +23,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Evoq.Extensions" Version="1.7.7" />
+    <!-- <PackageReference Include="Nethereum.Signer" Version="4.29.0" /> -->
   </ItemGroup>
 
   <ItemGroup>

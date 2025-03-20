@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
@@ -249,10 +250,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
             throw new FormatException("Address cannot be empty.");
         }
 
-        if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-        {
-            hex = hex[2..];
-        }
+        hex = Strip0x(hex);
 
         // Handle both standard (40 chars) and padded (64 chars) addresses
         if (hex.Length == 64)
@@ -272,14 +270,9 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
 
         if (checksum == EthereumAddressChecksum.AlwaysCheck || isFormatted(hex))
         {
-            var u = new Nethereum.Util.AddressUtil();
-            if (!u.IsChecksumAddress(hex))
+            if (!HasChecksumFormat(hex))
             {
-                // string h = hex.Substring(0, 10)
-                string h = hex;
-
-                throw new FormatException(
-                    $"The Ethereum address '{h}...' is not a checksum address.");
+                throw new FormatException($"The Ethereum address '{hex}' is not a checksum address.");
             }
         }
 
@@ -329,9 +322,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
         var bytes = this.Address.ToByteArray();
         var hex = BitConverter.ToString(bytes).Replace("-", "").ToLower();
 
-        var addressUtil = new Nethereum.Util.AddressUtil();
-
-        return addressUtil.ConvertToChecksumAddress("0x" + hex);
+        return ConvertToChecksumFormat("0x" + hex);
     }
 
     /// <summary>
@@ -359,7 +350,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
         }
 
         int paddingLength = totalLength - 40; // 40 is the standard address length
-        return "0x" + new string('0', paddingLength) + ToString()[2..];
+        return "0x" + new string('0', paddingLength) + this.ToString()[2..];
     }
 
     //
@@ -463,4 +454,115 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
         return new EthereumAddress(addressBytes);
     }
 
+    /// <summary>
+    /// Validates an Ethereum address according to EIP-55 checksum rules.
+    /// </summary>
+    /// <remarks>
+    /// EIP-55 creates a checksum by using the case (upper/lower) of each letter in the address.
+    /// 
+    /// The process:
+    /// 1. Take address (without 0x prefix)
+    /// 2. Compute Keccak-256 hash of the lowercase address
+    /// 3. For each character in original address:
+    ///    - If corresponding byte in hash > 7: character should be UPPERCASE
+    ///    - If corresponding byte in hash ≤ 7: character should be lowercase
+    /// 
+    /// Example:
+    /// 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
+    ///    ^ ^ ^  ^   ^ ^  ^   ^   ^     ^ ^   ^  ^
+    ///    The capital letters are determined by the hash of the address
+    /// 
+    /// This provides checksum validation without adding extra characters - 
+    /// the case of each letter IS the checksum. It helps catch typos/errors 
+    /// when entering Ethereum addresses.
+    /// </remarks>
+    /// <returns>True if the address matches its checksum, false otherwise.</returns>
+    public static bool HasChecksumFormat(string address)
+    {
+        if (string.IsNullOrEmpty(address))
+        {
+            return false;
+        }
+        address = Strip0x(address);
+
+        var addressUtf8Bytes = Encoding.UTF8.GetBytes(address.ToLower());
+        var hashBytes = KeccakHash.ComputeHash(addressUtf8Bytes);
+        var hashHexString = Strip0x(Hex.FromBytes(hashBytes).ToString());
+
+        for (var i = 0; i < 40; i++)
+        {
+            var iStr = address[i].ToString();
+            var iUp = address[i].ToString().ToUpper();
+            var iLow = address[i].ToString().ToLower();
+
+            var iValue = int.Parse(hashHexString[i].ToString(), NumberStyles.HexNumber);
+
+            if (iValue > 7 && iUp != iStr || iValue <= 7 && iLow != iStr)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Converts an Ethereum address to its EIP-55 checksum format.
+    /// </summary>
+    /// <remarks>
+    /// EIP-55 creates a mixed-case checksum address by:
+    /// 1. Starting with lowercase hex address (without 0x)
+    /// 2. Taking the Keccak-256 hash of this lowercase address
+    /// 3. Making each address character uppercase if the corresponding hex digit in the hash is > 7
+    /// 
+    /// Example:
+    /// Input:  0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
+    /// Step 1: 5aaeb6053f3e94c9b9a09f33669435e7ef1beaed (lowercase)
+    /// Step 2: hash = Keccak256(step1)
+    /// Step 3: Compare hash bytes to create:
+    ///        0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
+    ///           ^ ^ ^  ^   ^ ^  ^   ^   ^     ^ ^   ^  ^
+    ///           Characters are uppercase where hash byte > 7
+    /// 
+    /// This creates a checksum using only case sensitivity, allowing detection
+    /// of up to 2 character substitutions or a single case change.
+    /// </remarks>
+    /// <param name="address">The address to convert (with or without 0x prefix).</param>
+    /// <returns>The checksummed address with 0x prefix and mixed-case checksum encoding.</returns>
+    public static string ConvertToChecksumFormat(string address)
+    {
+        address = address.Trim().ToLower()[2..];
+
+        var addressUtf8Bytes = Encoding.UTF8.GetBytes(address);
+        var hashBytes = KeccakHash.ComputeHash(addressUtf8Bytes);
+        var hashHexString = Strip0x(Hex.FromBytes(hashBytes).ToString());
+
+        var sb = new StringBuilder("0x");
+
+        for (var i = 0; i < address.Length; i++)
+        {
+            if (int.Parse(hashHexString[i].ToString(), NumberStyles.HexNumber) > 7)
+            {
+                sb.Append(address[i].ToString().ToUpper());
+            }
+            else
+            {
+                sb.Append(address[i]);
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static string Strip0x(string hex)
+    {
+        hex = hex.Trim();
+
+        if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return hex[2..];
+        }
+
+        return hex;
+    }
 }
