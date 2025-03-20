@@ -20,7 +20,7 @@ public static class AbiExtensions
     /// <param name="tuple">The tuple to convert.</param>
     /// <returns>A KeyValuePair.</returns>
     /// <exception cref="ArgumentException">Thrown when the tuple has more than two elements.</exception>
-    public static KeyValuePair<string, object?> ToKeyValue(this ITuple tuple)
+    internal static KeyValuePair<string, object?> ToKeyValue(this ITuple tuple)
     {
         if (tuple.Length != 2)
         {
@@ -29,7 +29,7 @@ public static class AbiExtensions
 
         var elements = tuple.GetElements().ToList();
 
-        return new KeyValuePair<string, object?>(elements[0].ToString()!, elements[1]);
+        return new KeyValuePair<string, object?>(elements[0]!.ToString()!, elements[1]);
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ public static class AbiExtensions
     /// </summary>
     /// <param name="tuple">The tuple to convert.</param>
     /// <returns>A list of object arrays.</returns>
-    public static IReadOnlyList<object> ToList(this ITuple tuple)
+    internal static IReadOnlyList<object> ToList(this ITuple tuple)
     {
         var list = new List<object>();
         for (int i = 0; i < tuple.Length; i++)
@@ -52,7 +52,7 @@ public static class AbiExtensions
     /// </summary>
     /// <param name="item">The item to get the canonical signature for.</param>
     /// <returns>The canonical signature.</returns>
-    public static string GetCanonicalSignature(this ContractAbiItem item)
+    internal static string GetCanonicalSignature(this ContractAbiItem item)
     {
         if (item.Type != "function" && item.Type != "event" && item.Type != "error")
             throw new ArgumentException("Item must be a function, event, or error", nameof(item));
@@ -86,7 +86,7 @@ public static class AbiExtensions
     /// <param name="item">The ABI item.</param>
     /// <returns>The function signature.</returns>
     /// <exception cref="ArgumentException">If the item is not a function.</exception>
-    public static AbiSignature GetFunctionSignature(this ContractAbiItem item)
+    internal static AbiSignature GetFunctionSignature(this ContractAbiItem item)
     {
         if (item.Type != "function")
         {
@@ -126,7 +126,7 @@ public static class AbiExtensions
     /// <param name="item">The ABI item.</param>
     /// <returns>The event signature.</returns>
     /// <exception cref="ArgumentException">If the item is not an event.</exception>
-    public static AbiSignature GetEventSignature(this ContractAbiItem item)
+    internal static AbiSignature GetEventSignature(this ContractAbiItem item)
     {
         if (item.Type != "event")
         {
@@ -165,7 +165,7 @@ public static class AbiExtensions
     /// </summary>
     /// <param name="item">The ABI item.</param>
     /// <returns>The 4-byte function selector.</returns>
-    public static byte[] GetFunctionSelector(this ContractAbiItem item)
+    internal static byte[] GetFunctionSelector(this ContractAbiItem item)
     {
         // Use the canonical signature from GetCanonicalSignature
         var signature = item.GetCanonicalSignature();
@@ -179,7 +179,7 @@ public static class AbiExtensions
     /// <param name="index">The index to set the value at.</param>
     /// <param name="value">The value to set.</param>
     /// <exception cref="AbiTypeMismatchException">Thrown when the value is not compatible with the array element type.</exception>
-    public static void SetValueEx(this Array array, object? value, int index)
+    internal static void SetValueEx(this Array array, object? value, int index)
     {
         try
         {
@@ -200,7 +200,7 @@ public static class AbiExtensions
     /// <typeparam name="T">The type of the object to convert to.</typeparam>
     /// <param name="parameters">The parameters to convert.</param>
     /// <returns>A strongly-typed object.</returns>
-    public static T ToObject<T>(this AbiParameters parameters) where T : new()
+    internal static T ToObject<T>(this AbiParameters parameters) where T : new()
     {
         var converter = new AbiConverter();
 
@@ -216,7 +216,7 @@ public static class AbiExtensions
     /// <param name="data">The data to decode</param>
     /// <param name="decoded">The decoded value if successful</param>
     /// <returns></returns>
-    public static bool TryDecode<T>(this IAbiDecode decoder, string abiType, byte[] data, out T decoded)
+    internal static bool TryDecode<T>(this IAbiDecode decoder, string abiType, byte[] data, out T decoded)
     {
         if (decoder.TryDecode(abiType, data, typeof(T), out var decodedObject) && decodedObject is T t)
         {
@@ -233,7 +233,7 @@ public static class AbiExtensions
     /// </summary>
     /// <param name="type">The type to get the base element type of.</param>
     /// <returns>The base element type of the array or list type.</returns>
-    public static Type GetBaseElementType(this Type type)
+    internal static Type GetBaseElementType(this Type type)
     {
         var elementType = type.GetElementType();
 

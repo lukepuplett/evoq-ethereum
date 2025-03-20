@@ -14,9 +14,9 @@ using Evoq.Ethereum.Transactions;
 namespace Evoq.Ethereum.Contracts;
 
 /// <summary>
-/// A class that can be used to call methods on a contract.
+/// Performs stateless contract operations.
 /// </summary>
-public class ContractClient
+internal class ContractClient
 {
     private readonly Random rng = new Random();
 
@@ -37,7 +37,7 @@ public class ContractClient
     /// <param name="transactionSigner">The transaction signer.</param>
     /// <param name="rlpEncoder">The RLP encoder.</param>
     /// <param name="chainId">The chain ID.</param>
-    public ContractClient(
+    internal ContractClient(
         IEthereumJsonRpc jsonRpc,
         IAbiEncoder abiEncoder,
         IAbiDecoder abiDecoder,
@@ -159,6 +159,17 @@ public class ContractClient
             transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
 
         return result;
+    }
+
+    internal bool TryRead(
+        TransactionReceipt receipt,
+        AbiSignature eventSignature,
+        out IReadOnlyDictionary<string, object?>? indexed,
+        out IReadOnlyDictionary<string, object?>? data)
+    {
+        var reader = new EventLogReader(this.abiDecoder);
+
+        return reader.TryRead(receipt, eventSignature, out indexed, out data);
     }
 
     internal async Task<Hex> EstimateGasAsync(

@@ -8,11 +8,12 @@ using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.Chains;
+using Evoq.Ethereum.Transactions;
 
 namespace Evoq.Ethereum.Contracts;
 
 /// <summary>
-/// A class that represents a contract.
+/// A class that represents a contract at a specific address on a chain.
 /// </summary>
 public class Contract
 {
@@ -24,16 +25,18 @@ public class Contract
     /// <summary>
     /// Initializes a new instance of the Contract class.   
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="chainClient">The chain client.</param>
     /// <param name="contractClient">The contract client.</param>
     /// <param name="abiDocument">The stream containing the ABI.</param>
     /// <param name="address">The address of the contract.</param>
-    public Contract(ChainClient chainClient, ContractClient contractClient, Stream abiDocument, EthereumAddress address)
+    internal Contract(ulong chainId, ChainClient chainClient, ContractClient contractClient, Stream abiDocument, EthereumAddress address)
     {
         this.abi = AbiJsonReader.Read(abiDocument);
         this.contractClient = contractClient;
+
         this.Address = address;
-        this.Chain = new Chain(chainClient);
+        this.Chain = new Chain(chainId, chainClient);
     }
 
     /// <summary>
@@ -54,7 +57,7 @@ public class Contract
     /// <param name="methodName">The name of the method.</param>
     /// <returns>The function signature.</returns>
     /// <exception cref="Exception">Thrown when the method is not found in the ABI.</exception>
-    public AbiSignature GetFunctionSignature(string methodName)
+    internal AbiSignature GetFunctionSignature(string methodName)
     {
         if (this.abi.TryGetFunction(methodName, out var function))
         {
@@ -74,7 +77,7 @@ public class Contract
     /// <param name="eventName">The name of the event.</param>
     /// <returns>The event signature.</returns>
     /// <exception cref="Exception">Thrown when the event is not found in the ABI.</exception>
-    public AbiSignature GetEventSignature(string eventName)
+    internal AbiSignature GetEventSignature(string eventName)
     {
         if (this.abi.TryGetEvent(eventName, out var @event))
         {
@@ -242,5 +245,23 @@ public class Contract
     {
         return await this.contractClient.InvokeMethodAsync(
             this, methodName, nonce, options, arguments, cancellationToken);
+    }
+
+    /// <summary>
+    /// Tries to read a logged event from a transaction receipt.
+    /// </summary>
+    /// <param name="receipt">The transaction receipt.</param>
+    /// <param name="eventName">The name of the event to read.</param>
+    /// <param name="indexed">The indexed parameters of the event.</param>
+    /// <param name="data">The data parameters of the event.</param>
+    public bool TryReadEventLogsFromReceipt(
+        TransactionReceipt receipt,
+        string eventName,
+        out IReadOnlyDictionary<string, object?>? indexed,
+        out IReadOnlyDictionary<string, object?>? data)
+    {
+        var eventSignature = this.GetEventSignature(eventName);
+
+        return this.contractClient.TryRead(receipt, eventSignature, out indexed, out data);
     }
 }

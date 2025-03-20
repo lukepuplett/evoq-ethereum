@@ -17,6 +17,13 @@ public class TransactionReceipt
     //
 
     /// <summary>
+    /// Initializes a new instance of the TransactionReceipt class.
+    /// </summary>
+    internal TransactionReceipt() { }
+
+    //
+
+    /// <summary>
     /// Hash of the transaction (32 Bytes)
     /// </summary>
     public Hex TransactionHash { get; set; } = Hex.Empty;
@@ -121,7 +128,10 @@ public class TransactionReceipt
     /// <summary>
     /// Creates a TransactionReceipt from its DTO representation
     /// </summary>
-    public static TransactionReceipt? FromDto(TransactionReceiptDto? dto)
+    /// <param name="dto">The DTO representation of the transaction receipt.</param>
+    /// <param name="reader">The event log reader.</param>
+    /// <returns>The transaction receipt.</returns>
+    internal static TransactionReceipt? FromDto(TransactionReceiptDto? dto)
     {
         if (dto == null) return null;
 
@@ -223,7 +233,7 @@ public class TransactionLog
     /// <summary>
     /// Creates a TransactionLog from its DTO representation
     /// </summary>
-    public static TransactionLog FromDto(LogDto dto)
+    internal static TransactionLog FromDto(LogDto dto)
     {
         return new TransactionLog
         {

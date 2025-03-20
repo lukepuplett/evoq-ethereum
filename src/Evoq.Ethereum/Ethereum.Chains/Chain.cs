@@ -11,25 +11,35 @@ using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
 
-// NOTE / see comments, bottom
-
 /// <summary>
-/// A class that represents a chain.
+/// A class that represents a specific blockchain.
 /// </summary>
-public partial class Chain
+public class Chain
 {
     private readonly ChainClient chainClient;
+    private readonly ChainPollingStrategy.PollingInterval pollingInterval;
 
     //
 
     /// <summary>
     /// Initializes a new instance of the Chain class.
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="chainClient">The chain client.</param>
-    public Chain(ChainClient chainClient)
+    internal Chain(ulong chainId, ChainClient chainClient)
     {
         this.chainClient = chainClient;
+        this.pollingInterval = ChainPollingStrategy.GetForChain(chainId);
+
+        this.ChainId = chainId;
     }
+
+    //
+
+    /// <summary>
+    /// Gets the chain ID.
+    /// </summary>
+    public ulong ChainId { get; }
 
     //
 
@@ -185,7 +195,7 @@ public partial class Chain
     {
         var contractClient = ContractClient.CreateDefault(endpoint, sender);
 
-        return new Contract(this.chainClient, contractClient, abiDocument, address);
+        return new Contract(this.ChainId, this.chainClient, contractClient, abiDocument, address);
     }
 
     /// <summary>
@@ -197,9 +207,9 @@ public partial class Chain
     /// <returns>A default chain instance.</returns>
     public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
     {
-        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory);
+        var chainClient = ChainClient.CreateDefault(uri, loggerFactory);
 
-        return new Chain(chainClient);
+        return new Chain(chainId, chainClient);
     }
 
     /// <summary>
@@ -221,6 +231,7 @@ public partial class Chain
 
         var (receipt, deadlineReached) = await this.chainClient.TryWaitForTransactionReceiptAsync(
             transactionHash,
+            this.pollingInterval,
             deadline,
             cancellationToken);
 

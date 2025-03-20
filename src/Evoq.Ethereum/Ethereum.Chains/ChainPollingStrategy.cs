@@ -11,12 +11,12 @@ public class ChainPollingStrategy
     /// <summary>
     /// Gets the initial polling interval and maximum polling interval for a specific chain.
     /// </summary>
-    public readonly record struct PollingIntervals(TimeSpan Initial, TimeSpan Maximum);
+    public readonly record struct PollingInterval(TimeSpan Initial, TimeSpan Maximum);
 
     /// <summary>
     /// Known chain configurations mapped by chain ID.
     /// </summary>
-    private static readonly Dictionary<string, PollingIntervals> ChainConfigs = new()
+    private static readonly Dictionary<string, PollingInterval> ChainConfigs = new()
     {
         // Mainnet chains
         [ChainIds.EthereumMainnet] = new(TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(12)),
@@ -46,13 +46,13 @@ public class ChainPollingStrategy
     /// <summary>
     /// Default intervals for unknown chains.
     /// </summary>
-    private static readonly PollingIntervals DefaultIntervals = new(
+    private static readonly PollingInterval DefaultIntervals = new(
         TimeSpan.FromSeconds(2),
         TimeSpan.FromSeconds(8));
 
     /// <summary>
     /// Gets the recommended polling intervals for a specific chain.
     /// </summary>
-    public static PollingIntervals GetForChain(ulong chainId) =>
+    public static PollingInterval GetForChain(ulong chainId) =>
         ChainConfigs.GetValueOrDefault(chainId.ToString(), DefaultIntervals);
 }
