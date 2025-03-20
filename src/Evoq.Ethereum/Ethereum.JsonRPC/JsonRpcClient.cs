@@ -43,10 +43,10 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <summary>
     /// Initializes a new instance of the JsonRpcClient class.
     /// </summary>
-    public JsonRpcClient(Uri url, ILoggerFactory loggerFactory)
+    public JsonRpcClient(Uri baseUrl, ILoggerFactory loggerFactory)
     {
-        this.BaseAddress = url;
-        this.httpClient.BaseAddress = url;
+        this.BaseAddress = baseUrl;
+        this.httpClient.BaseAddress = baseUrl;
         this.loggerFactory = loggerFactory;
     }
 

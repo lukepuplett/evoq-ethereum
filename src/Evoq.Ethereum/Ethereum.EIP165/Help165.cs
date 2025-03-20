@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
-using Nethereum.Util;
+using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.EIP165;
 
@@ -73,7 +73,7 @@ public static class Help165
     /// <returns>The function selector</returns>
     public static Hex ComputeSelector(string functionSignature)
     {
-        return Sha3Keccack.Current.CalculateHash(Encoding.ASCII.GetBytes(functionSignature))
+        return KeccakHash.ComputeHash(Encoding.ASCII.GetBytes(functionSignature))
             .Take(4)
             .ToArray()
             .ToHexStruct();
