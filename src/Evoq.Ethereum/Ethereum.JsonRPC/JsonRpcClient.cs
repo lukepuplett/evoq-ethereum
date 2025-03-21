@@ -333,7 +333,8 @@ public class JsonRpcClient : IEthereumJsonRpc
         var request = JsonRpcRequestDtoFactory.CreateGetTransactionReceiptRequest(
             transactionHash.ToString(), id);
 
-        var response = await this.SendAsync<TransactionReceiptDto>(request, new MethodInfo(request.Method, id), cancellationToken);
+        var response = await this.SendAsync<TransactionReceiptDto>(
+            request, new MethodInfo(request.Method, id), cancellationToken);
 
         return response.Result; // Can be null if transaction is pending or not found
     }

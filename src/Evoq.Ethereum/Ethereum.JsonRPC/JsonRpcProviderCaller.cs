@@ -148,8 +148,28 @@ internal class JsonRpcProviderCaller<TResponseResult>
                 var responseBodyStr = await response.Content.ReadAsStringAsync();
                 this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
 
+                // Add these detailed debug logs:
+                this.logger?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
+                this.logger?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
+                this.logger?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
+
                 var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                     responseBodyStr, this.jsonSerializerOptions);
+
+                // After deserialization, add more detailed logging:
+                if (responseDto != null)
+                {
+                    this.logger?.LogDebug("Deserialized Response - ID: {Id}, Has Error: {HasError}, Has Result: {HasResult}",
+                        responseDto.Id,
+                        responseDto.Error != null,
+                        responseDto.Result != null);
+
+                    if (responseDto.Result != null)
+                    {
+                        this.logger?.LogDebug("Result Type: {ResultType}", responseDto.Result.GetType().Name);
+                        this.logger?.LogDebug("Result Value: {@Result}", responseDto.Result);
+                    }
+                }
 
                 if (responseDto == null)
                 {

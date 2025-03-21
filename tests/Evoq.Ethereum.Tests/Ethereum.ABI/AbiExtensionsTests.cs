@@ -337,4 +337,109 @@ public class AbiExtensionsTests
         Assert.AreEqual("address[]", signature.Inputs[0].AbiType);
         Assert.AreEqual("uint256[]", signature.Inputs[1].AbiType);
     }
+
+    [TestMethod]
+    public void GetEventSignature_RegisteredEvent_PreservesIndexedFlags()
+    {
+        // Arrange
+        var eventItem = new ContractAbiItem
+        {
+            Type = "event",
+            Name = "Registered",
+            Anonymous = false,
+            Inputs = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter
+                {
+                    Name = "uid",
+                    Type = "bytes32",
+                    Indexed = true,
+                    InternalType = "bytes32"
+                },
+                new ContractAbiParameter
+                {
+                    Name = "registerer",
+                    Type = "address",
+                    Indexed = true,
+                    InternalType = "address"
+                },
+                new ContractAbiParameter
+                {
+                    Name = "schema",
+                    Type = "tuple",
+                    Indexed = false,
+                    InternalType = "struct SchemaRecord",
+                    Components = new List<ContractAbiParameter>
+                    {
+                        new ContractAbiParameter
+                        {
+                            Name = "uid",
+                            Type = "bytes32",
+                            InternalType = "bytes32"
+                        },
+                        new ContractAbiParameter
+                        {
+                            Name = "resolver",
+                            Type = "address",
+                            InternalType = "contract ISchemaResolver"
+                        },
+                        new ContractAbiParameter
+                        {
+                            Name = "revocable",
+                            Type = "bool",
+                            InternalType = "bool"
+                        },
+                        new ContractAbiParameter
+                        {
+                            Name = "schema",
+                            Type = "string",
+                            InternalType = "string"
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var signature = eventItem.GetEventSignature();
+
+        // Assert
+        Assert.AreEqual(AbiItemType.Event, signature.ItemType, "Should be an event signature");
+        Assert.AreEqual("Registered", signature.Name, "Event name should match");
+        Assert.IsFalse(signature.IsAnonymous, "Event should not be anonymous");
+
+        // Check parameters
+        Assert.AreEqual(3, signature.Inputs.Count, "Should have 3 parameters");
+
+        // Check indexed parameters
+        var indexedParams = signature.Inputs.Where(p => p.IsIndexed).ToList();
+        Assert.AreEqual(2, indexedParams.Count, "Should have 2 indexed parameters");
+
+        // First indexed parameter (uid)
+        Assert.AreEqual("uid", indexedParams[0].Name);
+        Assert.AreEqual("bytes32", indexedParams[0].AbiType);
+        Assert.IsTrue(indexedParams[0].IsIndexed);
+
+        // Second indexed parameter (registerer)
+        Assert.AreEqual("registerer", indexedParams[1].Name);
+        Assert.AreEqual("address", indexedParams[1].AbiType);
+        Assert.IsTrue(indexedParams[1].IsIndexed);
+
+        // Check non-indexed tuple parameter
+        var schemaParam = signature.Inputs.First(p => !p.IsIndexed);
+        Assert.AreEqual("schema", schemaParam.Name);
+        Assert.IsFalse(schemaParam.IsIndexed);
+        Assert.IsTrue(schemaParam.IsTupleStrict);
+
+        // Verify tuple components
+        Assert.IsTrue(schemaParam.TryParseComponents(out var components));
+        Assert.IsNotNull(components);
+        Assert.AreEqual(4, components.Count);
+
+        // Verify canonical signature format
+        Assert.AreEqual(
+            "Registered(bytes32,address,(bytes32,address,bool,string))",
+            signature.GetCanonicalInputsSignature(),
+            "Canonical signature should match expected format");
+    }
 }

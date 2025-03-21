@@ -97,10 +97,10 @@ internal class EventLogReader
         }
 
         // Deal with data params
-        var dp = eventSignature.Inputs.Where(p => !p.IsIndexed).ToList();
-        if (dp.Count > 0)
+        var nonIndexedParams = eventSignature.Inputs.Where(p => !p.IsIndexed).ToList();
+        if (nonIndexedParams.Count > 0)
         {
-            var dataParams = new AbiParameters(dp);
+            var dataParams = new AbiParameters(nonIndexedParams);
             var r = this.decoder.DecodeParameters(dataParams, log.Data.ToByteArray());
 
             foreach (var param in r.Parameters)

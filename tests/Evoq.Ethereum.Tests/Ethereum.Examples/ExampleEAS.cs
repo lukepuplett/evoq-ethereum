@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
@@ -47,23 +46,23 @@ public class ExampleEAS
 
         //
 
-        string attestationSignature = "bool isAHuman";
+        string attestationSignature = "bool isTest3";
 
-        var schemaUidSchema = AbiParameters.Parse("(string schema, address resolver, bool revocable)");
+        var schemaUIDSchema = AbiParameters.Parse("(string schema, address resolver, bool revocable)");
         var simpleRevocableBool = AbiKeyValues.Create(
             ("schema", attestationSignature),
             ("resolver", EthereumAddress.Zero),
             ("revocable", true));
 
         var packer = new AbiEncoderPacked();
-        // var schemaUid = KeccakHash.ComputeHash(packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToByteArray());
-        var schemaUid = KeccakHash.ComputeHash(Encoding.UTF8.GetBytes("fake"));
+        var schemaUID = KeccakHash.ComputeHash(packer.EncodeParameters(schemaUIDSchema, simpleRevocableBool).ToByteArray());
+        // var schemaUID = KeccakHash.ComputeHash(Encoding.UTF8.GetBytes("fake"));
 
-        Console.WriteLine("schemaUid: " + schemaUid.ToHexStruct());
+        Console.WriteLine("schemaUID: " + schemaUID.ToHexStruct());
 
         var caller = new RawContractCaller(endpoint);
 
-        var schemaUidReturnedHex = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUid));
+        var schemaUidReturnedHex = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUID));
 
         Assert.IsTrue(schemaUidReturnedHex.Length > 0);
 
@@ -82,56 +81,77 @@ public class ExampleEAS
         Assert.IsTrue(record.TryGetValue("resolver", out var resolver));
         Assert.IsTrue(record.TryGetValue("revocable", out var revocable));
 
+        if (uid is not byte[] uidBytes)
+        {
+            throw new Exception("uid is not a byte array");
+        }
+
+        var existingUIDHex = Hex.FromBytes(uidBytes);
+
+        if (existingUIDHex.IsZeroValue())
+        {
+            // schema does not exist
+
+            var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
+                "register",
+                senderAddress,
+                null,
+                simpleRevocableBool);
+
+            registerEstimate = registerEstimate.InEther();
+
+            //
+
+            var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+
+            var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+            var registerReceipt = await runner.RunTransactionAsync(
+                schemaRegistry,
+                "register",
+                registerOptions,
+                simpleRevocableBool,
+                CancellationToken.None);
+
+            Assert.IsNotNull(registerReceipt);
+            Assert.IsTrue(registerReceipt.Success);
+
+            Console.WriteLine(registerReceipt);
+
+            // read the event data
+
+            bool hasRegistered = schemaRegistry.TryReadEventLogsFromReceipt(
+                registerReceipt, "Registered", out var indexed, out var data);
+
+            if (!hasRegistered)
+            {
+                throw new Exception("The event was not found in the receipt");
+            }
+
+            if (data == null || data.None())
+            {
+                throw new Exception("The event data was not found in the receipt");
+            }
+
+            foreach (var (key, value) in data)
+            {
+                Console.WriteLine($"{key}: {value}");
+            }
+
+            Assert.IsNotNull(registerReceipt);
+            Assert.IsTrue(registerReceipt.Success);
+        }
+        else
+        {
+            // schema exists
+        }
+
+
 
         throw new NotImplementedException("Not implemented");
 
         //
 
-        var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
-            "register",
-            senderAddress,
-            null,
-            simpleRevocableBool);
-
-        registerEstimate = registerEstimate.InEther();
-
-        //
-
-        var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
-
-        var runner = new TransactionRunnerNative(sender, loggerFactory);
-
-        var registerReceipt = await runner.RunTransactionAsync(
-            schemaRegistry,
-            "register",
-            registerOptions,
-            simpleRevocableBool,
-            CancellationToken.None);
-
-        Console.WriteLine(registerReceipt);
-
-        // read the event data
-
-        bool hasRegistered = schemaRegistry.TryReadEventLogsFromReceipt(
-            registerReceipt, "Registered", out var indexed, out var data);
-
-        if (!hasRegistered)
-        {
-            throw new Exception("The event was not found in the receipt");
-        }
-
-        if (data == null || data.None())
-        {
-            throw new Exception("The event data was not found in the receipt");
-        }
-
-        foreach (var (key, value) in data)
-        {
-            Console.WriteLine($"{key}: {value}");
-        }
-
-        Assert.IsNotNull(registerReceipt);
-        Assert.IsTrue(registerReceipt.Success);
     }
 
     [TestMethod]

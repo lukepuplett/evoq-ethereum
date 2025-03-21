@@ -663,4 +663,46 @@ public class AbiSignatureTests
         Assert.AreEqual(1, dataParams.Count);
         Assert.AreEqual("value", dataParams[0].Name);
     }
+
+    [TestMethod]
+    public void EventSignature_WithMixedIndexedParameters_SetsIsIndexedCorrectly()
+    {
+        // Arrange & Act
+        var signature = AbiSignature.Parse(AbiItemType.Event,
+            "SchemaRegistered(bytes32 indexed uid, address indexed registerer, (bytes32 uid, address resolver, bool revocable, string schema) schema)");
+
+        // Assert
+        Assert.AreEqual(3, signature.Inputs.Count, "Should have exactly 3 parameters");
+
+        // First parameter (indexed bytes32)
+        Assert.AreEqual("uid", signature.Inputs[0].Name, "First parameter should be named 'uid'");
+        Assert.AreEqual("bytes32", signature.Inputs[0].AbiType, "First parameter should be bytes32");
+        Assert.IsTrue(signature.Inputs[0].IsIndexed, "First parameter should be indexed");
+
+        // Second parameter (indexed address)
+        Assert.AreEqual("registerer", signature.Inputs[1].Name, "Second parameter should be named 'registerer'");
+        Assert.AreEqual("address", signature.Inputs[1].AbiType, "Second parameter should be address");
+        Assert.IsTrue(signature.Inputs[1].IsIndexed, "Second parameter should be indexed");
+
+        // Third parameter (non-indexed tuple)
+        Assert.AreEqual("schema", signature.Inputs[2].Name, "Third parameter should be named 'schema'");
+        Assert.IsFalse(signature.Inputs[2].IsIndexed, "Tuple parameter should not be indexed");
+
+        // Verify tuple components
+        Assert.IsTrue(signature.Inputs[2].TryParseComponents(out var components), "Should be able to parse tuple components");
+        Assert.IsNotNull(components);
+        Assert.AreEqual(4, components.Count, "Tuple should have 4 components");
+
+        // Verify none of the tuple components are marked as indexed
+        foreach (var component in components)
+        {
+            Assert.IsFalse(component.IsIndexed, $"Tuple component {component.Name} should not be indexed");
+        }
+
+        // Verify canonical signature is correct
+        Assert.AreEqual(
+            "SchemaRegistered(bytes32,address,(bytes32,address,bool,string))",
+            signature.GetCanonicalInputsSignature(),
+            "Canonical signature should match expected format");
+    }
 }

@@ -121,7 +121,10 @@ public static class AbiExtensions
                 return string.Empty;
             }
 
-            var formattedParams = AbiParameterFormatter.FormatParameters(parameters, includeNames: true);
+            var formattedParams = AbiParameterFormatter.FormatParameters(
+                parameters,
+                includeNames: true,
+                includeIndexed: true);
 
             return formattedParams;
         }

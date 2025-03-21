@@ -598,4 +598,54 @@ public class AbiParameterFormatterTests
         // Assert
         Assert.AreEqual("((uint256 id,address owner) indexed data,string description)", result);
     }
+
+    [TestMethod]
+    public void FormatParameters_RegisteredEventFromContractAbi_ReturnsCorrectFormat()
+    {
+        // Arrange
+        var contractAbiItem = new ContractAbiItem
+        {
+            Type = "event",
+            Name = "Registered",
+            Inputs = new List<ContractAbiParameter>
+            {
+                new ContractAbiParameter
+                {
+                    Type = "bytes32",
+                    Name = "uid",
+                    Indexed = true
+                },
+                new ContractAbiParameter
+                {
+                    Type = "address",
+                    Name = "registerer",
+                    Indexed = true
+                },
+                new ContractAbiParameter
+                {
+                    Type = "tuple",
+                    Name = "schema",
+                    Components = new List<ContractAbiParameter>
+                    {
+                        new ContractAbiParameter { Type = "bytes32", Name = "uid" },
+                        new ContractAbiParameter { Type = "address", Name = "resolver" },
+                        new ContractAbiParameter { Type = "bool", Name = "revocable" },
+                        new ContractAbiParameter { Type = "string", Name = "schema" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = AbiParameterFormatter.FormatParameters(
+            contractAbiItem.Inputs,
+            includeNames: true,
+            includeIndexed: true);
+
+        // Assert
+        Assert.AreEqual(
+            "(bytes32 indexed uid,address indexed registerer,(bytes32 uid,address resolver,bool revocable,string schema) schema)",
+            result,
+            "Event signature format should match EAS schema registry exactly");
+    }
 }

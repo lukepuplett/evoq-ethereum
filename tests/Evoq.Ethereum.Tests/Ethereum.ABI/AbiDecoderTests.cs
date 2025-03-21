@@ -59,6 +59,51 @@ public class AbiDecoderTests
         ValidateDecodedParameters(testCase.Values, result.Parameters, caseNumber, testCase.Name, "root");
     }
 
+    [TestMethod]
+    public void Decode_SchemaRegistryEvent_Data()
+    {
+        // Arrange
+        var data = "0x00000000000000000000000000000000000000000000000000000000000000208af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000c626f6f6c20697348756d616e0000000000000000000000000000000000000000";
+
+        // This represents the non-indexed parameters of the Registered event
+        var signature = AbiSignature.Parse(AbiItemType.Event, "schema((bytes32 uid,address resolver,bool revocable,string schema))");
+
+        // Act
+        var result = decoder.DecodeParameters(signature.Inputs, Hex.Parse(data).ToByteArray());
+
+        // Assert
+        Assert.IsNotNull(result, "Decoding result should not be null");
+        Assert.AreEqual(1, result.Parameters.Count, "Should have exactly one parameter (the schema tuple)");
+
+        // Get the schema tuple
+        var schemaTuple = result.Parameters[0].Value as IDictionary<string, object?>;
+        Assert.IsNotNull(schemaTuple, "Schema tuple should decode to a dictionary");
+
+        // Check uid
+        Assert.IsTrue(schemaTuple.TryGetValue("uid", out var uidObj), "Schema tuple should contain 'uid' field");
+        var uid = uidObj as byte[];
+        Assert.IsNotNull(uid, "uid should be a byte array");
+        Assert.AreEqual(
+            "0x8af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6",
+            Hex.FromBytes(uid).ToString(),
+            "uid value does not match expected bytes32");
+
+        // Check resolver
+        Assert.IsTrue(schemaTuple.TryGetValue("resolver", out var resolverObj), "Schema tuple should contain 'resolver' field");
+        var resolver = (EthereumAddress)resolverObj!;
+        Assert.AreEqual(EthereumAddress.Zero, resolver, "resolver should be zero address");
+
+        // Check revocable
+        Assert.IsTrue(schemaTuple.TryGetValue("revocable", out var revocableObj), "Schema tuple should contain 'revocable' field");
+        Assert.IsNotNull(revocableObj, "revocable value should not be null");
+        Assert.IsTrue((bool)revocableObj!, "revocable should be true");
+
+        // Check schema string
+        Assert.IsTrue(schemaTuple.TryGetValue("schema", out var schemaObj), "Schema tuple should contain 'schema' field");
+        Assert.IsNotNull(schemaObj, "schema string should not be null");
+        Assert.AreEqual("bool isHuman", schemaObj, "schema string does not match expected value");
+    }
+
     //
 
     private static IEnumerable<object[]> GetTestCases()

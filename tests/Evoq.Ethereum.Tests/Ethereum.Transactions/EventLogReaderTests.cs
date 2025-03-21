@@ -282,4 +282,69 @@ public class EventLogReaderTests
         Assert.IsNull(indexed);
         Assert.IsNull(data);
     }
+
+    [TestMethod]
+    public void TryRead_SchemaRegistered_DecodesCorrectly()
+    {
+        // Arrange
+        var eventSignature = AbiSignature.Parse(AbiItemType.Event,
+            "Registered(bytes32 indexed uid, address indexed registerer, tuple(bytes32 uid, address resolver, bool revocable, string schema) schema)");
+
+        var log = new TransactionLog
+        {
+            Topics = new[]
+            {
+                // Event signature hash
+                Hex.Parse("0xd0b86852e21f9e5fa4bc3b0cff9757ffe243d50c4b43968a42202153d651ea5e"),
+                // indexed uid
+                Hex.Parse("0x8af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6"),
+                // indexed registerer
+                Hex.Parse("0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+            },
+            // The schema tuple data
+            Data = Hex.Parse("0x00000000000000000000000000000000000000000000000000000000000000208af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000c626f6f6c20697348756d616e0000000000000000000000000000000000000000")
+        };
+
+        var receipt = new TransactionReceipt { Logs = new[] { log } };
+
+        // Act
+        bool result = reader.TryRead(receipt, eventSignature, out var indexed, out var data);
+
+        // Assert
+        Assert.IsTrue(result, "Should successfully decode the event");
+        Assert.IsNotNull(indexed, "Indexed parameters should not be null");
+        Assert.IsNotNull(data, "Data parameters should not be null");
+
+        // Check indexed parameters
+        Assert.AreEqual(2, indexed!.Count, "Should have 2 indexed parameters");
+
+        var indexedUid = (byte[])indexed["uid"]!;
+        Assert.AreEqual(
+            "0x8af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6",
+            Hex.FromBytes(indexedUid).ToString(),
+            "Indexed uid does not match");
+
+        var registerer = (EthereumAddress)indexed["registerer"]!;
+        Assert.AreEqual(
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            registerer.ToString(),
+            "Registerer address does not match");
+
+        // Check schema tuple in data
+        Assert.AreEqual(1, data!.Count, "Should have 1 data parameter (the schema tuple)");
+        var schemaTuple = (IDictionary<string, object?>)data["schema"]!;
+
+        // Check schema tuple fields
+        var schemaUid = (byte[])schemaTuple["uid"]!;
+        Assert.AreEqual(
+            "0x8af15e65888f2e3b487e536a4922e277dcfe85b4b18187b0cf9afdb802ba6bb6",
+            Hex.FromBytes(schemaUid).ToString(),
+            "Schema uid does not match");
+
+        var resolver = (EthereumAddress)schemaTuple["resolver"]!;
+        Assert.AreEqual(EthereumAddress.Zero.ToString(), resolver.ToString(), "Resolver should be zero address");
+
+        Assert.IsTrue((bool)schemaTuple["revocable"]!, "Schema should be revocable");
+        Assert.AreEqual("bool isHuman", schemaTuple["schema"], "Schema string does not match");
+    }
 }
