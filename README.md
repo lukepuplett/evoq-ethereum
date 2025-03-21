@@ -336,6 +336,100 @@ BLOCKCHAIN__ETHEREUM__ADDRESSES__HARDHAT1PRIVATEKEY=0xaaaaaaaaaaaaaaaaaaaaaaaaaa
 3. Consider using Azure Key Vault or similar services for production environments
 4. Use test accounts and test networks for development
 
+## Examples
+
+The library includes several example implementations in the `tests/Evoq.Ethereum.Tests/Ethereum.Examples` directory. These examples demonstrate common use cases and best practices.
+
+### Running Examples Locally
+
+To run the examples locally:
+
+1. Start a local Hardhat node:
+```bash
+pnpm hardhat node
+```
+
+2. Deploy the required contracts (if any):
+```bash
+# For EAS examples
+npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
+
+# For ERC-20 examples
+# The examples use the DAI token contract on mainnet, but you can modify the address
+# to use a local token contract for testing
+```
+
+3. Run the examples using the test runner:
+```bash
+dotnet test --filter "FullyQualifiedName~Evoq.Ethereum.Examples"
+```
+
+### Available Examples
+
+#### ERC-20 Token Operations
+
+The `ExampleERC20.cs` demonstrates common ERC-20 token operations:
+
+```csharp
+// Simple token transfer
+var transferAmount = EtherAmount.FromWei(1_000_000_000_000_000_000); // 1 DAI
+var estimate = await contract.EstimateTransactionFeeAsync(
+    "transfer",
+    senderAddress,
+    null,
+    AbiKeyValues.Create("to", recipientAddress, "amount", transferAmount));
+
+// Approve and transferFrom pattern
+var approveAmount = EtherAmount.FromWei(1_000_000_000_000_000_000); // 1 DAI
+await contract.InvokeMethodAsync(
+    "approve",
+    nonce,
+    options,
+    AbiKeyValues.Create("spender", spenderAddress, "amount", approveAmount));
+```
+
+Key features demonstrated:
+- Direct token transfers
+- Approve and transferFrom operations
+- Event handling for Transfer and Approval events
+- Balance checking
+- Gas estimation for token operations
+
+#### Ethereum Attestation Service (EAS)
+
+The `ExampleEAS.cs` shows how to interact with the Ethereum Attestation Service:
+
+```csharp
+// Register a schema
+var registerArgs = AbiKeyValues.Create(
+    ("schema", "bool"),
+    ("resolver", EthereumAddress.Zero),
+    ("revocable", true));
+
+var registerReceipt = await runner.RunTransactionAsync(
+    schemaRegistry,
+    "register",
+    registerOptions,
+    registerArgs,
+    CancellationToken.None);
+```
+
+Key features demonstrated:
+- Schema registration
+- Schema retrieval
+- Event handling
+- Gas estimation for contract operations
+
+### Example Structure
+
+Each example follows a consistent structure:
+1. Setup of chain, endpoint, and logging
+2. Account management
+3. Contract initialization
+4. Transaction preparation and execution
+5. Event handling and verification
+6. Error handling
+
 ## Usage
 
 ### Basic Setup
@@ -384,6 +478,17 @@ var result = await runner.RunTransactionAsync(
     AbiKeyValues.Create("param1", "value1", "param2", "value2"),
     CancellationToken.None);
 ```
+
+For real-world examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum.Examples` directory:
+- `ExampleERC20.cs` - Demonstrates ERC-20 token transfers and approvals
+- `ExampleEAS.cs` - Shows interaction with the Ethereum Attestation Service
+
+The ERC-20 example includes:
+- Simple token transfers
+- Approve and transferFrom operations
+- Event handling for Transfer and Approval events
+- Balance checking
+- Gas estimation for token operations
 
 #### 2. Using RawContractCaller
 
@@ -655,9 +760,11 @@ For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum
   - Implemented with EAS Schema Registry example
   - Shows contract method calls and parameter handling
   - Includes gas estimation for contract calls
-- [ ] Create ERC-20 token transfer example
-  - Infrastructure exists (gas limits defined)
-  - Need to add example implementation
+- [x] Create ERC-20 token transfer example
+  - Implemented in ExampleERC20.cs
+  - Shows direct transfers and approve/transferFrom pattern
+  - Includes event handling and balance checking
+  - Demonstrates gas estimation for token operations
 - [ ] Create NFT minting example (ERC-721)
   - Infrastructure exists (gas limits defined)
   - Need to add example implementation
