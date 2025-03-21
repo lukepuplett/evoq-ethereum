@@ -364,6 +364,58 @@ npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
 dotnet test --filter "FullyQualifiedName~Evoq.Ethereum.Examples"
 ```
 
+### Setting Up EAS for Local Development
+
+The EAS examples require the Ethereum Attestation Service contracts to be deployed locally. Here's how to set it up:
+
+1. Clone the EAS contracts repository:
+```bash
+git clone https://github.com/ethereum-attestation-service/eas-contracts.git
+cd eas-contracts
+pnpm install
+```
+
+2. Install Hardhat Ignition:
+```bash
+pnpm add --dev @nomicfoundation/hardhat-ignition
+```
+
+3. Create an Ignition deployment script:
+```bash
+mkdir -p ignition/modules
+```
+
+Create a file at `ignition/modules/eas.ts`:
+```typescript
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+
+export default buildModule("EASDeployment", (m) => {
+    // Deploy SchemaRegistry first (no constructor args needed)
+    const schemaRegistry = m.contract("SchemaRegistry");
+
+    // Deploy EAS with SchemaRegistry address
+    const eas = m.contract("EAS", [schemaRegistry]);
+
+    // Return the contract instances
+    return {
+        schemaRegistry,
+        eas,
+    };
+});
+```
+
+4. Update your `hardhat.config.ts` to include Ignition:
+```typescript
+import "@nomicfoundation/hardhat-ignition";
+```
+
+5. Deploy the contracts to your local Hardhat node:
+```bash
+npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
+```
+
+After deployment, you'll see output with the deployed contract addresses. The SchemaRegistry will be deployed first, followed by the EAS contract that references it.
+
 ### Available Examples
 
 #### ERC-20 Token Operations
