@@ -16,7 +16,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    [Ignore]
+    // [Ignore]
     public async Task ExampleEAS_Send()
     {
         string baseUrl, chainName;
@@ -68,17 +68,17 @@ public class ExampleEAS
         var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
-        var registerResult = await runner.RunTransactionAsync(
+        var registerReceipt = await runner.RunTransactionAsync(
             contract,
             "register",
             registerOptions,
             registerArgs,
             CancellationToken.None);
 
-        Console.WriteLine(registerResult);
+        Console.WriteLine(registerReceipt);
 
-        Assert.IsNotNull(registerResult);
-        Assert.IsTrue(registerResult.Success);
+        Assert.IsNotNull(registerReceipt);
+        Assert.IsTrue(registerReceipt.Success);
     }
 
     [TestMethod]

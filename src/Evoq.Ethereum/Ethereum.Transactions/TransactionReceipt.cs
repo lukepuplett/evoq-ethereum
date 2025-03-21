@@ -155,6 +155,12 @@ public class TransactionReceipt
             BlobGasPrice = dto.BlobGasPriceHex != null ? ParseEtherAmount(dto.BlobGasPriceHex) : null,
         };
     }
+
+    /// <summary>
+    /// Returns a string representation of the transaction receipt.
+    /// </summary>
+    /// <returns>A string representation of the transaction receipt.</returns>
+    public override string ToString() => $"Tx {TransactionHash} Block {BlockNumber} {(Success ? "✓" : "✗")}";
 }
 
 /// <summary>
