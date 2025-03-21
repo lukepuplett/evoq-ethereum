@@ -48,7 +48,7 @@ public class RawContractCaller
         string abiSignature,
         params (string name, object? value)[] simpleParams)
     {
-        return await this.SimpleCall(contractAddress, EthereumAddress.Zero, abiSignature, BigInteger.Zero, simpleParams);
+        return await this.CallAsync(contractAddress, EthereumAddress.Zero, abiSignature, BigInteger.Zero, simpleParams);
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ public class RawContractCaller
     /// <param name="value">The value to send with the call.</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
-    public async Task<Hex> SimpleCall(
+    public async Task<Hex> CallAsync(
         EthereumAddress contractAddress,
         EthereumAddress from,
         string abiSignature,
