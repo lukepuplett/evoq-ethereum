@@ -494,16 +494,21 @@ For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum
   - Secure key handling
   - Account management
 - [x] Nonce management
-  - File-based nonce tracking
-  - Transaction sequence handling
+  - Implemented InMemoryNonceStore for testing
+  - Implemented FileSystemNonceStore for development
+  - Comprehensive gap detection and handling
+  - Retry mechanism with cooldown
+  - Thread-safe implementations
 - [x] Fee estimation (EIP-1559)
   - Base fee and priority fee calculations
   - Support for fee market
 
 ### Documentation
-- [ ] Add usage examples to README
-  - Need to add code samples for common operations
-  - Include transaction and contract interaction examples
+- [x] Add usage examples to README
+  - Added comprehensive examples for basic setup
+  - Added contract interaction examples
+  - Added nonce management documentation
+  - Added gas estimation examples
 - [ ] Create documentation site
   - Need to set up documentation hosting
   - Should include API reference and guides
@@ -514,6 +519,7 @@ For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum
   - Need to document design choices
   - Explain transaction type implementations
   - Document fee calculation approach
+  - Document nonce management strategy
 
 ## Building
 
@@ -640,40 +646,3 @@ npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
 After successful deployment, you'll see output similar to:
 
 ```
-Hardhat Ignition 🚀
-
-Deploying [ EASDeployment ]
-
-Batch #1
-  Executed EASDeployment#SchemaRegistry
-
-Batch #2
-  Executed EASDeployment#EAS
-
-[ EASDeployment ] successfully deployed 🚀
-
-Deployed Addresses
-
-EASDeployment#SchemaRegistry - 0x5FbDB2315678afecb367f032d93F642f64180aa3
-EASDeployment#EAS - 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-```
-
-These contract addresses can be used in your application to interact with the EAS system on your local development environment.
-
-### Integration Testing
-
-With the local Hardhat node running and EAS contracts deployed, you can now test your Ethereum applications against a fully functional local blockchain environment. This setup is ideal for:
-
-- Testing smart contract interactions
-- Developing and testing dApps
-- Validating EAS attestation functionality
-- Simulating various blockchain scenarios without spending real ETH
-
-## Author
-
-Luke Puplett
-
-## Project Links
-
-- [GitHub Repository](https://github.com/lukepuplett/evoq-ethereum)
-- [NuGet Package](https://www.nuget.org/packages/Evoq.Ethereum)
