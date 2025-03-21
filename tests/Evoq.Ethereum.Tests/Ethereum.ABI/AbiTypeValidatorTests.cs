@@ -84,10 +84,11 @@ public class AbiTypeValidatorTests
 
         // bytes32
         Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[32], out m), m);
+        Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[31], out m), m); // Should pass - can be padded
 
-        // bytes32 wrong size only fails if tryEncoding
-        Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[31], out m), m); // Wrong size
-        Assert.IsFalse(this.validator.IsCompatible("bytes32", new byte[31], out m, tryEncoding: true), m); // Wrong size
+        // bytes32 too large should fail
+        Assert.IsTrue(this.validator.IsCompatible("bytes32", new byte[33], out m), m); // Should fail with tryEncoding
+        Assert.IsFalse(this.validator.IsCompatible("bytes32", new byte[33], out m, tryEncoding: true), m); // Too large
     }
 
     [TestMethod]

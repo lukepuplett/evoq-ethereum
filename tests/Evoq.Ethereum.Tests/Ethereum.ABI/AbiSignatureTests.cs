@@ -202,14 +202,14 @@ public class AbiSignatureTests
             true
         };
 
-        var with31 = new List<object?> { new byte[31], values[1], values[2] };
+        var withTooLarge = new List<object?> { new byte[33], values[1], values[2] };
 
         // Act & Assert
         Assert.IsTrue(signature.ValidateParameters(this.validator, values, out m), m);
 
-        // OK if simple type check but not if tryEncoding
-        Assert.IsTrue(signature.ValidateParameters(this.validator, with31, out m), m);
-        Assert.IsFalse(signature.ValidateParameters(this.validator, with31, out m, tryEncoding: true), m);
+        // Should fail when bytes32 array is too large
+        Assert.IsTrue(signature.ValidateParameters(this.validator, withTooLarge, out m), m);
+        Assert.IsFalse(signature.ValidateParameters(this.validator, withTooLarge, out m, tryEncoding: true), m);
     }
 
     [TestMethod]
