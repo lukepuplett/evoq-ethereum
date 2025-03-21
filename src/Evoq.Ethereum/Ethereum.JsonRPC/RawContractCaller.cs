@@ -43,7 +43,7 @@ public class RawContractCaller
     /// <param name="abiSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
-    public async Task<Hex> SimpleCall(
+    public async Task<Hex> CallAsync(
         EthereumAddress contractAddress,
         string abiSignature,
         params (string name, object? value)[] simpleParams)

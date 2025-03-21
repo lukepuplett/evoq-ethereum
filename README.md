@@ -397,7 +397,7 @@ var caller = new RawContractCaller(endpoint);
 var recipientAddress = new EthereumAddress("0x3333333333333333333333333333333333333333");
 
 // Call a contract method using its signature
-var result = await caller.SimpleCall(
+var result = await caller.CallAsync(
     contractAddress,
     "transfer(address,uint256)",
     ("to", recipientAddress),
