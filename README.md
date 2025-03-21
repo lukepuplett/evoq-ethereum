@@ -320,21 +320,40 @@ The `TransactionRunnerNative` works in collaboration with the `INonceStore` to m
 - Preventing transaction replay attacks
 - Ensuring transactions are processed in the correct order
 - Handling transaction failures and retries
+- Detecting and handling gaps in the nonce sequence
 
-The runner will:
-1. Get the next available nonce from the store
-2. Use it for the transaction
-3. Roll back the nonce if the transaction fails
-4. Detect and handle gaps in the nonce sequence
-
-You can implement your own nonce store by implementing the `INonceStore` interface:
+The nonce store provides several key operations:
 
 ```csharp
 public interface INonceStore
 {
-    Task<ulong> GetNextNonceAsync(EthereumAddress address);
-    Task RollbackNonceAsync(EthereumAddress address, ulong nonce);
-    Task CommitNonceAsync(EthereumAddress address, ulong nonce);
+    // Reserve the next nonce for immediate use
+    Task<uint> BeforeSubmissionAsync();
+
+    // Handle various failure scenarios
+    Task<NonceRollbackResponse> AfterSubmissionFailureAsync(uint nonce);
+    Task<NonceRollbackResponse> AfterTransactionRevertedAsync(uint nonce);
+    Task<NonceRollbackResponse> AfterTransactionOutOfGas(uint nonce);
+    
+    // Handle success
+    Task AfterSubmissionSuccessAsync(uint nonce);
+    
+    // Handle nonce too low errors
+    Task<uint> AfterNonceTooLowAsync(uint nonce);
+}
+```
+
+The `NonceRollbackResponse` enum indicates what action should be taken:
+
+```csharp
+public enum NonceRollbackResponse
+{
+    NonceNotFound,        // Nonce record was not found
+    RemovedOkay,          // Nonce removed, no gap detected
+    RemovedGapDetected,   // Nonce removed, gap detected
+    NotRemovedShouldRetry, // Keep nonce and retry transaction
+    NotRemovedDueToError,  // Nonce removal failed due to error
+    NotRemovedGasSpent     // Nonce kept because gas was spent
 }
 ```
 
@@ -345,30 +364,54 @@ public class DatabaseNonceStore : INonceStore
 {
     private readonly IDbConnection _db;
     
-    public async Task<ulong> GetNextNonceAsync(EthereumAddress address)
+    public async Task<uint> BeforeSubmissionAsync()
     {
         // Get the highest committed nonce
-        var lastNonce = await _db.QueryFirstOrDefaultAsync<ulong>(
-            "SELECT MAX(Nonce) FROM Transactions WHERE Address = @Address",
-            new { Address = address });
+        var lastNonce = await _db.QueryFirstOrDefaultAsync<uint>(
+            "SELECT MAX(Nonce) FROM Transactions WHERE Status = 'Success'");
             
         return lastNonce + 1;
     }
     
-    public async Task RollbackNonceAsync(EthereumAddress address, ulong nonce)
+    public async Task<NonceRollbackResponse> AfterSubmissionFailureAsync(uint nonce)
     {
-        // Remove any failed transaction records
+        // Check for gaps by looking for higher nonces
+        var hasGap = await _db.QueryFirstOrDefaultAsync<bool>(
+            "SELECT EXISTS(SELECT 1 FROM Transactions WHERE Nonce > @Nonce)",
+            new { Nonce = nonce });
+            
+        // Remove the failed nonce
         await _db.ExecuteAsync(
-            "DELETE FROM Transactions WHERE Address = @Address AND Nonce = @Nonce",
-            new { Address = address, Nonce = nonce });
+            "DELETE FROM Transactions WHERE Nonce = @Nonce",
+            new { Nonce = nonce });
+            
+        return hasGap ? NonceRollbackResponse.RemovedGapDetected : NonceRollbackResponse.RemovedOkay;
     }
     
-    public async Task CommitNonceAsync(EthereumAddress address, ulong nonce)
+    public async Task<NonceRollbackResponse> AfterTransactionRevertedAsync(uint nonce)
+    {
+        // Similar to AfterSubmissionFailureAsync but with specific revert handling
+        return await AfterSubmissionFailureAsync(nonce);
+    }
+    
+    public async Task<NonceRollbackResponse> AfterTransactionOutOfGas(uint nonce)
+    {
+        // Keep the nonce since gas was spent
+        return NonceRollbackResponse.NotRemovedGasSpent;
+    }
+    
+    public async Task AfterSubmissionSuccessAsync(uint nonce)
     {
         // Record the successful transaction
         await _db.ExecuteAsync(
-            "INSERT INTO Transactions (Address, Nonce) VALUES (@Address, @Nonce)",
-            new { Address = address, Nonce = nonce });
+            "INSERT INTO Transactions (Nonce, Status) VALUES (@Nonce, 'Success')",
+            new { Nonce = nonce });
+    }
+    
+    public async Task<uint> AfterNonceTooLowAsync(uint nonce)
+    {
+        // Get the next available nonce
+        return await BeforeSubmissionAsync();
     }
 }
 ```
@@ -378,6 +421,7 @@ The default `FileNonceStore` is suitable for development and testing, but for pr
 - Handles concurrent access safely
 - Provides transaction rollback capabilities
 - Maintains an audit trail of nonce usage
+- Properly handles gaps in the nonce sequence
 
 ### Gas Estimation
 
