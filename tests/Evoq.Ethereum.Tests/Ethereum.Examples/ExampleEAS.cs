@@ -69,9 +69,8 @@ public class ExampleEAS
 
         //
 
-        var decoder = new AbiDecoder();
-        var getSchemaReturnParams = AbiParameters.Parse("((bytes32 uid, address resolver, bool revocable, string schema) record)");
-        var getSchemaDecodedResult = decoder.DecodeParameters(getSchemaReturnParams, schemaUidReturnedHex);
+        var getSchemaDecodedResult = caller.DecodeParameters(
+            "((bytes32 uid, address resolver, bool revocable, string schema) record)", schemaUidReturnedHex);
 
         Assert.IsTrue(getSchemaDecodedResult.Parameters.TryFirst(out var first));
 
