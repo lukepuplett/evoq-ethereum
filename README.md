@@ -83,6 +83,132 @@ For more detailed examples, see the [Usage](#usage) section below.
 - Type-safe Ethereum data structures
 - Simplified Web3 interactions
 
+## Main Types and Usage
+
+### Core Types
+
+#### `EthereumAddress`
+Represents an Ethereum address for an EOA or smart contract. Provides methods for address validation, checksum handling, and conversion between different formats.
+
+```csharp
+// Create an address from a hex string
+var address = new EthereumAddress("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+
+// Check if address is zero address
+bool isZero = address.IsZero;
+
+// Get address in checksum format
+string checksumAddress = address.ToString(); // Returns EIP-55 checksummed address
+```
+
+#### `EtherAmount`
+Represents an amount of Ethereum currency with support for Wei and Ether units.
+
+```csharp
+// Create amounts in different units
+var amountInWei = EtherAmount.FromWei(1000000000000000000); // 1 ETH
+var amountInEther = EtherAmount.FromEther(1.5m); // 1.5 ETH
+
+// Convert between units
+decimal etherValue = amountInWei.ToEther();
+BigInteger weiValue = amountInEther.ToWei();
+
+// Format for display
+string display = amountInEther.ToString(4); // "1.5000 ETH"
+```
+
+#### `Chain`
+Represents a specific blockchain network and provides methods for interacting with it.
+
+```csharp
+// Get current gas price
+var gasPrice = await chain.GasPriceAsync();
+
+// Get base fee (EIP-1559)
+var baseFee = await chain.GetBaseFeeAsync();
+
+// Estimate gas for ETH transfer
+var transferGas = await chain.GetEthTransferGasAsync();
+```
+
+#### `Contract`
+Represents a smart contract at a specific address on a chain.
+
+```csharp
+// Create a contract instance
+var contract = new Contract(chainId, chainClient, contractClient, abiStream, contractAddress);
+
+// Access contract address
+var address = contract.Address;
+
+// Get chain instance
+var chain = contract.Chain;
+```
+
+### Transaction Types
+
+#### `TransactionReceipt`
+Contains details about a completed Ethereum transaction.
+
+```csharp
+// Access transaction details
+var receipt = await chain.GetTransactionReceiptAsync(txHash);
+
+// Check transaction success
+bool success = receipt.Success;
+
+// Get gas used
+var gasUsed = receipt.GasUsed;
+
+// Get effective gas price (EIP-1559)
+var effectiveGasPrice = receipt.EffectiveGasPrice;
+```
+
+### Message Signing
+
+#### `PersonalSign`
+Handles signing and verification of personal messages.
+
+```csharp
+// Create a personal sign instance
+var personalSign = new PersonalSign("Hello Ethereum!", signer);
+
+// Get signature
+byte[] signature = personalSign.GetSignature();
+```
+
+### Constants and Utilities
+
+#### `WeiAmounts`
+Provides common Ethereum value constants and conversion utilities.
+
+```csharp
+// Common denominations
+var oneEther = WeiAmounts.Ether;
+var oneGwei = WeiAmounts.Gwei;
+
+// Common gas limits
+var transferGas = WeiAmounts.EthTransferGas;
+var contractDeploymentGas = WeiAmounts.ContractDeploymentGas;
+
+// Common gas prices
+var lowPriorityFee = WeiAmounts.LowPriorityFee;
+var urgentPriorityFee = WeiAmounts.UrgentPriorityFee;
+```
+
+### JSON-RPC Types
+
+#### `JsonRpcClient`
+Handles communication with Ethereum nodes using JSON-RPC.
+
+```csharp
+// Create a JSON-RPC client
+var client = new JsonRpcClient(httpClient, logger);
+
+// Send requests
+var response = await client.SendRequestAsync(method, parameters);
+```
+
 ## Implementation Notes
 
 ### BigInteger Implementations
