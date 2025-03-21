@@ -45,9 +45,148 @@ This package targets .NET Standard 2.1 for maximum compatibility across:
 
 ## Usage
 
+### Basic Setup
+
+First, set up your chain and endpoint:
+
 ```csharp
-// Example usage will be added as features are implemented
+// Create a chain instance (e.g., for Hardhat local network)
+var chain = Chain.CreateDefault(chainId, new Uri("http://localhost:8545"), loggerFactory);
+
+// Create an endpoint for contract interactions
+var endpoint = new Endpoint("hardhat", "hardhat", "http://localhost:8545", loggerFactory);
 ```
+
+### Contract Interaction
+
+There are two main ways to interact with contracts:
+
+#### 1. Using the Contract Class (Recommended)
+
+This approach provides type-safe contract interaction with ABI support:
+
+```csharp
+// Get the contract ABI
+var abiStream = AbiFileHelper.GetAbiStream("YourContract.abi.json");
+var contractAddress = new EthereumAddress("0x...");
+
+// Create a contract instance
+var contract = chain.GetContract(contractAddress, endpoint, sender, abiStream);
+
+// Estimate gas for a transaction
+var estimate = await contract.EstimateTransactionFeeAsync(
+    "yourMethod",
+    senderAddress,
+    null,
+    AbiKeyValues.Create("param1", "value1", "param2", "value2"));
+
+// Create transaction options
+var options = new ContractInvocationOptions(estimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+
+// Call the contract method
+var result = await runner.RunTransactionAsync(
+    contract,
+    "yourMethod",
+    options,
+    AbiKeyValues.Create("param1", "value1", "param2", "value2"),
+    CancellationToken.None);
+```
+
+#### 2. Using RawContractCaller
+
+For simpler cases or when you don't have the ABI, use the RawContractCaller:
+
+```csharp
+// Create a raw contract caller
+var caller = new RawContractCaller(endpoint);
+
+// Call a contract method using its signature
+var result = await caller.SimpleCall(
+    contractAddress,
+    "transfer(address,uint256)",
+    ("to", recipientAddress),
+    ("amount", amountInWei));
+```
+
+### Working with EIP-165 Interfaces
+
+The library includes support for EIP-165 interface detection:
+
+```csharp
+// Create an EIP-165 checker
+var eip165 = new EIP165Native(endpoint);
+
+// Check if a contract supports an interface
+var supportsInterface = await eip165.SupportsInterface(
+    contractAddress,
+    Hex.Parse("0x...") // Interface ID
+);
+```
+
+### Transaction Management
+
+For transactions that require signing:
+
+```csharp
+// Set up a sender account
+var sender = new Sender(senderAccount, nonceStore);
+
+// Create a transaction runner
+var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+// Run a transaction
+var result = await runner.RunTransactionAsync(
+    contract,
+    "methodName",
+    options,
+    arguments,
+    CancellationToken.None);
+```
+
+### Gas Estimation
+
+The library provides detailed gas estimation with EIP-1559 support:
+
+```csharp
+var estimate = await contract.EstimateTransactionFeeAsync(
+    "methodName",
+    senderAddress,
+    null,
+    arguments);
+
+// Access fee components
+Console.WriteLine($"Gas Limit: {estimate.EstimatedGasLimit}");
+Console.WriteLine($"Max Fee: {estimate.SuggestedMaxFeePerGas}");
+Console.WriteLine($"Priority Fee: {estimate.SuggestedMaxPriorityFeePerGas}");
+Console.WriteLine($"Base Fee: {estimate.CurrentBaseFeePerGas}");
+```
+
+### Error Handling
+
+The library provides comprehensive error handling:
+
+```csharp
+try
+{
+    var result = await contract.InvokeMethodAsync("methodName", nonce, options, arguments);
+}
+catch (Exception ex)
+{
+    // Handle specific contract errors
+    if (ex is ContractRevertException revertEx)
+    {
+        // Handle contract revert with custom error
+        Console.WriteLine($"Contract reverted: {revertEx.Message}");
+    }
+    else
+    {
+        // Handle other errors
+        Console.WriteLine($"Error: {ex.Message}");
+    }
+}
+```
+
+For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum.Examples` directory.
 
 ## To Do List
 
