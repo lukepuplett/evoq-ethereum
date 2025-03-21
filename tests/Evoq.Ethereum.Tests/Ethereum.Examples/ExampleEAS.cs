@@ -55,11 +55,11 @@ public class ExampleEAS
             ("revocable", true));
 
         var packer = new AbiEncoderPacked();
-        var schemaUid = packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToHexStruct();
+        var schemaUid = KeccakHash.ComputeHash(packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToByteArray());
 
         var caller = new RawContractCaller(endpoint);
 
-        var schemaUidBytes = await caller.CallAsync(schemaRegistry.Address, "getSchema", ("uid", schemaUid));
+        var schemaUidBytes = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUid));
 
         Console.WriteLine("schemaUidBytes: " + schemaUidBytes);
 
