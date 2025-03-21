@@ -357,66 +357,22 @@ public enum NonceRollbackResponse
 }
 ```
 
-Example implementation using a database:
+The library provides two built-in implementations:
 
-```csharp
-public class DatabaseNonceStore : INonceStore
-{
-    private readonly IDbConnection _db;
-    
-    public async Task<uint> BeforeSubmissionAsync()
-    {
-        // Get the highest committed nonce
-        var lastNonce = await _db.QueryFirstOrDefaultAsync<uint>(
-            "SELECT MAX(Nonce) FROM Transactions WHERE Status = 'Success'");
-            
-        return lastNonce + 1;
-    }
-    
-    public async Task<NonceRollbackResponse> AfterSubmissionFailureAsync(uint nonce)
-    {
-        // Check for gaps by looking for higher nonces
-        var hasGap = await _db.QueryFirstOrDefaultAsync<bool>(
-            "SELECT EXISTS(SELECT 1 FROM Transactions WHERE Nonce > @Nonce)",
-            new { Nonce = nonce });
-            
-        // Remove the failed nonce
-        await _db.ExecuteAsync(
-            "DELETE FROM Transactions WHERE Nonce = @Nonce",
-            new { Nonce = nonce });
-            
-        return hasGap ? NonceRollbackResponse.RemovedGapDetected : NonceRollbackResponse.RemovedOkay;
-    }
-    
-    public async Task<NonceRollbackResponse> AfterTransactionRevertedAsync(uint nonce)
-    {
-        // Similar to AfterSubmissionFailureAsync but with specific revert handling
-        return await AfterSubmissionFailureAsync(nonce);
-    }
-    
-    public async Task<NonceRollbackResponse> AfterTransactionOutOfGas(uint nonce)
-    {
-        // Keep the nonce since gas was spent
-        return NonceRollbackResponse.NotRemovedGasSpent;
-    }
-    
-    public async Task AfterSubmissionSuccessAsync(uint nonce)
-    {
-        // Record the successful transaction
-        await _db.ExecuteAsync(
-            "INSERT INTO Transactions (Nonce, Status) VALUES (@Nonce, 'Success')",
-            new { Nonce = nonce });
-    }
-    
-    public async Task<uint> AfterNonceTooLowAsync(uint nonce)
-    {
-        // Get the next available nonce
-        return await BeforeSubmissionAsync();
-    }
-}
-```
+1. `InMemoryNonceStore`: A simple in-memory store using a HashSet. Suitable for testing and single-instance applications.
+   - Uses a HashSet to track nonces
+   - Handles retries with a 10-second cooldown
+   - Detects gaps in the nonce sequence
+   - Thread-safe with lock-based synchronization
 
-The default `FileNonceStore` is suitable for development and testing, but for production environments, consider implementing a more robust solution that:
+2. `FileSystemNonceStore`: A file-based store that persists nonces to disk. Better for development and testing.
+   - Stores each nonce as a file in a specified directory
+   - Handles file system concurrency
+   - Supports external nonce synchronization
+   - Includes failure tracking with timestamps
+   - Detects and handles gaps in the nonce sequence
+
+For production environments, consider implementing a more robust solution that:
 - Persists nonces across application restarts
 - Handles concurrent access safely
 - Provides transaction rollback capabilities
