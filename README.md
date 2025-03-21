@@ -413,6 +413,56 @@ When using RawContractCaller:
 - If the function signature doesn't include parameter names (e.g., `transfer(address,uint256)`), use "0", "1", etc. as parameter names to indicate position
 - The function signature should follow standard Solidity format
 
+#### 3. Handling Complex Return Types
+
+When working with contract methods that return complex types like tuples (Solidity structs), special care is needed in decoding the results, especially when using `RawContractCaller`. Here's an example using EAS's `getSchema` function:
+
+```csharp
+// 1. Make the call to get the raw bytes
+var caller = new RawContractCaller(endpoint);
+var returnedHex = await caller.CallAsync(
+    schemaRegistry.Address, 
+    "getSchema(bytes32 uid)", 
+    ("uid", schemaUid)
+);
+
+// 2. Define the return type signature
+// Note: We're defining a single tuple named "record" that matches the SchemaRecord struct
+var returnParams = AbiParameters.Parse(
+    "((bytes32 uid, address resolver, bool revocable, string schema) record)"
+);
+
+// 3. Decode the result
+var decoder = new AbiDecoder();
+var decodedResult = decoder.DecodeParameters(returnParams, returnedHex);
+
+// 4. Access the decoded data
+// The result contains a single parameter named "record" containing the tuple
+if (decodedResult.Parameters.TryFirst(out var first))
+{
+    // The tuple is represented as a dictionary
+    var record = first.Value as IDictionary<string, object?>;
+    
+    // Access individual fields
+    var uid = record["uid"];
+    var schema = record["schema"];
+    var resolver = record["resolver"];
+    var revocable = record["revocable"];
+}
+```
+
+Key points about decoding tuples:
+1. When a function returns a single tuple, it's still treated as a parameter (we name it "record" in this case)
+2. The return signature uses double parentheses: outer ones for the parameter list, inner ones for the tuple structure
+3. Field names in the tuple can be chosen arbitrarily, but it's best to match the contract's struct field names
+4. The decoded tuple is represented as a dictionary with string keys matching the field names
+5. Each field in the dictionary will have the appropriate type based on its Solidity type
+
+This pattern is particularly useful when:
+- Working with contract methods that return structs
+- Using `RawContractCaller` without full ABI information
+- Need to decode complex return types manually
+
 ### Working with EIP-165 Interfaces
 
 The library includes support for EIP-165 interface detection:

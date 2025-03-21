@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
@@ -272,6 +273,17 @@ public static class AbiExtensions
 
         return r.Parameters.First().Value;
     }
+
+    /// <summary>
+    /// Decodes a set of parameters from a hex string.
+    /// </summary>
+    /// <param name="decoder">The decoder to use.</param>
+    /// <param name="parameters">The parameters to decode.</param>
+    /// <param name="data">The hex string to decode.</param>
+    /// <returns>The decoded parameters.</returns>
+    public static AbiDecodingResult DecodeParameters(
+        this IAbiDecoder decoder, AbiParameters parameters, Hex data) =>
+            decoder.DecodeParameters(parameters, data.ToByteArray());
 
     /// <summary>
     /// Attempts to decode a value from its ABI binary representation

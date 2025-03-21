@@ -107,6 +107,17 @@ public class RawContractCaller
         return result;
     }
 
-    //
+    /// <summary>
+    /// Decodes a set of parameters from a hex string.
+    /// </summary>
+    /// <param name="returnSignature">The return signature of the function to decode.</param>
+    /// <param name="result">The result to decode.</param>
+    public AbiDecodingResult DecodeParameters(string returnSignature, Hex result)
+    {
+        var decoder = new AbiDecoder();
+        var parameters = AbiParameters.Parse(returnSignature);
+
+        return decoder.DecodeParameters(parameters, result);
+    }
 
 }

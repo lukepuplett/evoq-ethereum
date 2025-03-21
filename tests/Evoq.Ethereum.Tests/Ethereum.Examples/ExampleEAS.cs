@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
@@ -55,13 +56,33 @@ public class ExampleEAS
             ("revocable", true));
 
         var packer = new AbiEncoderPacked();
-        var schemaUid = KeccakHash.ComputeHash(packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToByteArray());
+        // var schemaUid = KeccakHash.ComputeHash(packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToByteArray());
+        var schemaUid = KeccakHash.ComputeHash(Encoding.UTF8.GetBytes("fake"));
+
+        Console.WriteLine("schemaUid: " + schemaUid.ToHexStruct());
 
         var caller = new RawContractCaller(endpoint);
 
-        var schemaUidBytes = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUid));
+        var schemaUidReturnedHex = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUid));
 
-        Console.WriteLine("schemaUidBytes: " + schemaUidBytes);
+        Assert.IsTrue(schemaUidReturnedHex.Length > 0);
+
+        //
+
+        var decoder = new AbiDecoder();
+        var getSchemaReturnParams = AbiParameters.Parse("((bytes32 uid, address resolver, bool revocable, string schema) record)");
+        var getSchemaDecodedResult = decoder.DecodeParameters(getSchemaReturnParams, schemaUidReturnedHex);
+
+        Assert.IsTrue(getSchemaDecodedResult.Parameters.TryFirst(out var first));
+
+        var record = first.Value as IDictionary<string, object?>;
+        Assert.IsNotNull(record);
+        Assert.IsTrue(record.Count == 4);
+        Assert.IsTrue(record.TryGetValue("uid", out var uid));
+        Assert.IsTrue(record.TryGetValue("schema", out var schema));
+        Assert.IsTrue(record.TryGetValue("resolver", out var resolver));
+        Assert.IsTrue(record.TryGetValue("revocable", out var revocable));
+
 
         throw new NotImplementedException("Not implemented");
 
