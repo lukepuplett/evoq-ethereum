@@ -102,7 +102,7 @@ internal class ContractClient
         IDictionary<string, object?> arguments,
         CancellationToken cancellationToken = default)
     {
-        // TODO / research access list usage for the transaction
+        // note that access lists are not supported, and no type 1 transactions
 
         var signature = contract.GetFunctionSignature(methodName);
         var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
@@ -111,7 +111,7 @@ internal class ContractClient
 
         if (options.Gas is LegacyGasOptions legacyGasOptions)
         {
-            // TODO / construct a legacy transaction
+            // construct a legacy transaction
 
             var transaction = new TransactionType0(
                 nonce: nonce,
@@ -150,8 +150,6 @@ internal class ContractClient
                 "Cannot invoke method. The gas options specified are of an unsupported type.",
                 nameof(options));
         }
-
-        // TODO / send the RLP encoded transaction over JSON RPC by encoding it as a hex string
 
         var transactionHex = new Hex(rlpEncoded);
 

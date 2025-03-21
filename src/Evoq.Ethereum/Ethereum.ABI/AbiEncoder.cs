@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -638,6 +639,8 @@ public class AbiEncoder : IAbiEncoder
 
             if (isArray)
             {
+                // e.g. bool[][2] or (string,uint256)[]
+
                 if (hasPointer)
                 {
                     // already has a pointer, so we can just encode the dynamic array
@@ -668,12 +671,10 @@ public class AbiEncoder : IAbiEncoder
             {
                 // e.g. (bool, bytes) or (bool, (uint256[][2], uint256))
 
-                if (hasPointer)
-                {
-                    // TODO
-                }
+                // added this check because in the array scenario above, we add the missing pointer
+                // but here we do not, and yet our tests pass
 
-                // TODO / I reckon this will need a pointer as per the array above
+                Debug.Assert(hasPointer, "Dynamic tuple must have a pointer");
 
                 this.EncodeDynamicTuple(context);
             }
