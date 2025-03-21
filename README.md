@@ -387,22 +387,31 @@ var result = await runner.RunTransactionAsync(
 
 #### 2. Using RawContractCaller
 
-For simpler cases or when you don't have the ABI, use the RawContractCaller:
+For simpler cases or when you don't have the ABI, use the RawContractCaller. It supports both named and positional parameters:
 
 ```csharp
 // Create a raw contract caller
 var caller = new RawContractCaller(endpoint);
 
-// Example recipient address
-var recipientAddress = new EthereumAddress("0x3333333333333333333333333333333333333333");
-
-// Call a contract method using its signature
-var result = await caller.CallAsync(
+// Example with named parameters in the signature
+var resultNamed = await caller.CallAsync(
     contractAddress,
-    "transfer(address,uint256)",
+    "transfer(address to,uint256 amount)",  // Named parameters in signature
     ("to", recipientAddress),
     ("amount", amountInWei));
+
+// Example with positional parameters (no names in signature)
+var resultPositional = await caller.CallAsync(
+    contractAddress,
+    "transfer(address,uint256)",  // No parameter names in signature
+    ("0", recipientAddress),      // Use "0" for first parameter
+    ("1", amountInWei));         // Use "1" for second parameter
 ```
+
+When using RawContractCaller:
+- If the function signature includes parameter names (e.g., `transfer(address to,uint256 amount)`), use those names when providing values
+- If the function signature doesn't include parameter names (e.g., `transfer(address,uint256)`), use "0", "1", etc. as parameter names to indicate position
+- The function signature should follow standard Solidity format
 
 ### Working with EIP-165 Interfaces
 
