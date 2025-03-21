@@ -112,7 +112,6 @@ internal class ContractClient
         if (options.Gas is LegacyGasOptions legacyGasOptions)
         {
             // construct a legacy transaction
-
             var transaction = new TransactionType0(
                 nonce: nonce,
                 gasPrice: legacyGasOptions.Price.ToBigBouncy(),
@@ -128,7 +127,6 @@ internal class ContractClient
         else if (options.Gas is EIP1559GasOptions eip1559GasOptions)
         {
             // construct an EIP-1559 transaction
-
             var transaction = new TransactionType2(
                 chainId: this.ChainId,
                 nonce: nonce,
@@ -153,10 +151,15 @@ internal class ContractClient
 
         var transactionHex = new Hex(rlpEncoded);
 
-        var result = await this.jsonRpc.SendRawTransactionAsync(
-            transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
-
-        return result;
+        try
+        {
+            return await this.jsonRpc.SendRawTransactionAsync(
+                transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        }
+        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
+        {
+            throw result!;
+        }
     }
 
     internal bool TryRead(
@@ -194,8 +197,15 @@ internal class ContractClient
             Value = value.ToHexStringForJsonRpc()
         };
 
-        return await this.jsonRpc.EstimateGasAsync(
-            transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        try
+        {
+            return await this.jsonRpc.EstimateGasAsync(
+                transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        }
+        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
+        {
+            throw result!;
+        }
     }
 
     //
@@ -217,10 +227,17 @@ internal class ContractClient
             Input = new Hex(encoded).ToString(),
         };
 
-        var result = await this.jsonRpc.CallAsync(
-            ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        try
+        {
+            var result = await this.jsonRpc.CallAsync(
+                ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
 
-        return (result, signature);
+            return (result, signature);
+        }
+        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
+        {
+            throw result!;
+        }
     }
 
     //
@@ -261,5 +278,31 @@ internal class ContractClient
         {
             return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, rlpEncoder, chainId);
         }
+    }
+
+    private static bool IsExpectedException(Exception ex, out Exception? result)
+    {
+        var messages = string.Join(", ", ex.GetAllMessages());
+
+        if (messages.Contains("out of gas", StringComparison.OrdinalIgnoreCase))
+        {
+            result = new OutOfGasException(messages);
+            return true;
+        }
+
+        if (messages.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
+        {
+            result = new InvalidNonceException(messages);
+            return true;
+        }
+
+        if (messages.Contains("reverted", StringComparison.OrdinalIgnoreCase))
+        {
+            result = new RevertedTransactionException(messages);
+            return true;
+        }
+
+        result = null;
+        return false;
     }
 }

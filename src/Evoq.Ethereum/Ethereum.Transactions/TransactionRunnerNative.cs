@@ -94,19 +94,17 @@ public class TransactionRunnerNative
     /// <returns>The expected failure.</returns>
     protected override CommonTransactionFailure GetExpectedFailure(Exception ex)
     {
-        var messages = string.Join(", ", ex.GetAllMessages());
-
-        if (messages.Contains("out of gas", StringComparison.OrdinalIgnoreCase))
+        if (ex is OutOfGasException outOfGas)
         {
             return CommonTransactionFailure.OutOfGas;
         }
 
-        if (messages.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
+        if (ex is InvalidNonceException invalidNonce)
         {
             return CommonTransactionFailure.NonceTooLow;
         }
 
-        if (messages.Contains("reverted", StringComparison.OrdinalIgnoreCase))
+        if (ex is RevertedTransactionException reverted)
         {
             return CommonTransactionFailure.Reverted;
         }

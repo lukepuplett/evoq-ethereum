@@ -43,8 +43,6 @@ public class ExampleEAS
         var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
         var sender = new Sender(senderAccount, nonceStore);
 
-        var runner = new TransactionRunnerNative(sender, loggerFactory);
-
         //
 
         var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
@@ -68,6 +66,8 @@ public class ExampleEAS
         var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
         var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
+        var runner = new TransactionRunnerNative(sender, loggerFactory);
+
         var registerReceipt = await runner.RunTransactionAsync(
             contract,
             "register",
@@ -76,6 +76,26 @@ public class ExampleEAS
             CancellationToken.None);
 
         Console.WriteLine(registerReceipt);
+
+        // read the event data
+
+        bool hasRegistered = contract.TryReadEventLogsFromReceipt(
+            registerReceipt, "Registered", out var indexed, out var data);
+
+        if (!hasRegistered)
+        {
+            throw new Exception("The event was not found in the receipt");
+        }
+
+        if (data == null || data.None())
+        {
+            throw new Exception("The event data was not found in the receipt");
+        }
+
+        foreach (var (key, value) in data)
+        {
+            Console.WriteLine($"{key}: {value}");
+        }
 
         Assert.IsNotNull(registerReceipt);
         Assert.IsTrue(registerReceipt.Success);

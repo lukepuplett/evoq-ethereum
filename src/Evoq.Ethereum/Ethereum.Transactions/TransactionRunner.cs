@@ -86,7 +86,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
-    /// <exception cref="OutOfGasTransactionException">Thrown if the transaction is out of gas.</exception>
+    /// <exception cref="OutOfGasException">Thrown if the transaction is out of gas.</exception>
     /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
     public async Task<TReceipt> RunTransactionAsync(
         TContract contract, string functionName, TOptions options, TArgs args, CancellationToken cancellationToken)
@@ -114,7 +114,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 return receipt;
             }
             catch (Exception nonceTooLow)
-            when (this.GetExpectedFailure(nonceTooLow) == CommonTransactionFailure.NonceTooLow)
+                when (this.GetExpectedFailure(nonceTooLow) == CommonTransactionFailure.NonceTooLow)
             {
                 // nonce too low, we need to increment the nonce and retry
 
@@ -123,7 +123,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 nonce = await this.nonceStore.AfterNonceTooLowAsync(nonce);
             }
             catch (Exception outOfGas)
-            when (this.GetExpectedFailure(outOfGas) == CommonTransactionFailure.OutOfGas)
+                when (this.GetExpectedFailure(outOfGas) == CommonTransactionFailure.OutOfGas)
             {
                 // transaction out of gas
 
@@ -137,31 +137,31 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 {
                     case NonceRollbackResponse.NotRemovedGasSpent:
                         // this is the expected response
-                        throw new OutOfGasTransactionException(
+                        throw new OutOfGasException(
                             $"Transaction out of gas: {r}. The nonce was retained.");
                     case NonceRollbackResponse.NotRemovedShouldRetry:
                         // this is unexpected, ignoring retry
-                        throw new OutOfGasTransactionException(
+                        throw new OutOfGasException(
                             $"Transaction out of gas: {r}. The nonce was retained.");
                     case NonceRollbackResponse.RemovedOkay:
                         // nonce was removed and no gap was created
-                        throw new OutOfGasTransactionException(
+                        throw new OutOfGasException(
                             $"Transaction out of gas: {r}. The nonce was removed but should not have been. No gap was detected.");
                     case NonceRollbackResponse.RemovedGapDetected:
                         // consider filling the gap
-                        throw new OutOfGasTransactionException(
+                        throw new OutOfGasException(
                             $"Transaction out of gas: {r}. The nonce was removed but should not have been. A gap was detected.")
                         {
                             WasNonceGapCreated = true
                         };
                     default:
                         // other response
-                        throw new OutOfGasTransactionException(
+                        throw new OutOfGasException(
                             $"Transaction out of gas: {r}. The nonce may not have been removed.");
                 }
             }
             catch (Exception reverted)
-            when (this.GetExpectedFailure(reverted) == CommonTransactionFailure.Reverted)
+                when (this.GetExpectedFailure(reverted) == CommonTransactionFailure.Reverted)
             {
                 // transaction reverted
 
