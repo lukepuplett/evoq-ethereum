@@ -2,11 +2,79 @@
 
 A lightweight .NET library providing Ethereum-specific utilities and extensions. This package builds upon Evoq.Blockchain and Nethereum to provide a simplified interface for Ethereum blockchain operations.
 
+> **⚠️ Warning: This library is not audited or extensively tested in production environments.**
+> 
+> - Use this library at your own risk
+> - Always test against your specific contracts to ensure values are not corrupted in transit
+> - Verify gas estimates and transaction parameters before sending to mainnet
+> - Consider using established libraries like Nethereum for production applications
+> - This library is primarily intended for development and testing purposes
+
 ## Installation
 
 ```
 dotnet add package Evoq.Ethereum
 ```
+
+## Getting Started
+
+Here's a minimal example to get you started with the library:
+
+```csharp
+using Evoq.Blockchain;
+using Evoq.Ethereum;
+using Microsoft.Extensions.Logging;
+
+// Set up logging
+var loggerFactory = LoggerFactory.Create(builder => 
+    builder.AddSimpleConsole(options => options.SingleLine = true));
+
+// Create a chain instance for Hardhat (local development)
+var chain = Chain.CreateDefault(
+    chainId: ulong.Parse(ChainNames.GetChainId(ChainNames.Hardhat)),
+    rpcUrl: new Uri("http://localhost:8545"),
+    loggerFactory: loggerFactory);
+
+// Create an endpoint for contract interactions
+var endpoint = new Endpoint("hardhat", "hardhat", "http://localhost:8545", loggerFactory);
+
+// Create a sender account (using a test private key)
+var senderAccount = new Account(Hex.Parse("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+var sender = new Sender(senderAccount, new FileNonceStore());
+
+// Create a transaction runner
+var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+// Example: Send 0.1 ETH to another address
+var recipient = new EthereumAddress("0x1111111111111111111111111111111111111111");
+var amount = EtherAmount.FromEther(0.1m);
+
+// Estimate gas for the transaction
+var estimate = await chain.EstimateTransactionFeeAsync(
+    senderAccount.Address,
+    recipient,
+    amount,
+    null);
+
+// Create and send the transaction
+var result = await runner.RunTransactionAsync(
+    chain,
+    recipient,
+    estimate.ToSuggestedGasOptions(),
+    amount,
+    CancellationToken.None);
+
+Console.WriteLine($"Transaction hash: {result.TransactionHash}");
+```
+
+This example demonstrates:
+- Basic setup with logging
+- Connecting to a local Hardhat node
+- Creating a sender account
+- Estimating gas for a transaction
+- Sending ETH to another address
+
+For more detailed examples, see the [Usage](#usage) section below.
 
 ## Features
 
@@ -38,10 +106,109 @@ This package targets .NET Standard 2.1 for maximum compatibility across:
 
 ## Dependencies
 
-- Evoq.Blockchain (1.0.0)
-- Nethereum.Util (4.29.0)
-- Nethereum.Signer (4.29.0)
-- Nethereum.Web3 (4.29.0)
+- Evoq.Blockchain (1.0.8)
+- Evoq.Extensions (1.7.7)
+- BouncyCastle.NetCore (2.2.1)
+- System.Text.Json (8.0.5)
+- Microsoft.Extensions.Http (8.0.0)
+
+## Prerequisites and Configuration
+
+### Required NuGet Packages
+
+```bash
+dotnet add package Evoq.Ethereum
+dotnet add package Microsoft.Extensions.Http
+```
+
+Note: The following dependencies will be automatically included:
+- Evoq.Blockchain
+- Evoq.Extensions
+- BouncyCastle.NetCore
+- System.Text.Json
+
+### Configuration Setup
+
+Create an `appsettings.json` file in your project:
+
+```json
+{
+  "Blockchain": {
+    "Ethereum": {
+      "JsonRPC": {
+        "Hardhat": {
+          "Url": "http://localhost:8545"
+        }
+      },
+      "Addresses": {
+        "Hardhat1Address": "0x1111111111111111111111111111111111111111",
+        "Hardhat1PrivateKey": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  }
+}
+```
+
+### Logging Setup
+
+Configure logging in your application:
+
+```csharp
+// Create logger factory with console output
+var loggerFactory = LoggerFactory.Create(builder => 
+    builder.AddSimpleConsole(options => options.SingleLine = true)
+           .SetMinimumLevel(LogLevel.Debug));
+
+// Optional: Add file logging
+builder.AddFile("logs/evoq-ethereum-{Date}.txt");
+```
+
+### Network Configuration
+
+The library supports various Ethereum networks. Here are the common configurations:
+
+```csharp
+// Hardhat (Local Development)
+var hardhatConfig = new
+{
+    ChainId = ulong.Parse(ChainNames.GetChainId(ChainNames.Hardhat)),
+    Url = "http://localhost:8545"
+};
+
+// Sepolia (Testnet)
+var sepoliaConfig = new
+{
+    ChainId = ulong.Parse(ChainNames.GetChainId(ChainNames.Sepolia)),
+    Url = "https://sepolia.infura.io/v3/YOUR-PROJECT-ID"
+};
+
+// Mainnet
+var mainnetConfig = new
+{
+    ChainId = ulong.Parse(ChainNames.GetChainId(ChainNames.Mainnet)),
+    Url = "https://mainnet.infura.io/v3/YOUR-PROJECT-ID"
+};
+```
+
+### Environment Variables
+
+For production environments, you can use environment variables instead of appsettings.json:
+
+```bash
+# Network Configuration
+BLOCKCHAIN__ETHEREUM__JSONRPC__HARDHAT__URL=http://localhost:8545
+
+# Account Configuration
+BLOCKCHAIN__ETHEREUM__ADDRESSES__HARDHAT1ADDRESS=0x1111111111111111111111111111111111111111
+BLOCKCHAIN__ETHEREUM__ADDRESSES__HARDHAT1PRIVATEKEY=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
+### Security Considerations
+
+1. Never commit private keys to source control
+2. Use environment variables or secure key management in production
+3. Consider using Azure Key Vault or similar services for production environments
+4. Use test accounts and test networks for development
 
 ## Usage
 
@@ -68,7 +235,7 @@ This approach provides type-safe contract interaction with ABI support:
 ```csharp
 // Get the contract ABI
 var abiStream = AbiFileHelper.GetAbiStream("YourContract.abi.json");
-var contractAddress = new EthereumAddress("0x...");
+var contractAddress = new EthereumAddress("0x2222222222222222222222222222222222222222");
 
 // Create a contract instance
 var contract = chain.GetContract(contractAddress, endpoint, sender, abiStream);
@@ -99,6 +266,9 @@ For simpler cases or when you don't have the ABI, use the RawContractCaller:
 ```csharp
 // Create a raw contract caller
 var caller = new RawContractCaller(endpoint);
+
+// Example recipient address
+var recipientAddress = new EthereumAddress("0x3333333333333333333333333333333333333333");
 
 // Call a contract method using its signature
 var result = await caller.SimpleCall(
@@ -142,6 +312,72 @@ var result = await runner.RunTransactionAsync(
     arguments,
     CancellationToken.None);
 ```
+
+#### Nonce Management
+
+The `TransactionRunnerNative` works in collaboration with the `INonceStore` to manage transaction nonces. This is crucial for:
+
+- Preventing transaction replay attacks
+- Ensuring transactions are processed in the correct order
+- Handling transaction failures and retries
+
+The runner will:
+1. Get the next available nonce from the store
+2. Use it for the transaction
+3. Roll back the nonce if the transaction fails
+4. Detect and handle gaps in the nonce sequence
+
+You can implement your own nonce store by implementing the `INonceStore` interface:
+
+```csharp
+public interface INonceStore
+{
+    Task<ulong> GetNextNonceAsync(EthereumAddress address);
+    Task RollbackNonceAsync(EthereumAddress address, ulong nonce);
+    Task CommitNonceAsync(EthereumAddress address, ulong nonce);
+}
+```
+
+Example implementation using a database:
+
+```csharp
+public class DatabaseNonceStore : INonceStore
+{
+    private readonly IDbConnection _db;
+    
+    public async Task<ulong> GetNextNonceAsync(EthereumAddress address)
+    {
+        // Get the highest committed nonce
+        var lastNonce = await _db.QueryFirstOrDefaultAsync<ulong>(
+            "SELECT MAX(Nonce) FROM Transactions WHERE Address = @Address",
+            new { Address = address });
+            
+        return lastNonce + 1;
+    }
+    
+    public async Task RollbackNonceAsync(EthereumAddress address, ulong nonce)
+    {
+        // Remove any failed transaction records
+        await _db.ExecuteAsync(
+            "DELETE FROM Transactions WHERE Address = @Address AND Nonce = @Nonce",
+            new { Address = address, Nonce = nonce });
+    }
+    
+    public async Task CommitNonceAsync(EthereumAddress address, ulong nonce)
+    {
+        // Record the successful transaction
+        await _db.ExecuteAsync(
+            "INSERT INTO Transactions (Address, Nonce) VALUES (@Address, @Nonce)",
+            new { Address = address, Nonce = nonce });
+    }
+}
+```
+
+The default `FileNonceStore` is suitable for development and testing, but for production environments, consider implementing a more robust solution that:
+- Persists nonces across application restarts
+- Handles concurrent access safely
+- Provides transaction rollback capabilities
+- Maintains an audit trail of nonce usage
 
 ### Gas Estimation
 
