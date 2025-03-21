@@ -1,6 +1,25 @@
 # Evoq.Ethereum
 
-A lightweight .NET library providing Ethereum-specific utilities and extensions. This package builds upon Evoq.Blockchain and Nethereum to provide a simplified interface for Ethereum blockchain operations.
+A lightweight .NET library focused on core Ethereum operations with minimal dependencies. This package provides essential utilities for:
+- Creating and signing transactions
+- Interacting with smart contracts
+- Handling transaction receipts and events
+- Managing accounts and nonces
+- Estimating gas and fees
+
+The library is designed to be simple and focused, with two main approaches for contract interaction:
+
+1. **Chain and Contract Classes**: For type-safe contract interaction when you have an ABI file
+   ```csharp
+   var contract = chain.GetContract(contractAddress, endpoint, sender, abiStream);
+   await contract.InvokeMethodAsync("transfer", nonce, options, args);
+   ```
+
+2. **RawContractCaller**: For direct contract calls when you want to specify ABI signatures manually
+   ```csharp
+   var caller = new RawContractCaller(endpoint);
+   await caller.CallAsync(contractAddress, "transfer(address,uint256)", args);
+   ```
 
 > **⚠️ Warning: This library is not audited or extensively tested in production environments.**
 > 
