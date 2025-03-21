@@ -146,6 +146,17 @@ internal class FixedBytesTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
             return true;
         }
 
+        if (value is byte[] byteArray)
+        {
+            if (byteArray.Length > maxBytesSize)
+            {
+                return false;
+            }
+
+            encoded = EncodeBytes(byteArray, length);
+            return true;
+        }
+
         //
 
         return false;
