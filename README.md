@@ -535,10 +535,17 @@ try
 catch (Exception ex)
 {
     // Handle specific contract errors
-    if (ex is ContractRevertException revertEx)
+    if (ex is RevertedTransactionException revertEx)
     {
         // Handle contract revert with custom error
         Console.WriteLine($"Contract reverted: {revertEx.Message}");
+        // Example output:
+        // Contract reverted: JSON-RPC error: -32603 - Error: VM Exception while processing transaction: reverted with custom error 'AlreadyExists()'
+    }
+    else if (ex is ContractRevertException contractEx)
+    {
+        // Handle contract revert with custom error
+        Console.WriteLine($"Contract reverted: {contractEx.Message}");
     }
     else
     {
@@ -546,6 +553,34 @@ catch (Exception ex)
         Console.WriteLine($"Error: {ex.Message}");
     }
 }
+```
+
+The library provides detailed error information to help you:
+1. Identify the exact reason for transaction failures
+2. Handle specific contract error cases in your code
+3. Debug contract interactions more effectively
+
+Here's an example of what a contract revert error looks like in practice:
+
+```text
+[Failed] ExampleEAS_Send
+    Message:
+        Test method Evoq.Ethereum.Examples.ExampleEAS.ExampleEAS_Send threw exception: 
+        Evoq.Ethereum.Transactions.RevertedTransactionException: JSON-RPC error: -32603 - Error: VM Exception while processing transaction: reverted with custom error 'AlreadyExists()'
+    Stack Trace:
+            at Evoq.Ethereum.Contracts.ContractClient.EstimateGasAsync(Contract contract, String methodName, EthereumAddress senderAddress, Nullable`1 value, IDictionary`2 arguments, CancellationToken cancellationToken) in /Users/lukepuplett/Git/Hub/evoq-ethereum/src/Evoq.Ethereum/Ethereum.Contracts/ContractClient.cs:line 207
+           at Evoq.Ethereum.Contracts.Contract.EstimateGasAsync(String methodName, EthereumAddress senderAddress, Nullable`1 value, IDictionary`2 arguments, CancellationToken cancellationToken) in /Users/lukepuplett/Git/Hub/evoq-ethereum/src/Evoq.Ethereum/Ethereum.Contracts/Contract.cs:line 149
+           at Evoq.Ethereum.Contracts.Contract.EstimateTransactionFeeAsync(String methodName, EthereumAddress senderAddress, Nullable`1 value, IDictionary`2 arguments, CancellationToken cancellationToken) in /Users/lukepuplett/Git/Hub/evoq-ethereum/src/Evoq.Ethereum/Ethereum.Contracts/Contract.cs:line 173
+           at Evoq.Ethereum.Examples.ExampleEAS.ExampleEAS_Send() in /Users/lukepuplett/Git/Hub/evoq-ethereum/tests/Evoq.Ethereum.Tests/Ethereum.Examples/ExampleEAS.cs:line 56
+    Standard Output Messages:
+        dbug: JsonRpcProviderCaller[0] Extracted request ID: 637243567
+        dbug: JsonRpcProviderCaller[0] Using timeout of 90 seconds
+        dbug: JsonRpcProviderCaller[0] Attempt 1 for JSON-RPC method eth_estimateGas (ID: 637243567)
+        dbug: JsonRpcProviderCaller[0] Added compression headers to request
+        dbug: JsonRpcProviderCaller[0] Sending request to http://localhost:8545/
+        warn: JsonRpcProviderCaller[0] JSON-RPC Error | Method: eth_estimateGas | Code: -32603 | Message: Error: VM Exception while processing transaction: reverted with custom error 'AlreadyExists()'
+        fail: JsonRpcProviderCaller[0] JSON-RPC Error | Method: eth_estimateGas | Code: -32603 | Message: Error: VM Exception while processing transaction: reverted with custom error 'AlreadyExists()'
+
 ```
 
 For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum.Examples` directory.
@@ -770,5 +805,3 @@ npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
 ```
 
 After successful deployment, you'll see output similar to:
-
-```
