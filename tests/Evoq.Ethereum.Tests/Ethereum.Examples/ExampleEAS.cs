@@ -17,7 +17,7 @@ public class ExampleEAS
 {
     [TestMethod]
     // [Ignore]
-    public async Task ExampleEAS_Send()
+    public async Task ExampleEAS_GetSchema()
     {
         string baseUrl, chainName;
         IConfigurationRoot configuration;
@@ -30,46 +30,142 @@ public class ExampleEAS
 
         EthereumAddress senderAddress;
         SenderAccount senderAccount;
-
         SetupAccount(configuration, out senderAddress, out senderAccount);
 
         //
 
         var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
 
-        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
-
-        var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
-        var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
-        var sender = new Sender(senderAccount, nonceStore);
+        Sender sender = SetupSender(loggerFactory, senderAddress, senderAccount, chain);
 
         //
 
         var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
-        var abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
-        var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
 
-        var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
+        Contract schemaRegistry = SetupSchemaRegistryContract(endpoint, chain, sender);
 
         //
 
-        var registerEstimate = await contract.EstimateTransactionFeeAsync(
+        string attestationSignature = "bool isAHuman";
+
+        var schemaUidSchema = AbiParameters.Parse("(string schema, address resolver, bool revocable)");
+        var simpleRevocableBool = AbiKeyValues.Create(
+            ("schema", attestationSignature),
+            ("resolver", EthereumAddress.Zero),
+            ("revocable", true));
+
+        var packer = new AbiEncoderPacked();
+        var schemaUid = packer.EncodeParameters(schemaUidSchema, simpleRevocableBool).ToHexStruct();
+
+        var caller = new RawContractCaller(endpoint);
+
+        var schemaUidBytes = await caller.CallAsync(schemaRegistry.Address, "getSchema", ("uid", schemaUid));
+
+        Console.WriteLine("schemaUidBytes: " + schemaUidBytes);
+
+        throw new NotImplementedException("Not implemented");
+
+        //
+
+        var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
             "register",
             senderAddress,
             null,
-            AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true));
+            simpleRevocableBool);
 
         registerEstimate = registerEstimate.InEther();
 
         //
 
         var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
-        var registerArgs = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
 
         var runner = new TransactionRunnerNative(sender, loggerFactory);
 
         var registerReceipt = await runner.RunTransactionAsync(
-            contract,
+            schemaRegistry,
+            "register",
+            registerOptions,
+            simpleRevocableBool,
+            CancellationToken.None);
+
+        Console.WriteLine(registerReceipt);
+
+        // read the event data
+
+        bool hasRegistered = schemaRegistry.TryReadEventLogsFromReceipt(
+            registerReceipt, "Registered", out var indexed, out var data);
+
+        if (!hasRegistered)
+        {
+            throw new Exception("The event was not found in the receipt");
+        }
+
+        if (data == null || data.None())
+        {
+            throw new Exception("The event data was not found in the receipt");
+        }
+
+        foreach (var (key, value) in data)
+        {
+            Console.WriteLine($"{key}: {value}");
+        }
+
+        Assert.IsNotNull(registerReceipt);
+        Assert.IsTrue(registerReceipt.Success);
+    }
+
+    [TestMethod]
+    [Ignore]
+    public async Task ExampleEAS_RegisterSchema()
+    {
+        string baseUrl, chainName;
+        IConfigurationRoot configuration;
+        ulong chainId;
+        ILoggerFactory loggerFactory;
+
+        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+
+        //
+
+        EthereumAddress senderAddress;
+        SenderAccount senderAccount;
+        SetupAccount(configuration, out senderAddress, out senderAccount);
+
+        //
+
+        var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
+
+        Sender sender = SetupSender(loggerFactory, senderAddress, senderAccount, chain);
+
+        //
+
+        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
+
+        Contract schemaRegistry = SetupSchemaRegistryContract(endpoint, chain, sender);
+
+        //
+
+        var registerArgs = AbiKeyValues.Create(
+            ("schema", "bool"),
+            ("resolver", EthereumAddress.Zero),
+            ("revocable", true));
+
+        var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
+            "register",
+            senderAddress,
+            null,
+            registerArgs);
+
+        registerEstimate = registerEstimate.InEther();
+
+        //
+
+        var registerOptions = new ContractInvocationOptions(registerEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+
+        var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+        var registerReceipt = await runner.RunTransactionAsync(
+            schemaRegistry,
             "register",
             registerOptions,
             registerArgs,
@@ -79,7 +175,7 @@ public class ExampleEAS
 
         // read the event data
 
-        bool hasRegistered = contract.TryReadEventLogsFromReceipt(
+        bool hasRegistered = schemaRegistry.TryReadEventLogsFromReceipt(
             registerReceipt, "Registered", out var indexed, out var data);
 
         if (!hasRegistered)
@@ -199,6 +295,25 @@ public class ExampleEAS
     }
 
     //
+
+    private static Contract SetupSchemaRegistryContract(Endpoint endpoint, Chain chain, Sender sender)
+    {
+        var abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
+        var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
+
+        var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
+        return contract;
+    }
+
+    private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain)
+    {
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+
+        var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
+        var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
+        var sender = new Sender(senderAccount, nonceStore);
+        return sender;
+    }
 
     private static void SetupAccount(IConfigurationRoot configuration, out EthereumAddress senderAddress, out SenderAccount senderAccount)
     {

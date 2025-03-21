@@ -88,7 +88,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     //
 
     /// <summary>
-    /// Parses a parameter string into a list of tuples.
+    /// Parses a ABI-style signature into an <see cref="AbiParameters"/> object, e.g. (string schema, address resolver, bool revocable).
     /// </summary>
     /// <param name="descriptor">The parameter string or function signature, e.g. ((string first, string last) name, uint256 age, address wallet) person or ((string,uint256,address),bool).</param>
     /// <returns>An enumerable of tuples.</returns>

@@ -40,15 +40,15 @@ public class RawContractCaller
     /// Calls a function on a contract without using the ABI.
     /// </summary>
     /// <param name="contractAddress">The address of the contract to call.</param>
-    /// <param name="abiSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
+    /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
         EthereumAddress contractAddress,
-        string abiSignature,
+        string functionSignature,
         params (string name, object? value)[] simpleParams)
     {
-        return await this.CallAsync(contractAddress, EthereumAddress.Zero, abiSignature, BigInteger.Zero, simpleParams);
+        return await this.CallAsync(contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
     }
 
     /// <summary>
@@ -56,25 +56,36 @@ public class RawContractCaller
     /// </summary>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="from">The address of the account to use to call the function.</param>
-    /// <param name="abiSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
+    /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
     /// <param name="value">The value to send with the call.</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
         EthereumAddress contractAddress,
         EthereumAddress from,
-        string abiSignature,
+        string functionSignature,
         BigInteger value,
         params (string name, object? value)[] simpleParams)
     {
         this.logger.LogDebug(
             "Calling {FunctionSignature} on {ContractAddress} with {Parameters} parameters",
-            abiSignature,
+            functionSignature,
             contractAddress,
             simpleParams.Length);
 
+        AbiSignature sig;
+        try
+        {
+            sig = AbiSignature.Parse(AbiItemType.Function, functionSignature);
+        }
+        catch (ArgumentException badSig)
+        {
+            throw new ArgumentException(
+                "Unable to call function. Could not parse the function signature. The format should be like myFunc(type1,type2).",
+                badSig);
+        }
+
         var encoder = new AbiEncoder();
-        var sig = AbiSignature.Parse(AbiItemType.Function, abiSignature);
         var encodedBytes = sig.AbiEncodeCallValues(encoder, simpleParams.ToDictionary(p => p.name, p => p.value));
 
         var jsonRpcClient = new JsonRpcClient(new Uri(this.Endpoint.URL), this.Endpoint.LoggerFactory);
