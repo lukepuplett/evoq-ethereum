@@ -518,4 +518,70 @@ public class AbiConverterTests
         Assert.IsTrue(userStats.IsVerified);
     }
 
+    [TestMethod]
+    public void UserWithDateTime_ConvertFromDictionary_Success()
+    {
+        // Arrange
+        var timestamp = BigInteger.Parse("1678901234"); // Unix timestamp
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Name", "TimeUser" },
+            { "CreatedAt", timestamp },
+            { "LastLoginTime", timestamp }
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<UserWithDateTime>(dictionary);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("TimeUser", user.Name);
+
+        // Convert Unix timestamp to DateTime for comparison
+        var expectedDateTime = DateTimeOffset.FromUnixTimeSeconds(1678901234).UtcDateTime;
+        Assert.AreEqual(expectedDateTime, user.CreatedAt);
+        Assert.AreEqual(expectedDateTime, user.LastLoginTime);
+    }
+
+    [TestMethod]
+    public void TimestampConversion_ConvertFromDictionary_Success()
+    {
+        // Arrange
+        var timestamp = BigInteger.Parse("1678901234"); // Unix timestamp (UTC)
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Name", "TimeUser" },
+            { "CreatedAt", timestamp },          // DateTime
+            { "LastLoginTime", timestamp },       // DateTime
+            { "CreatedAtOffset", timestamp },     // DateTimeOffset
+            { "LastLoginOffset", timestamp }      // DateTimeOffset
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<UserWithTimestamps>(dictionary);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("TimeUser", user.Name);
+
+        // DateTime assertions
+        var expectedDateTime = DateTimeOffset.FromUnixTimeSeconds(1678901234).UtcDateTime;
+        Assert.AreEqual(expectedDateTime, user.CreatedAt);
+        Assert.AreEqual(expectedDateTime, user.LastLoginTime);
+
+        // DateTime.Kind should be Unspecified as per best practices
+        // This allows the application layer to handle timezone conversion explicitly
+        Assert.AreEqual(DateTimeKind.Unspecified, user.CreatedAt.Kind);
+        Assert.AreEqual(DateTimeKind.Unspecified, user.LastLoginTime.Kind);
+
+        // DateTimeOffset assertions
+        var expectedDateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(1678901234);
+        Assert.AreEqual(expectedDateTimeOffset, user.CreatedAtOffset);
+        Assert.AreEqual(expectedDateTimeOffset, user.LastLoginOffset);
+
+        // Verify zero offset (UTC)
+        Assert.AreEqual(TimeSpan.Zero, user.CreatedAtOffset.Offset);
+        Assert.AreEqual(TimeSpan.Zero, user.LastLoginOffset.Offset);
+    }
+
 }

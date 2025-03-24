@@ -124,6 +124,22 @@ public class UserWithBigIntegerArray
     public BigInteger[]? Scores { get; set; }
 }
 
+public class UserWithDateTime
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastLoginTime { get; set; }
+}
+
+public class UserWithTimestamps
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastLoginTime { get; set; }
+    public DateTimeOffset CreatedAtOffset { get; set; }
+    public DateTimeOffset LastLoginOffset { get; set; }
+}
+
 // Test class with complex attribute mapping
 public class ComplexAttributeMappedUser
 {

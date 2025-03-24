@@ -57,39 +57,36 @@ internal class AbiClrTypeConverter
         }
 
         // Handle specific type conversions based on target type
-
-        // Handle BigInteger conversion (for uint/int types in ABI)
         if (targetType == typeof(BigInteger))
         {
-            return TryConvertToBigInteger(value, out result);
+            return this.TryConvertToBigInteger(value, out result);
         }
-
-        // Handle byte array conversion (for bytes types in ABI)
         if (targetType == typeof(byte[]))
         {
-            return TryConvertToByteArray(value, out result);
+            return this.TryConvertToByteArray(value, out result);
         }
-
-        // Handle Hex conversion (for bytes/hash types in ABI)
         if (targetType == typeof(Hex))
         {
-            return TryConvertToHex(value, out result);
+            return this.TryConvertToHex(value, out result);
         }
-
-        // Handle EthereumAddress conversion (for address type in ABI)
         if (targetType == typeof(EthereumAddress))
         {
-            return TryConvertToEthereumAddress(value, out result);
+            return this.TryConvertToEthereumAddress(value, out result);
         }
-
-        // Handle enum conversion
+        if (targetType == typeof(DateTime))
+        {
+            return this.TryConvertToDateTime(value, out result);
+        }
+        if (targetType == typeof(DateTimeOffset))
+        {
+            return this.TryConvertToDateTimeOffset(value, out result);
+        }
         if (targetType.IsEnum)
         {
-            return TryConvertToEnum(value, targetType, out result);
+            return this.TryConvertToEnum(value, targetType, out result);
         }
 
-        // Handle standard conversions for other types
-        return TryStandardConversion(value, targetType, out result);
+        return this.TryStandardConversion(value, targetType, out result);
     }
 
     /// <summary>
@@ -344,6 +341,64 @@ internal class AbiClrTypeConverter
         {
             result = value;
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Attempts to convert a value to a DateTime.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <param name="result">The converted value if successful.</param>
+    /// <returns>True if the conversion was successful, false otherwise.</returns>
+    /// <remarks>
+    /// Converts Unix timestamps to DateTime with Kind.Unspecified.
+    /// </remarks>
+    private bool TryConvertToDateTime(object value, out object? result)
+    {
+        result = null;
+
+        if (TryConvertToBigInteger(value, out var bigIntResult) && bigIntResult is BigInteger timestamp)
+        {
+            try
+            {
+                result = DateTimeOffset.FromUnixTimeSeconds((long)timestamp).DateTime;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Attempts to convert a value to a DateTimeOffset.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <param name="result">The converted value if successful.</param>
+    /// <returns>True if the conversion was successful, false otherwise.</returns>
+    /// <remarks>
+    /// Converts Unix timestamps to DateTimeOffset with zero offset (UTC).
+    /// </remarks>
+    private bool TryConvertToDateTimeOffset(object value, out object? result)
+    {
+        result = null;
+
+        if (TryConvertToBigInteger(value, out var bigIntResult) && bigIntResult is BigInteger timestamp)
+        {
+            try
+            {
+                result = DateTimeOffset.FromUnixTimeSeconds((long)timestamp);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         return false;

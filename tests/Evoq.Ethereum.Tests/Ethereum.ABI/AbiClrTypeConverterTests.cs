@@ -407,6 +407,71 @@ public class AbiClrTypeConverterTests
         Assert.AreEqual(Hex.Parse(value), result);
     }
 
+    [TestMethod]
+    public void TryConvert_DateTime_FromUnixTimestamp_Succeeds()
+    {
+        // Arrange
+        var timestamp = BigInteger.Parse("1678901234"); // March 15, 2023 14:47:14 UTC
+        var expected = DateTimeOffset.FromUnixTimeSeconds(1678901234).DateTime;
+
+        // Act
+        bool success = this.converter.TryConvert(timestamp, typeof(DateTime), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(DateTime));
+        Assert.AreEqual(expected, result);
+        Assert.AreEqual(DateTimeKind.Unspecified, ((DateTime)result).Kind);
+    }
+
+    [TestMethod]
+    public void TryConvert_DateTimeOffset_FromUnixTimestamp_Succeeds()
+    {
+        // Arrange
+        var timestamp = BigInteger.Parse("1678901234"); // March 15, 2023 14:47:14 UTC
+        var expected = DateTimeOffset.FromUnixTimeSeconds(1678901234);
+
+        // Act
+        bool success = this.converter.TryConvert(timestamp, typeof(DateTimeOffset), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(DateTimeOffset));
+        Assert.AreEqual(expected, result);
+        Assert.AreEqual(TimeSpan.Zero, ((DateTimeOffset)result).Offset);
+    }
+
+    [TestMethod]
+    public void TryConvert_DateTime_FromStringTimestamp_Succeeds()
+    {
+        // Arrange
+        string timestamp = "1678901234"; // March 15, 2023 14:47:14 UTC
+        var expected = DateTimeOffset.FromUnixTimeSeconds(1678901234).DateTime;
+
+        // Act
+        bool success = this.converter.TryConvert(timestamp, typeof(DateTime), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsInstanceOfType(result, typeof(DateTime));
+        Assert.AreEqual(expected, result);
+        Assert.AreEqual(DateTimeKind.Unspecified, ((DateTime)result).Kind);
+    }
+
+    [TestMethod]
+    public void TryConvert_NullableDateTime_FromNull_Succeeds()
+    {
+        // Arrange
+        object? value = null;
+
+        // Act
+        bool success = this.converter.TryConvert(value, typeof(DateTime?), out var result);
+
+        // Assert
+        Assert.IsTrue(success);
+        Assert.IsNull(result);
+    }
+
     public enum TestEnum
     {
         One = 1,
