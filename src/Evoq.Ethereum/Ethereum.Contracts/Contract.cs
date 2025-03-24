@@ -161,7 +161,7 @@ public class Contract
     /// <param name="arguments">The arguments to pass to the method.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A detailed estimate of the transaction fees.</returns>
-    public async Task<TransactionFeeEstimate> EstimateTransactionFeeAsync(
+    public async Task<ITransactionFeeEstimate> EstimateTransactionFeeAsync(
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,

@@ -3,13 +3,85 @@ using System.Numerics;
 namespace Evoq.Ethereum.Contracts;
 
 /// <summary>
+/// A class that can convert a transaction fee estimate to a gas options object.
+/// </summary>
+public interface ISuggestedGasOptions
+{
+    /// <summary>
+    /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
+    /// </summary>
+    /// <returns>A new EIP-1559 gas options object.</returns>
+    GasOptions ToSuggestedGasOptions();
+}
+
+/// <summary>
 /// Represents a complete transaction fee estimate for EIP-1559 transactions.
 /// </summary>
 /// <remarks>
 /// EIP-1559 introduced a new fee market in Ethereum (London fork, August 2021) that uses a base fee 
 /// which is burned and a priority fee which goes to miners/validators.
 /// </remarks>
-public class TransactionFeeEstimate
+public interface ITransactionFeeEstimate : ISuggestedGasOptions
+{
+    /// <summary>
+    /// The estimated gas limit for the transaction.
+    /// </summary>
+    BigInteger EstimatedGasLimit { get; }
+
+    /// <summary>
+    /// The suggested maximum fee per gas (in wei).
+    /// </summary>
+    EtherAmount SuggestedMaxFeePerGas { get; }
+
+    /// <summary>
+    /// The suggested maximum priority fee per gas (in wei).
+    /// </summary>
+    EtherAmount SuggestedMaxPriorityFeePerGas { get; }
+
+    /// <summary>
+    /// The current base fee per gas (in wei).
+    /// </summary>
+    EtherAmount CurrentBaseFeePerGas { get; }
+
+    /// <summary>
+    /// The estimated total transaction fee in wei.
+    /// </summary>
+    EtherAmount EstimatedTotalFee { get; }
+
+    /// <summary>
+    /// The legacy gas price, for backward compatibility with pre-EIP-1559 transactions.
+    /// </summary>
+    EtherAmount LegacyGasPrice { get; }
+
+    /// <summary>
+    /// The estimated maximum total fee in wei.
+    /// </summary>
+    EtherAmount EstimatedMaxFee { get; }
+
+    /// <summary>
+    /// The estimated minimum total fee in wei.
+    /// </summary>
+    EtherAmount EstimatedMinFee { get; }
+
+    /// <summary>
+    /// The estimated priority fee in wei.
+    /// </summary>
+    EtherAmount EstimatedPriorityFee { get; }
+
+    /// <summary>
+    /// Returns a new TransactionFeeEstimate with all values converted to ether.
+    /// </summary>
+    ITransactionFeeEstimate InEther();
+}
+
+/// <summary>
+/// Represents a complete transaction fee estimate for EIP-1559 transactions.
+/// </summary>
+/// <remarks>
+/// EIP-1559 introduced a new fee market in Ethereum (London fork, August 2021) that uses a base fee 
+/// which is burned and a priority fee which goes to miners/validators.
+/// </remarks>
+public class TransactionFeeEstimate : ITransactionFeeEstimate
 {
     /// <summary>
     /// The estimated gas limit for the transaction.
@@ -100,7 +172,7 @@ public class TransactionFeeEstimate
     /// <summary>
     /// Returns a new TransactionFeeEstimate with all values converted to ether.
     /// </summary>
-    public TransactionFeeEstimate InEther() => new TransactionFeeEstimate
+    public ITransactionFeeEstimate InEther() => new TransactionFeeEstimate
     {
         EstimatedGasLimit = EstimatedGasLimit,
         SuggestedMaxFeePerGas = SuggestedMaxFeePerGas.InEther,
@@ -114,7 +186,7 @@ public class TransactionFeeEstimate
     /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
     /// </summary>
     /// <returns>A new EIP-1559 gas options object.</returns>
-    public EIP1559GasOptions ToSuggestedGasOptions() => new EIP1559GasOptions(
+    public GasOptions ToSuggestedGasOptions() => new EIP1559GasOptions(
         gasLimit: (ulong)EstimatedGasLimit,
         maxFeePerGas: SuggestedMaxFeePerGas,
         maxPriorityFeePerGas: SuggestedMaxPriorityFeePerGas);
