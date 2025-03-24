@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Org.BouncyCastle.Bcpg;
 
 namespace Evoq.Ethereum.ABI.Conversion;
 
@@ -42,7 +43,7 @@ internal class DictionaryObjectConverter
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="dictionary">The dictionary containing values.</param>
     /// <returns>An instance of T populated with values from the dictionary.</returns>
-    public T DictionaryToObject<T>(IDictionary<string, object?> dictionary)
+    public T DictionaryToObject<T>(IReadOnlyDictionary<string, object?> dictionary)
     {
         return (T)DictionaryToObject(dictionary, typeof(T));
     }
@@ -54,7 +55,7 @@ internal class DictionaryObjectConverter
     /// <param name="type">The type to convert to.</param>
     /// <returns>An instance of the specified type populated with values from the dictionary.</returns>
     /// <exception cref="ArgumentNullException">Thrown when the dictionary is null.</exception>
-    public object DictionaryToObject(IDictionary<string, object?> dictionary, Type type)
+    public object DictionaryToObject(IReadOnlyDictionary<string, object?> dictionary, Type type)
     {
         if (dictionary == null)
         {
@@ -83,7 +84,8 @@ internal class DictionaryObjectConverter
 
     //
 
-    private void MapPropertiesByAttribute(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
+    private void MapPropertiesByAttribute(
+        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Get properties that have the AbiParameterAttribute
         var attributeMappedProperties = properties
@@ -121,7 +123,8 @@ internal class DictionaryObjectConverter
         }
     }
 
-    private void MapPropertiesByName(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
+    private void MapPropertiesByName(
+        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Get properties that don't have a value yet
         var unmappedProperties = properties
@@ -143,7 +146,8 @@ internal class DictionaryObjectConverter
         }
     }
 
-    private void MapPropertiesByPosition(object obj, List<PropertyInfo> properties, IDictionary<string, object?> dictionary)
+    private void MapPropertiesByPosition(
+        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Use the key as a positional index only if all keys look like positional indices
         List<object?> positionMappedValues;
@@ -200,15 +204,9 @@ internal class DictionaryObjectConverter
             return;
         }
 
-        if (value is IDictionary<string, object?> nestedDic && IsComplexType(property.PropertyType))
+        if (IsDickie(value, out var dickie) && IsComplexType(property.PropertyType))
         {
-            var nestedObj = DictionaryToObject(nestedDic, property.PropertyType); // recursive call
-            property.SetValue(obj, nestedObj);
-        }
-        else if (value is IDictionary<object, object> objDict && IsComplexType(property.PropertyType))
-        {
-            var stringDict = ConvertObjectDictionaryToStringDictionary(objDict);
-            var nestedObj = DictionaryToObject(stringDict, property.PropertyType); // recursive call
+            var nestedObj = DictionaryToObject(dickie!, property.PropertyType); // recursive call
             property.SetValue(obj, nestedObj);
         }
         else if (CollectionTypeDetector.IsCollectionValue(value) &&
@@ -285,7 +283,7 @@ internal class DictionaryObjectConverter
         }
     }
 
-    private bool TryGetValue(IDictionary<string, object?> dictionary, string key, out object? value)
+    private bool TryGetValue(IReadOnlyDictionary<string, object?> dictionary, string key, out object? value)
     {
         // Try exact match first
         if (dictionary.TryGetValue(key, out value))
@@ -307,30 +305,13 @@ internal class DictionaryObjectConverter
         return false;
     }
 
-    private Dictionary<string, object?> ConvertObjectDictionaryToStringDictionary(IDictionary<object, object> objDict)
-    {
-        var stringDict = new Dictionary<string, object?>();
-        foreach (var kvp in objDict)
-        {
-            stringDict[kvp.Key.ToString()] = kvp.Value;
-        }
-        return stringDict;
-    }
-
     private void PopulateListFromEnumerable(IList destination, IEnumerable<object> source, Type elementType)
     {
         foreach (var item in source)
         {
-            if (item is IDictionary<string, object?> itemDict)
+            if (IsDickie(item, out var dickie))
             {
-                var nestedObj = DictionaryToObject(itemDict, elementType);
-
-                destination.Add(nestedObj);
-            }
-            else if (item is IDictionary<object, object> itemObjDict)
-            {
-                var stringDict = ConvertObjectDictionaryToStringDictionary(itemObjDict);
-                var nestedObj = DictionaryToObject(stringDict, elementType);
+                var nestedObj = DictionaryToObject(dickie!, elementType);
 
                 destination.Add(nestedObj);
             }
@@ -407,5 +388,86 @@ internal class DictionaryObjectConverter
             return $"{value.GetType().Name}[{array.Length}]";
 
         return value.ToString() ?? "<toString returned null>";
+    }
+
+    //
+
+    private static bool IsDickie(object obj, out IReadOnlyDictionary<string, object?>? dickie)
+    {
+        if (obj is Dictionary<string, object> stringObjDic)
+        {
+            dickie = stringObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is Dictionary<string, object?> stringObjMaybeDic)
+        {
+            dickie = stringObjMaybeDic;
+            return true;
+        }
+        else if (obj is Dictionary<object, object> objObjDic)
+        {
+            dickie = objObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is Dictionary<object, object?> objObjMaybeDic)
+        {
+            dickie = objObjMaybeDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        // Read-only dictionaries
+        else if (obj is IReadOnlyDictionary<string, object> stringObjReadDic)
+        {
+            dickie = stringObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<string, object?> stringObjMaybeReadDic)
+        {
+            dickie = stringObjMaybeReadDic;
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<object, object> objObjReadDic)
+        {
+            dickie = objObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<object, object?> objObjMaybeReadDic)
+        {
+            dickie = objObjMaybeReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        // IDictionaries
+        else if (obj is IDictionary<string, object> stringObjDickish)
+        {
+            dickie = stringObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<string, object?> stringObjMaybeDickish)
+        {
+            dickie = stringObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<object, object> objObjDickish)
+        {
+            dickie = objObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<object, object?> objObjMaybeDickish)
+        {
+            dickie = objObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+
+        dickie = null;
+        return false;
+    }
+
+    private static Dictionary<string, object?> ConvertObjectDictionaryToStringDictionary(IReadOnlyDictionary<object, object> objDict)
+    {
+        var stringDict = new Dictionary<string, object?>();
+        foreach (var kvp in objDict)
+        {
+            stringDict[kvp.Key.ToString()] = kvp.Value;
+        }
+        return stringDict;
     }
 }

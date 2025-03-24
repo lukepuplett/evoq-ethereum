@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
+using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Transactions;
 
@@ -264,4 +265,39 @@ public class Contract
 
         return this.contractClient.TryRead(receipt, eventSignature, out indexed, out data);
     }
+
+    /// <summary>
+    /// Tries to read a logged event from a transaction receipt.
+    /// </summary>
+    /// <typeparam name="TIndexed">The type of the indexed parameters.</typeparam>
+    /// <typeparam name="TData">The type of the data parameters.</typeparam>
+    /// <param name="receipt">The transaction receipt.</param>
+    /// <param name="eventName">The name of the event to read.</param>
+    /// <param name="indexed">The indexed parameters of the event.</param>
+    /// <param name="data">The data parameters of the event.</param>
+    /// <returns>True if the event was read successfully, false otherwise.</returns>
+    public bool TryReadEventLogsFromReceipt<TIndexed, TData>(
+        TransactionReceipt receipt,
+        string eventName,
+        out TIndexed? indexed,
+        out TData? data)
+    {
+        var eventSignature = this.GetEventSignature(eventName);
+
+        if (this.contractClient.TryRead(receipt, eventSignature, out var indexedDictionary, out var dataDictionary))
+        {
+            var converter = new AbiConverter();
+
+            indexed = converter.DictionaryToObject<TIndexed>(indexedDictionary);
+            data = converter.DictionaryToObject<TData>(dataDictionary);
+
+            return true;
+        }
+
+        indexed = default;
+        data = default;
+
+        return false;
+    }
+
 }

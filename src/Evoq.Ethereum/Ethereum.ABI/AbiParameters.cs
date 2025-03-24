@@ -37,7 +37,7 @@ public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<A
     /// </summary>
     /// <param name="forStringification">Whether to stringify values like bytes and big numbers.</param>
     /// <returns>The dictionary.</returns>
-    public IDictionary<string, object?> ToDictionary(bool forStringification)
+    public Dictionary<string, object?> ToDictionary(bool forStringification)
     {
         return new Dictionary<string, object?>(this.Select(p => p.ToKeyValuePair(forStringification)));
     }

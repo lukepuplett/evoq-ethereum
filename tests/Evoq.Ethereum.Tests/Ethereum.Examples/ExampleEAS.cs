@@ -321,7 +321,7 @@ public class ExampleEAS
             throw new Exception("The call to getSchema returned an empty dictionary");
         }
 
-        if (first is not IDictionary<string, object?> firstDict)
+        if (first is not IReadOnlyDictionary<string, object?> firstDict)
         {
             throw new Exception("The call to getSchema returned an unexpected result");
         }
