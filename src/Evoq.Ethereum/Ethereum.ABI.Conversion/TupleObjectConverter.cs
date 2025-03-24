@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 namespace Evoq.Ethereum.ABI.Conversion;
 
 /// <summary>
-/// Converts tuples to strongly-typed objects by mapping tuple elements to properties in order.
+/// Converts .NET tuples to POCOs by mapping tuple elements to properties in order.
 /// </summary>
 internal class TupleObjectConverter
 {

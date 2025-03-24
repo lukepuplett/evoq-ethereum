@@ -450,6 +450,31 @@ var estimate = await contract.EstimateTransactionFeeAsync(
     null,
     AbiKeyValues.Create("to", recipientAddress, "amount", transferAmount));
 
+// Create transaction options
+var options = new ContractInvocationOptions(estimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+
+// Send the transfer transaction
+var result = await runner.RunTransactionAsync(
+    contract,
+    "transfer",
+    options,
+    AbiKeyValues.Create("to", recipientAddress, "amount", transferAmount),
+    CancellationToken.None);
+
+// Get the transaction receipt
+var receipt = await chain.GetTransactionReceiptAsync(result.TransactionHash);
+
+// Try to read the event from the receipt
+if (receipt.TryReadEventLogs(contract, "Transfer", out var indexed, out var data))
+{
+    // Access the decoded event data
+    var fromAddress = (EthereumAddress)indexed!["from"]!;
+    var toAddress = (EthereumAddress)indexed!["to"]!;
+    var value = (BigInteger)data!["value"]!;
+
+    Console.WriteLine($"Transfer successful: {value} tokens from {fromAddress} to {toAddress}");
+}
+
 // Approve and transferFrom pattern
 var approveAmount = EtherAmount.FromWei(1_000_000_000_000_000_000); // 1 DAI
 await contract.InvokeMethodAsync(
@@ -638,6 +663,50 @@ This pattern is particularly useful when:
 - Working with contract methods that return structs
 - Using `RawContractCaller` without full ABI information
 - Need to decode complex return types manually
+
+#### 4. Decoding Events from Transaction Receipts
+
+When working with contract events, you can decode them from transaction receipts using the `Contract` class. Here's how to decode events:
+
+```csharp
+// Get a transaction receipt
+var receipt = await chain.GetTransactionReceiptAsync(txHash);
+
+// Try to read the event from the receipt
+if (receipt.TryReadEventLogs(contract, "Transfer", out var indexed, out var data))
+{
+    // Access the decoded event data
+    var fromAddress = (EthereumAddress)indexed!["from"]!;
+    var toAddress = (EthereumAddress)indexed!["to"]!;
+    var value = (BigInteger)data!["value"]!;
+
+    Console.WriteLine($"Transfer: {value} tokens from {fromAddress} to {toAddress}");
+}
+```
+
+Key points about event decoding:
+1. Events can have both indexed and non-indexed parameters
+2. Indexed parameters are stored in the `indexed` dictionary
+3. Non-indexed parameters are stored in the `data` dictionary
+4. The event name must match exactly with the contract's event definition
+5. `TryReadEventLogs` returns false if no matching event is found in the receipt
+
+Common event names:
+```csharp
+// ERC-20 events
+"Transfer"    // Transfer(address indexed from,address indexed to,uint256 value)
+"Approval"    // Approval(address indexed owner,address indexed spender,uint256 value)
+
+// ERC-721 events
+"Transfer"    // Transfer(address indexed from,address indexed to,uint256 indexed tokenId)
+"Approval"    // Approval(address indexed owner,address indexed approved,uint256 indexed tokenId)
+"ApprovalForAll" // ApprovalForAll(address indexed owner,address indexed operator,bool approved)
+```
+
+When using RawContractCaller:
+- If the function signature includes parameter names (e.g., `transfer(address to,uint256 amount)`), use those names when providing values
+- If the function signature doesn't include parameter names (e.g., `transfer(address,uint256)`), use "0", "1", etc. as parameter names to indicate position
+- The function signature should follow standard Solidity format
 
 ### Working with EIP-165 Interfaces
 

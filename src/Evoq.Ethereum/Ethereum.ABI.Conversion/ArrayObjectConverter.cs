@@ -5,7 +5,7 @@ using System.Reflection;
 namespace Evoq.Ethereum.ABI.Conversion;
 
 /// <summary>
-/// Converts arrays to strongly-typed objects by mapping array elements to properties in order.
+/// Converts .NET arrays to POCOs by mapping array elements to properties in order.
 /// </summary>
 internal class ArrayObjectConverter
 {
@@ -33,7 +33,7 @@ internal class ArrayObjectConverter
 
     //
     /// <summary>
-    /// Converts an array of values to a strongly-typed object by mapping array elements to properties in order.
+    /// Converts an array of values to a POCO by mapping array elements to properties in order.
     /// </summary>
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="values">The array of values.</param>
@@ -44,7 +44,7 @@ internal class ArrayObjectConverter
     }
 
     /// <summary>
-    /// Converts an array of values to a strongly-typed object by mapping array elements to properties in order.
+    /// Converts an array of values to a POCO by mapping array elements to properties in order.
     /// </summary>
     /// <param name="type">The type to convert to.</param>
     /// <param name="values">The array of values.</param>

@@ -74,8 +74,8 @@ public class ExampleERC20
         Assert.IsTrue(receipt.Success);
 
         // Read the Transfer event
-        bool hasTransfer = tokenContract.TryReadEventLogsFromReceipt(
-            receipt, "Transfer", out var indexed, out var data);
+        bool hasTransfer = receipt.TryReadEventLogs(
+            tokenContract, "Transfer", out var indexed, out var data);
 
         Assert.IsTrue(hasTransfer);
         Assert.IsNotNull(indexed);

@@ -7,7 +7,7 @@ using System.Reflection;
 namespace Evoq.Ethereum.ABI.Conversion;
 
 /// <summary>
-/// Converts dictionaries to strongly-typed objects.
+/// Converts .NET dictionaries to POCOs by mapping dictionary keys to properties.
 /// </summary>
 internal class DictionaryObjectConverter
 {
@@ -37,7 +37,7 @@ internal class DictionaryObjectConverter
     //
 
     /// <summary>
-    /// Converts a dictionary of values to a strongly-typed object.
+    /// Converts a dictionary of values to a POCO.
     /// </summary>
     /// <typeparam name="T">The type to convert to.</typeparam>
     /// <param name="dictionary">The dictionary containing values.</param>
@@ -48,7 +48,7 @@ internal class DictionaryObjectConverter
     }
 
     /// <summary>
-    /// Converts a dictionary of values to an object of the specified type.
+    /// Converts a dictionary of values to a POCO.
     /// </summary>
     /// <param name="dictionary">The dictionary containing values.</param>
     /// <param name="type">The type to convert to.</param>

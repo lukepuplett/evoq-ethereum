@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using System.Numerics;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.Transactions;
 
 namespace Evoq.Ethereum;
 
@@ -146,5 +149,23 @@ public static class Extensions
     public static EtherAmount ToEthereumAmount(this BigInteger amount, EthereumUnit unit)
     {
         return new EtherAmount(amount, unit);
+    }
+
+    /// <summary>
+    /// Tries to read event logs from a transaction receipt.
+    /// </summary>
+    /// <param name="receipt">The transaction receipt.</param>
+    /// <param name="contract">The contract.</param>
+    /// <param name="eventName">The name of the event to read.</param>
+    /// <param name="indexed">The indexed parameters of the event.</param>
+    /// <param name="data">The data parameters of the event.</param>
+    public static bool TryReadEventLogs(
+        this TransactionReceipt receipt,
+        Contract contract,
+        string eventName,
+        out IReadOnlyDictionary<string, object?>? indexed,
+        out IReadOnlyDictionary<string, object?>? data)
+    {
+        return contract.TryReadEventLogsFromReceipt(receipt, eventName, out indexed, out data);
     }
 }
