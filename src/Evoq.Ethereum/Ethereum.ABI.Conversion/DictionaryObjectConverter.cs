@@ -176,11 +176,6 @@ internal class DictionaryObjectConverter
 
     private void MapValueToProperty(object poco, PropertyInfo property, object? value, string? abiType = null)
     {
-        if (value?.GetType() == typeof(object[]))
-        {
-            throw new NotImplementedException($"{value.GetType().Name} is not supported yet. AbiType: {abiType}");
-        }
-
         var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
 
         if (attribute != null && attribute.Ignore)

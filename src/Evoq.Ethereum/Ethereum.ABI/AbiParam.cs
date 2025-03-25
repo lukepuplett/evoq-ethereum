@@ -258,26 +258,25 @@ public class AbiParam
                 return list.Select(getValue).ToArray();
             }
 
-            if (value is Array)
+            if (value is byte[] bytes)
+            {
+                if (AbiTypeNames.String == this.AbiType)
+                {
+                    return Encoding.UTF8.GetString(bytes);
+                }
+                else
+                {
+                    return new Hex(bytes).ToString();
+                }
+            }
+            else if (value is Array)
             {
                 return ((Array)value).Cast<object?>().Select(getValue).ToArray();
             }
 
             if (value is BigInteger big)
             {
-                value = big.ToString(); // huge number should be stringified
-            }
-
-            if (value is byte[] bytes)
-            {
-                if (AbiTypeNames.String == this.AbiType)
-                {
-                    value = Encoding.UTF8.GetString(bytes);
-                }
-                else
-                {
-                    value = new Hex(bytes).ToString();
-                }
+                return big.ToString(); // huge number should be stringified
             }
 
             return value;
