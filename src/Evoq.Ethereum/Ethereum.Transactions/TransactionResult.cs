@@ -1,19 +1,19 @@
 using Evoq.Ethereum.Transactions;
 
-namespace Evoq.Ethereum.JsonRPC;
+namespace Evoq.Ethereum.Transactions;
 
 /// <summary>
 /// A result of an interaction with the Ethereum blockchain.
 /// </summary>
 /// <typeparam name="T">The type of the result. This is the type of the value returned by the method.</typeparam>
-public class InteractionResult<T>
+public class TransactionResult<T>
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="InteractionResult{T}"/> class.
+    /// Initializes a new instance of the <see cref="TransactionResult{T}"/> class.
     /// </summary>
     /// <param name="receipt">The receipt of the transaction.</param>
     /// <param name="result">The result of the interaction.</param>
-    public InteractionResult(TransactionReceipt receipt, T result)
+    public TransactionResult(TransactionReceipt receipt, T result)
     {
         this.Receipt = receipt;
         this.Result = result;
