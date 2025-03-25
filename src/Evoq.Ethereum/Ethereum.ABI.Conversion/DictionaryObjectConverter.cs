@@ -380,7 +380,7 @@ internal class DictionaryObjectConverter
 
         if (value is Array array)
         {
-            return $"{value.GetType().Name}[{array.Length}]";
+            return $"{value.GetType().Name.TrimEnd('[', ']')}[{array.Length}]";
         }
 
         if (CollectionTypeDetector.IsDictionaryValue(value, out var dic))
