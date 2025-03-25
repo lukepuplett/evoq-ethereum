@@ -7,7 +7,7 @@ namespace Evoq.Ethereum;
 /// Base exception for Ethereum-related errors.
 /// </summary>
 [Serializable]
-public class EthereumException : Exception
+public abstract class EthereumException : Exception
 {
     /// <summary>
     /// Initializes a new instance of the EthereumException class with a specified error message.

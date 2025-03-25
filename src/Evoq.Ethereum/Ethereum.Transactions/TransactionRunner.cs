@@ -247,7 +247,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     //
 
     /// <summary>
-    /// Implementors should use the args passed in to assemble the transaction and submit it.
+    /// Implementors should use the args passed in to assemble the transaction and submit it; exceptions will be run through <see cref="GetExpectedFailure"/> to determine if it is a known failure that should be retried.
     /// </summary>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>

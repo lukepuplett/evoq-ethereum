@@ -353,28 +353,21 @@ public class JsonRpcClient : IEthereumJsonRpc
             jsonSerializerOptions: new JsonSerializerOptions(),
             loggerFactory: this.loggerFactory);
 
-        var response = await caller.CallAsync(
-            request,
-            httpClient,
-            methodInfo,
-            this.ShouldRetry ?? ((faultInfo) => Task.FromResult(false)),
-            TimeSpan.FromSeconds(90),
-            cancellationToken);
-
-
-        if (response.Error != null)
+        try
         {
-            var baseException = new JsonRpcProvidedErrorException(response.Error);
-
-            if (JsonRpcErrorHandler.IsExpectedException(baseException, out var result))
-            {
-                throw result!;
-            }
-
-            throw baseException;
+            return await caller.CallAsync(
+                request,
+                httpClient,
+                methodInfo,
+                this.ShouldRetry ?? ((faultInfo) => Task.FromResult(false)),
+                TimeSpan.FromSeconds(90),
+                cancellationToken);
         }
-
-        return response;
+        catch (Exception ex)
+            when (JsonRpcErrorHandler.IsExpectedException(ex, out var result))
+        {
+            throw result!;
+        }
     }
 
     private static Hex ParseHexResponse(JsonRpcResponseDto<string> response)

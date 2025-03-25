@@ -9,15 +9,11 @@ namespace Evoq.Ethereum.JsonRPC;
 /// <remarks>
 /// This exception is thrown when a JSON-RPC request fails to be sent or when the response
 /// is malformed or otherwise invalid. Successfully received errors are represented by
-/// <see cref="JsonRpcProvidedErrorException"/>.
+/// <see cref="JsonRpcProviderErrorException"/>.
 /// </remarks>
 [Serializable]
-internal class JsonRpcRequestFailedException : Exception
+internal class JsonRpcRequestFailedException : JsonRpcException
 {
-    public JsonRpcRequestFailedException()
-    {
-    }
-
     public JsonRpcRequestFailedException(string message) : base(message)
     {
     }

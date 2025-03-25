@@ -58,7 +58,7 @@ internal static class JsonRpcErrorHandler
         while (current != null)
         {
             // Handle provider errors with error codes
-            if (current is JsonRpcProvidedErrorException rpcError)
+            if (current is JsonRpcProviderErrorException rpcError)
             {
                 if (IsCodeBasedException(rpcError, out result))
                 {
@@ -80,7 +80,7 @@ internal static class JsonRpcErrorHandler
 
     //
 
-    private static bool IsCodeBasedException(JsonRpcProvidedErrorException ex, out Exception? result)
+    private static bool IsCodeBasedException(JsonRpcProviderErrorException ex, out Exception? result)
     {
         // First check error codes for broad categorization
         switch (ex.JsonRpcErrorCode)

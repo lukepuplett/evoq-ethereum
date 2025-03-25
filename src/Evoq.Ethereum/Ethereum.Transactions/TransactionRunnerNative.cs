@@ -54,35 +54,32 @@ public class TransactionRunnerNative
         IDictionary<string, object?> args,
         CancellationToken cancellationToken = default)
     {
-        try
+        var startTime = DateTime.UtcNow;
+
+        var id = await contract.InvokeMethodAsync(
+            functionName,
+            nonce,
+            options,
+            args,
+            cancellationToken);
+
+        var submittedAt = DateTime.UtcNow;
+
+        var (receipt, deadlineReached) = await contract.Chain.TryWaitForTransactionAsync(
+            id, TimeSpan.FromSeconds(120), cancellationToken);
+
+        var receiptAt = DateTime.UtcNow;
+
+        this.logger.LogInformation(
+            "Transaction {Id}: hash: {Hash}, submitted-ms: {SubmitMs}, receipt-ms: {ReceiptMs}",
+            id, receipt?.TransactionHash, (submittedAt - startTime).TotalMilliseconds, (receiptAt - submittedAt).TotalMilliseconds);
+
+        if (deadlineReached)
         {
-            var startTime = DateTime.UtcNow;
-
-            var id = await contract.InvokeMethodAsync(
-                functionName,
-                nonce,
-                options,
-                args,
-                cancellationToken);
-
-            var submitDuration = DateTime.UtcNow - startTime;
-
-            var (receipt, deadlineReached) = await contract.Chain.TryWaitForTransactionAsync(
-                id, TimeSpan.FromSeconds(120), cancellationToken);
-
-            if (deadlineReached)
-            {
-                throw new TransactionTimeoutException(id);
-            }
-
-            return receipt!;
+            throw new TransactionTimeoutException(id);
         }
-        catch (Exception ex)
-        {
-            throw new FailedToSubmitTransactionException(
-                $"Transaction failed to submit transaction. {ex.Message}",
-                ex);
-        }
+
+        return receipt!;
     }
 
     //
@@ -99,7 +96,7 @@ public class TransactionRunnerNative
             return CommonTransactionFailure.OutOfGas;
         }
 
-        if (ex is InvalidNonceException invalidNonce && invalidNonce.Message.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
+        if (ex is InvalidNonceException invalidNonce) //&& invalidNonce.Message.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
         {
             return CommonTransactionFailure.NonceTooLow;
         }

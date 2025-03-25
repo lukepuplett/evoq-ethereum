@@ -149,28 +149,15 @@ internal class JsonRpcProviderCaller<TResponseResult>
                 this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
 
                 // Add these detailed debug logs:
+                this.logger?.LogInformation("Response Status: {StatusCode} {StatusReason}", (int)response.StatusCode, response.ReasonPhrase);
                 this.logger?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
                 this.logger?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
-                this.logger?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
+                // this.logger?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
 
                 var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                     responseBodyStr, this.jsonSerializerOptions);
 
                 // After deserialization, add more detailed logging:
-                if (responseDto != null)
-                {
-                    this.logger?.LogDebug("Deserialized Response - ID: {Id}, Has Error: {HasError}, Has Result: {HasResult}",
-                        responseDto.Id,
-                        responseDto.Error != null,
-                        responseDto.Result != null);
-
-                    if (responseDto.Result != null)
-                    {
-                        this.logger?.LogDebug("Result Type: {ResultType}", responseDto.Result.GetType().Name);
-                        this.logger?.LogDebug("Result Value: {@Result}", responseDto.Result);
-                    }
-                }
-
                 if (responseDto == null)
                 {
                     this.logger?.LogWarning("Null response for method {MethodName}", methodInfo.MethodName);
@@ -192,6 +179,19 @@ internal class JsonRpcProviderCaller<TResponseResult>
                         methodInfo.MethodName);
 
                     throw new JsonRpcRequestFailedException("Request failed with null response");
+                }
+                else
+                {
+                    this.logger?.LogDebug("Deserialized Response - ID: {Id}, Has Error: {HasError}, Has Result: {HasResult}",
+                        responseDto.Id,
+                        responseDto.Error != null,
+                        responseDto.Result != null);
+
+                    if (responseDto.Result != null)
+                    {
+                        this.logger?.LogDebug("Result Type: {ResultType}", responseDto.Result.GetType().Name);
+                        this.logger?.LogDebug("Result Value: {@Result}", responseDto.Result);
+                    }
                 }
 
                 // Validate response ID matches request ID
@@ -231,12 +231,11 @@ internal class JsonRpcProviderCaller<TResponseResult>
                         responseDto.Error.Code,
                         responseDto.Error.Message);
 
-                    var jsonRpcException = new JsonRpcRequestFailedException(
-                        $"JSON-RPC error: {responseDto.Error.Code} - {responseDto.Error.Message}");
+                    var providerException = new JsonRpcProviderErrorException(responseDto.Error);
 
                     var faultInfo = new MethodFaultInfo(
                         methodInfo,
-                        jsonRpcException,
+                        providerException,
                         response.StatusCode);
 
                     if (shouldRetry != null && await shouldRetry(faultInfo))
@@ -256,7 +255,7 @@ internal class JsonRpcProviderCaller<TResponseResult>
                         responseDto.Error.Code,
                         responseDto.Error.Message);
 
-                    throw jsonRpcException;
+                    throw providerException;
                 }
 
                 this.logger?.LogDebug("Successfully completed JSON-RPC method {MethodName} (ID: {Id}) in {AttemptCount} attempts",

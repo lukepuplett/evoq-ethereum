@@ -16,8 +16,8 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    [Ignore]
-    public async Task ExampleEAS_GetSchema()
+    // [Ignore]
+    public async Task Should_GetOrRegisterSchema_WhenSchemaDoesNotExist()
     {
         string baseUrl, chainName;
         IConfigurationRoot configuration;
@@ -36,7 +36,7 @@ public class ExampleEAS
 
         var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
 
-        Sender sender = SetupSender(loggerFactory, senderAddress, senderAccount, chain);
+        Sender sender = SetupSender(loggerFactory, senderAddress, senderAccount, chain, useInMemoryNonces: true);
 
         //
 
@@ -46,7 +46,7 @@ public class ExampleEAS
 
         //
 
-        string attestationSignature = "bool isTest3";
+        string attestationSignature = "bool isTestTwo";
 
         var schemaUIDSchema = AbiParameters.Parse("(string schema, address resolver, bool revocable)");
         var simpleRevocableBool = AbiKeyValues.Create(
@@ -156,7 +156,7 @@ public class ExampleEAS
 
     [TestMethod]
     [Ignore]
-    public async Task ExampleEAS_RegisterSchema()
+    public async Task Should_RegisterNewSchema_AndEmitRegisteredEvent()
     {
         string baseUrl, chainName;
         IConfigurationRoot configuration;
@@ -185,8 +185,10 @@ public class ExampleEAS
 
         //
 
+        string attestationSignature = "bool isTest";
+
         var registerArgs = AbiKeyValues.Create(
-            ("schema", "bool"),
+            ("schema", attestationSignature),
             ("resolver", EthereumAddress.Zero),
             ("revocable", true));
 
@@ -238,8 +240,8 @@ public class ExampleEAS
     }
 
     [TestMethod]
-    [Ignore]
-    public async Task ExampleEAS_SendManually()
+    // [Ignore]
+    public async Task Should_SendTransactionManually_WithGasValidation()
     {
         string baseUrl, chainName;
         IConfigurationRoot configuration;
@@ -260,13 +262,10 @@ public class ExampleEAS
         var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
         var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
 
-        // Read the ABI file using our helper method
-        Stream abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
-
-        var sender = new Sender(senderAccount, nonceStore);
-        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
-
+        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
+        var sender = new Sender(senderAccount, nonceStore);
+        var abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
         var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
 
         // guess gas price
@@ -345,14 +344,22 @@ public class ExampleEAS
         return contract;
     }
 
-    private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain)
+    private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain, bool useInMemoryNonces = false)
     {
+        INonceStore nonceStore;
         var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
 
-        var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
-        var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
-        var sender = new Sender(senderAccount, nonceStore);
-        return sender;
+        if (useInMemoryNonces)
+        {
+            nonceStore = new InMemoryNonceStore(loggerFactory);
+        }
+        else
+        {
+            var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
+            nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
+        }
+
+        return new Sender(senderAccount, nonceStore);
     }
 
     private static void SetupAccount(IConfigurationRoot configuration, out EthereumAddress senderAddress, out SenderAccount senderAccount)

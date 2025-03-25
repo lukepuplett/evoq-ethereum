@@ -13,7 +13,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var error = new JsonRpcError { Code = -32000, Message = "out of gas" };
-        var exception = new JsonRpcProvidedErrorException(error);
+        var exception = new JsonRpcProviderErrorException(error);
 
         // Act
         var result = JsonRpcErrorHandler.IsExpectedException(exception, out var specificException);
@@ -28,7 +28,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var error = new JsonRpcError { Code = -32000, Message = "nonce too low" };
-        var exception = new JsonRpcProvidedErrorException(error);
+        var exception = new JsonRpcProviderErrorException(error);
 
         // Act
         var result = JsonRpcErrorHandler.IsExpectedException(exception, out var specificException);
@@ -43,7 +43,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var error = new JsonRpcError { Code = -32000, Message = "insufficient funds" };
-        var exception = new JsonRpcProvidedErrorException(error);
+        var exception = new JsonRpcProviderErrorException(error);
 
         // Act
         var result = JsonRpcErrorHandler.IsExpectedException(exception, out var specificException);
@@ -58,7 +58,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var error = new JsonRpcError { Code = -32005, Message = "limit exceeded" };
-        var exception = new JsonRpcProvidedErrorException(error);
+        var exception = new JsonRpcProviderErrorException(error);
 
         // Act
         var result = JsonRpcErrorHandler.IsExpectedException(exception, out var specificException);
@@ -73,7 +73,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var innerError = new JsonRpcError { Code = -32000, Message = "out of gas" };
-        var innerException = new JsonRpcProvidedErrorException(innerError);
+        var innerException = new JsonRpcProviderErrorException(innerError);
         var exception = new Exception("Outer exception", innerException);
 
         // Act
@@ -89,7 +89,7 @@ public class JsonRpcErrorHandlerTests
     {
         // Arrange
         var error = new JsonRpcError { Code = -1, Message = "unknown error" };
-        var exception = new JsonRpcProvidedErrorException(error);
+        var exception = new JsonRpcProviderErrorException(error);
 
         // Act
         var result = JsonRpcErrorHandler.IsExpectedException(exception, out var specificException);

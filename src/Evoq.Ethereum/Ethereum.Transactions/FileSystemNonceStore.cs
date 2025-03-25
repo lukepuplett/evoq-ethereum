@@ -33,9 +33,10 @@ public class FileSystemNonceStore : INonceStore
         Func<Task<BigInteger>>? getTransactionCount = null)
     {
         if (string.IsNullOrWhiteSpace(path))
+        {
             throw new ArgumentException("Path cannot be empty", nameof(path));
+        }
 
-        // Get the full path and validate its length
         var fullPath = Path.GetFullPath(path);
 
         // Check if the path length would exceed system limits
