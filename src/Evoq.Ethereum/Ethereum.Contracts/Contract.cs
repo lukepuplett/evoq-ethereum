@@ -288,8 +288,8 @@ public class Contract
         {
             var converter = new AbiConverter();
 
-            indexed = converter.DictionaryToObject<TIndexed>(indexedDictionary);
-            data = converter.DictionaryToObject<TData>(dataDictionary);
+            indexed = converter.DictionaryToObject<TIndexed>(indexedDictionary!);
+            data = converter.DictionaryToObject<TData>(dataDictionary!);
 
             return true;
         }
