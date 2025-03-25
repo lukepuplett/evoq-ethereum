@@ -107,11 +107,9 @@ internal class DictionaryObjectConverter
             var property = propInfo.Property;
             var attribute = propInfo.Attribute;
 
-            // Try to map by attribute name
-            if (!string.IsNullOrEmpty(attribute.Name) && dictionary.TryGetValue(attribute.Name, out var valueByName))
+            if (!string.IsNullOrEmpty(attribute.Name) && dictionary.TryGetValue(attribute.Name, out var v))
             {
-                MapValueToProperty(poco, property, valueByName, attribute.AbiType);
-                continue;
+                MapValueToProperty(poco, property, v, attribute.AbiType);
             }
         }
     }
@@ -174,8 +172,15 @@ internal class DictionaryObjectConverter
         }
     }
 
+    //
+
     private void MapValueToProperty(object poco, PropertyInfo property, object? value, string? abiType = null)
     {
+        if (value?.GetType() == typeof(object[]))
+        {
+            throw new NotImplementedException($"{value.GetType().Name} is not supported yet. AbiType: {abiType}");
+        }
+
         var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
 
         if (attribute != null && attribute.Ignore)
@@ -213,6 +218,8 @@ internal class DictionaryObjectConverter
             SetSinglePropertyValue(poco, property, value);
         }
     }
+
+    //
 
     private void MapCollectionValueToProperty(object poco, PropertyInfo property, object? value)
     {

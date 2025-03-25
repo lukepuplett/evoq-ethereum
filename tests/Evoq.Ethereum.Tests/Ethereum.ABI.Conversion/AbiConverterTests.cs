@@ -584,4 +584,39 @@ public class AbiConverterTests
         Assert.AreEqual(TimeSpan.Zero, user.LastLoginOffset.Offset);
     }
 
+    [TestMethod]
+    public void ByteArray32_ConvertToHex_Success()
+    {
+        // Arrange - Create a 32-byte array that should be treated as a Hex value
+        var bytes32 = new byte[32];
+        for (int i = 0; i < 32; i++)
+        {
+            bytes32[i] = (byte)i;
+        }
+
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "name", "HashUser" },
+            { "uid", bytes32 }
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<UserWithHash>(dictionary);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("HashUser", user.Name);
+        Assert.AreEqual(Hex.FromBytes(bytes32), user.UID);
+    }
+
+    // Test class to support the test
+    private class UserWithHash
+    {
+        [AbiParameter("name", AbiType = AbiTypeNames.String)]
+        public string Name { get; set; } = string.Empty;
+
+        [AbiParameter("uid", AbiType = AbiTypeNames.FixedByteArrays.Bytes32)]
+        public Hex UID { get; set; } = Hex.Empty;
+    }
+
 }

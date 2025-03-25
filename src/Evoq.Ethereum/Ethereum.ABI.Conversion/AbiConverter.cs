@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.ABI.Conversion;
 
@@ -55,13 +56,8 @@ public class AbiConverter
         return dictionaryConverter.DictionaryToObject<T>(mutableDict);
     }
 
-    /// <summary>
-    /// Converts a tuple of values to a strongly-typed object.
-    /// </summary>
-    /// <typeparam name="T">The type to convert to.</typeparam>
-    /// <param name="tuple">The tuple containing values.</param>
-    /// <returns>An instance of T populated with values from the tuple.</returns>
-    public T TupleToObject<T>(ITuple tuple)
+    // not used
+    private T TupleToObject<T>(ITuple tuple)
     {
         if (tuple == null)
         {
@@ -71,13 +67,8 @@ public class AbiConverter
         return tupleConverter.TupleToObject<T>(tuple);
     }
 
-    /// <summary>
-    /// Converts an array of values to a strongly-typed object using positional mapping.
-    /// </summary>
-    /// <typeparam name="T">The type to convert to.</typeparam>
-    /// <param name="values">The array of values.</param>
-    /// <returns>An instance of T populated with values from the array.</returns>
-    public T ArrayToObject<T>(object[] values)
+    // not used
+    private T ArrayToObject<T>(object[] values)
     {
         if (values == null)
         {
@@ -86,9 +77,4 @@ public class AbiConverter
 
         return arrayConverter.ArrayToObject<T>(values);
     }
-
-
-    //
-
-
 }
