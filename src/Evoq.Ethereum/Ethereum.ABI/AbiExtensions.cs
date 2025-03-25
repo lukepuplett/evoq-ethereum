@@ -138,9 +138,28 @@ public static class AbiExtensions
     /// <returns>A strongly-typed object.</returns>
     public static T ToObject<T>(this AbiParameters parameters) where T : new()
     {
-        var converter = new AbiConverter();
+        // if a function returns a tuple, it will be the first and only unnamed parameter
+        // in the dictionary
 
-        return converter.DictionaryToObject<T>(parameters.ToDictionary(true));
+        // the consumer doesn't expect this unusual situation and expects to just
+        // convert the tuple directly, else they'd have to create a root POCO with a
+        // single 'actual' POCO property for the tuple
+
+        // we can detect this situation 'edit out' the extra dictionary layer
+        // and just convert the tuple directly
+
+        Dictionary<string, object?> keyValues = parameters.ToDictionary(true);
+
+        if (keyValues.Count == 1 &&
+            keyValues.First().Value is Dictionary<string, object?> innerActual &&
+            parameters.Count == 1 &&
+            string.IsNullOrEmpty(parameters.First().Name) &&
+            parameters.First().IsTupleStrict)
+        {
+            keyValues = innerActual;
+        }
+
+        return new AbiConverter().DictionaryToObject<T>(keyValues);
     }
 
     // encode
