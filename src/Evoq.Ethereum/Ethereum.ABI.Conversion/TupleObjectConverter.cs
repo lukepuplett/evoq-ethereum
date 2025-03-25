@@ -83,11 +83,14 @@ internal class TupleObjectConverter
                 }
                 else
                 {
-                    throw new InvalidOperationException(
-                        $"Cannot convert value of type {value.GetType().Name} to property {property.Name} of type {propertyType.Name}");
+                    throw new ConversionException(
+                        $"Cannot set property '{property.Name}' on type '{type.Name}'.\n" +
+                        $"Value type: {(value?.GetType().Name ?? "null")}\n" +
+                        $"Target type: {property.PropertyType.Name}\n" +
+                        $"Value: {FormatValueForDisplay(value)}");
                 }
             }
-            catch (Exception ex) when (!(ex is InvalidOperationException))
+            catch (Exception ex) when (ex is not ConversionException)
             {
                 // Create a more detailed exception with context about the conversion
                 var message = $"Error setting property '{property.Name}' (tuple item {i}) on type '{type.Name}'.\n" +

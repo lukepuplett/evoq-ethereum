@@ -346,10 +346,13 @@ internal class DictionaryObjectConverter
             {
                 // Don't try to set the property if conversion failed
                 throw new ConversionException(
-                    $"Cannot convert value '{FormatValueForDisplay(value)}' of type '{value?.GetType().Name ?? "<null>"}' to type '{property.PropertyType.Name}'");
+                    $"Cannot set property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
+                    $"Value type: {(value?.GetType().Name ?? "<null>")}\n" +
+                    $"Target type: {property.PropertyType.Name}\n" +
+                    $"Value: {FormatValueForDisplay(value)}");
             }
         }
-        catch (Exception ex) when (!(ex is ConversionException))
+        catch (Exception ex) when (ex is not ConversionException)
         {
             // Create a more detailed exception with context about the conversion
             var message = $"Error setting property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
