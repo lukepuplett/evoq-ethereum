@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Evoq.Ethereum.ABI.Conversion;
 
@@ -9,6 +10,81 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// </summary>
 internal static class CollectionTypeDetector
 {
+    /// <summary>
+    /// Determines whether the specified object is a dictionary.
+    /// </summary>
+    /// <param name="obj">The object to check.</param>
+    /// <param name="dic">The dictionary if the object is a dictionary; otherwise, null.</param>
+    /// <returns>true if the object is a dictionary; otherwise, false.</returns>
+    public static bool IsDictionaryValue(object obj, out IReadOnlyDictionary<string, object?>? dic)
+    {
+        if (obj is Dictionary<string, object> stringObjDic)
+        {
+            dic = stringObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is Dictionary<string, object?> stringObjMaybeDic)
+        {
+            dic = stringObjMaybeDic;
+            return true;
+        }
+        else if (obj is Dictionary<object, object> objObjDic)
+        {
+            dic = objObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is Dictionary<object, object?> objObjMaybeDic)
+        {
+            dic = objObjMaybeDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        // Read-only dictionaries
+        else if (obj is IReadOnlyDictionary<string, object> stringObjReadDic)
+        {
+            dic = stringObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<string, object?> stringObjMaybeReadDic)
+        {
+            dic = stringObjMaybeReadDic;
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<object, object> objObjReadDic)
+        {
+            dic = objObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IReadOnlyDictionary<object, object?> objObjMaybeReadDic)
+        {
+            dic = objObjMaybeReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        // IDictionaries
+        else if (obj is IDictionary<string, object> stringObjDickish)
+        {
+            dic = stringObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<string, object?> stringObjMaybeDickish)
+        {
+            dic = stringObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<object, object> objObjDickish)
+        {
+            dic = objObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+        else if (obj is IDictionary<object, object?> objObjMaybeDickish)
+        {
+            dic = objObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
+            return true;
+        }
+
+        dic = null;
+        return false;
+    }
+
     /// <summary>
     /// Determines whether the specified type is a collection type (excluding string).
     /// </summary>

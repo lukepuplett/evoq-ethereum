@@ -57,7 +57,7 @@ public class TupleObjectConverterTests
     }
 
     [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
+    [ExpectedException(typeof(ConversionException))]
     public void TupleToObject_WithIncompatibleType_ThrowsException()
     {
         // Arrange - using a value that can't be converted to BigInteger

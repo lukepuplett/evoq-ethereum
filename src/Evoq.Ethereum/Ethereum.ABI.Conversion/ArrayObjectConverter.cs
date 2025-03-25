@@ -52,7 +52,9 @@ internal class ArrayObjectConverter
     public object ArrayToObject(Type type, object[] values)
     {
         if (values == null)
+        {
             throw new ArgumentNullException(nameof(values));
+        }
 
         var result = instanceFactory.CreateInstance(type);
         var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)

@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Org.BouncyCastle.Bcpg;
 
 namespace Evoq.Ethereum.ABI.Conversion;
 
@@ -85,11 +84,11 @@ internal class DictionaryObjectConverter
     //
 
     private void MapPropertiesByAttribute(
-        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
+        object poco, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Get properties that have the AbiParameterAttribute
         var attributeMappedProperties = properties
-            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
+            .Where(p => !defaultValueChecker.HasNonDefaultValue(poco, p))
             .Select(p => new
             {
                 Property = p,
@@ -111,24 +110,18 @@ internal class DictionaryObjectConverter
             // Try to map by attribute name
             if (!string.IsNullOrEmpty(attribute.Name) && dictionary.TryGetValue(attribute.Name, out var valueByName))
             {
-                MapValueToProperty(obj, property, valueByName, attribute.AbiType);
+                MapValueToProperty(poco, property, valueByName, attribute.AbiType);
                 continue;
-            }
-
-            // Try to map by attribute position
-            if (attribute.Position >= 0 && dictionary.Values.ElementAt(attribute.Position) is var valueByPosition)
-            {
-                MapValueToProperty(obj, property, valueByPosition, attribute.AbiType);
             }
         }
     }
 
     private void MapPropertiesByName(
-        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
+        object poco, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Get properties that don't have a value yet
         var unmappedProperties = properties
-            .Where(p => !defaultValueChecker.HasNonDefaultValue(obj, p))
+            .Where(p => !defaultValueChecker.HasNonDefaultValue(poco, p))
             .ToList();
 
         if (!unmappedProperties.Any())
@@ -141,13 +134,13 @@ internal class DictionaryObjectConverter
             // Try to get value by property name (case-sensitive first, then case-insensitive)
             if (TryGetValue(dictionary, property.Name, out var value))
             {
-                MapValueToProperty(obj, property, value);
+                MapValueToProperty(poco, property, value);
             }
         }
     }
 
     private void MapPropertiesByPosition(
-        object obj, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
+        object poco, List<PropertyInfo> properties, IReadOnlyDictionary<string, object?> dictionary)
     {
         // Use the key as a positional index only if all keys look like positional indices
         List<object?> positionMappedValues;
@@ -169,7 +162,7 @@ internal class DictionaryObjectConverter
 
         for (int i = 0; i < propCount; i++)
         {
-            if (defaultValueChecker.HasNonDefaultValue(obj, properties[i]))
+            if (defaultValueChecker.HasNonDefaultValue(poco, properties[i]))
             {
                 continue;
             }
@@ -177,11 +170,11 @@ internal class DictionaryObjectConverter
             var property = properties[i];
             var value = positionMappedValues[i];
 
-            MapValueToProperty(obj, property, value);
+            MapValueToProperty(poco, property, value);
         }
     }
 
-    private void MapValueToProperty(object obj, PropertyInfo property, object? value, string? abiType = null)
+    private void MapValueToProperty(object poco, PropertyInfo property, object? value, string? abiType = null)
     {
         var attribute = property.GetCustomAttribute<AbiParameterAttribute>();
 
@@ -192,7 +185,7 @@ internal class DictionaryObjectConverter
 
         if (value == null)
         {
-            property.SetValue(obj, null);
+            property.SetValue(poco, null);
             return;
         }
 
@@ -200,88 +193,108 @@ internal class DictionaryObjectConverter
         if (!string.IsNullOrEmpty(abiType) &&
             this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue, abiType))
         {
-            property.SetValue(obj, convertedValue);
+            property.SetValue(poco, convertedValue);
             return;
         }
 
-        if (IsDickie(value, out var dickie) && IsComplexType(property.PropertyType))
+        if (CollectionTypeDetector.IsDictionaryValue(value, out var dic) &&
+            IsComplexType(property.PropertyType))
         {
-            var nestedObj = DictionaryToObject(dickie!, property.PropertyType); // recursive call
-            property.SetValue(obj, nestedObj);
+            var nestedObj = DictionaryToObject(dic!, property.PropertyType); // recursive call
+            property.SetValue(poco, nestedObj);
         }
         else if (CollectionTypeDetector.IsCollectionValue(value) &&
                  CollectionTypeDetector.IsCollectionType(property.PropertyType))
         {
-            // Handle collection values
-            Type elementType = CollectionTypeDetector.GetElementType(property.PropertyType);
-
-            if (value is IEnumerable<object> enumerableValue)
-            {
-                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-                PopulateListFromEnumerable(bucket, enumerableValue, elementType);
-
-                if (property.PropertyType.IsArray)
-                {
-                    var array = CreateArrayFromList(bucket, elementType);
-                    property.SetValue(obj, array);
-                }
-                else
-                {
-                    property.SetValue(obj, bucket);
-                }
-            }
-            else if (value is Array sourceArray)
-            {
-                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-
-                foreach (var item in sourceArray)
-                {
-                    if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
-                    {
-                        bucket.Add(convertedItem);
-                    }
-                }
-
-                if (property.PropertyType.IsArray)
-                {
-                    var array = CreateArrayFromList(bucket, elementType);
-                    property.SetValue(obj, array);
-                }
-                else
-                {
-                    property.SetValue(obj, bucket);
-                }
-            }
-            else
-            {
-                // For other IEnumerable types
-                var enumerable = (IEnumerable)value;
-                var bucket = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
-
-                foreach (var item in enumerable)
-                {
-                    if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
-                    {
-                        bucket.Add(convertedItem);
-                    }
-                }
-
-                if (property.PropertyType.IsArray)
-                {
-                    var array = CreateArrayFromList(bucket, elementType);
-                    property.SetValue(obj, array);
-                }
-                else
-                {
-                    property.SetValue(obj, bucket);
-                }
-            }
+            MapCollectionValueToProperty(poco, property, value);
         }
         else
         {
-            SetPropertyValue(obj, property, value);
+            SetSinglePropertyValue(poco, property, value);
         }
     }
+
+    private void MapCollectionValueToProperty(object poco, PropertyInfo property, object? value)
+    {
+        // Handle collection values
+        Type elementType = CollectionTypeDetector.GetElementType(property.PropertyType);
+
+        if (value is IEnumerable<object> enumerableObjects)
+        {
+            IList convertedItems = GetConvertedItemsList(enumerableObjects, elementType);
+
+            SetCollectionPropertyValue(poco, property, elementType, convertedItems);
+        }
+        else if (value is Array arrayOfObjects)
+        {
+            IList convertedItems = GetConvertedItemsList(arrayOfObjects, elementType);
+
+            SetCollectionPropertyValue(poco, property, elementType, convertedItems);
+        }
+        else if (value is IEnumerable enumerable)
+        {
+            IList convertedItems = GetConvertedItemsList(enumerable, elementType);
+
+            SetCollectionPropertyValue(poco, property, elementType, convertedItems);
+        }
+        else
+        {
+            throw new ConversionException(
+                $"Cannot set property '{property.Name}' on type '{poco.GetType().Name}'.\n" +
+                $"Value type: {(value?.GetType().Name ?? "<null>")}\n" +
+                $"Target type: {property.PropertyType.Name}\n" +
+                $"Value: {FormatValueForDisplay(value)}");
+        }
+    }
+
+    private IList GetConvertedItemsList(IEnumerable items, Type elementType)
+    {
+        IList destination = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(elementType));
+
+        foreach (var item in items)
+        {
+            if (CollectionTypeDetector.IsDictionaryValue(item, out var dic))
+            {
+                var nestedObj = this.DictionaryToObject(dic!, elementType);
+
+                destination.Add(nestedObj);
+            }
+            else if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
+            {
+                destination.Add(convertedItem);
+            }
+            else
+            {
+                throw new ConversionException(
+                    $"Cannot convert item to type '{elementType.Name}'.\n" +
+                    $"Value type: {(item?.GetType().Name ?? "<null>")}\n" +
+                    $"Value: {FormatValueForDisplay(item)}");
+            }
+        }
+        return destination;
+    }
+
+    private void SetCollectionPropertyValue(object poco, PropertyInfo property, Type elementType, IList convertedItems)
+    {
+        if (property.PropertyType.IsArray)
+        {
+            var array = CreateArrayFromList(convertedItems, elementType);
+            property.SetValue(poco, array);
+        }
+        else
+        {
+            property.SetValue(poco, convertedItems);
+        }
+    }
+
+    private Array CreateArrayFromList(IList list, Type elementType)
+    {
+        var array = Array.CreateInstance(elementType, list.Count);
+        list.CopyTo(array, 0);
+        return array;
+    }
+
+    //
 
     private bool TryGetValue(IReadOnlyDictionary<string, object?> dictionary, string key, out object? value)
     {
@@ -305,48 +318,24 @@ internal class DictionaryObjectConverter
         return false;
     }
 
-    private void PopulateListFromEnumerable(IList destination, IEnumerable<object> source, Type elementType)
-    {
-        foreach (var item in source)
-        {
-            if (IsDickie(item, out var dickie))
-            {
-                var nestedObj = DictionaryToObject(dickie!, elementType);
-
-                destination.Add(nestedObj);
-            }
-            else if (this.typeConverter.TryConvert(item, elementType, out var convertedItem))
-            {
-                destination.Add(convertedItem);
-            }
-        }
-    }
-
-    private Array CreateArrayFromList(IList list, Type elementType)
-    {
-        var array = Array.CreateInstance(elementType, list.Count);
-        list.CopyTo(array, 0);
-        return array;
-    }
-
     private bool IsComplexType(Type type)
     {
         return !type.IsPrimitive && type != typeof(string) && !type.IsValueType;
     }
 
-    private void SetPropertyValue(object obj, PropertyInfo property, object? value)
+    private void SetSinglePropertyValue(object poco, PropertyInfo property, object? value)
     {
         try
         {
             if (this.typeConverter.TryConvert(value, property.PropertyType, out var convertedValue))
             {
-                property.SetValue(obj, convertedValue);
+                property.SetValue(poco, convertedValue);
             }
             else
             {
                 // Don't try to set the property if conversion failed
                 throw new ConversionException(
-                    $"Cannot set property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
+                    $"Cannot set property '{property.Name}' on type '{poco.GetType().Name}'.\n" +
                     $"Value type: {(value?.GetType().Name ?? "<null>")}\n" +
                     $"Target type: {property.PropertyType.Name}\n" +
                     $"Value: {FormatValueForDisplay(value)}");
@@ -355,7 +344,7 @@ internal class DictionaryObjectConverter
         catch (Exception ex) when (ex is not ConversionException)
         {
             // Create a more detailed exception with context about the conversion
-            var message = $"Error setting property '{property.Name}' on type '{obj.GetType().Name}'.\n" +
+            var message = $"Error setting property '{property.Name}' on type '{poco.GetType().Name}'.\n" +
                           $"Value type: {(value?.GetType().Name ?? "<null>")}\n" +
                           $"Target type: {property.PropertyType.Name}\n" +
                           $"Value: {FormatValueForDisplay(value)}";
@@ -365,7 +354,7 @@ internal class DictionaryObjectConverter
     }
 
     // Helper method to format values for display in error messages
-    private string FormatValueForDisplay(object? value)
+    internal string FormatValueForDisplay(object? value)
     {
         if (value == null)
             return "<null>";
@@ -385,92 +374,20 @@ internal class DictionaryObjectConverter
         }
 
         if (value is byte[] bytes)
+        {
             return $"byte[{bytes.Length}]: 0x{BitConverter.ToString(bytes).Replace("-", "")}";
+        }
 
         if (value is Array array)
+        {
             return $"{value.GetType().Name}[{array.Length}]";
+        }
+
+        if (CollectionTypeDetector.IsDictionaryValue(value, out var dic))
+        {
+            return $"{{{string.Join(", ", dic!.Select(kvp => $"{kvp.Key}: {FormatValueForDisplay(kvp.Value)}"))}}}";
+        }
 
         return value.ToString() ?? "<toString returned null>";
-    }
-
-    //
-
-    private static bool IsDickie(object obj, out IReadOnlyDictionary<string, object?>? dickie)
-    {
-        if (obj is Dictionary<string, object> stringObjDic)
-        {
-            dickie = stringObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is Dictionary<string, object?> stringObjMaybeDic)
-        {
-            dickie = stringObjMaybeDic;
-            return true;
-        }
-        else if (obj is Dictionary<object, object> objObjDic)
-        {
-            dickie = objObjDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is Dictionary<object, object?> objObjMaybeDic)
-        {
-            dickie = objObjMaybeDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        // Read-only dictionaries
-        else if (obj is IReadOnlyDictionary<string, object> stringObjReadDic)
-        {
-            dickie = stringObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is IReadOnlyDictionary<string, object?> stringObjMaybeReadDic)
-        {
-            dickie = stringObjMaybeReadDic;
-            return true;
-        }
-        else if (obj is IReadOnlyDictionary<object, object> objObjReadDic)
-        {
-            dickie = objObjReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is IReadOnlyDictionary<object, object?> objObjMaybeReadDic)
-        {
-            dickie = objObjMaybeReadDic.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        // IDictionaries
-        else if (obj is IDictionary<string, object> stringObjDickish)
-        {
-            dickie = stringObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is IDictionary<string, object?> stringObjMaybeDickish)
-        {
-            dickie = stringObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is IDictionary<object, object> objObjDickish)
-        {
-            dickie = objObjDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-        else if (obj is IDictionary<object, object?> objObjMaybeDickish)
-        {
-            dickie = objObjMaybeDickish.ToDictionary(kvp => kvp.Key.ToString(), kvp => (object?)kvp.Value);
-            return true;
-        }
-
-        dickie = null;
-        return false;
-    }
-
-    private static Dictionary<string, object?> ConvertObjectDictionaryToStringDictionary(IReadOnlyDictionary<object, object> objDict)
-    {
-        var stringDict = new Dictionary<string, object?>();
-        foreach (var kvp in objDict)
-        {
-            stringDict[kvp.Key.ToString()] = kvp.Value;
-        }
-        return stringDict;
     }
 }
