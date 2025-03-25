@@ -151,15 +151,8 @@ internal class ContractClient
 
         var transactionHex = new Hex(rlpEncoded);
 
-        try
-        {
-            return await this.jsonRpc.SendRawTransactionAsync(
-                transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
-        }
-        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
-        {
-            throw result!;
-        }
+        return await this.jsonRpc.SendRawTransactionAsync(
+            transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
     }
 
     internal bool TryRead(
@@ -197,15 +190,8 @@ internal class ContractClient
             Value = value.ToHexStringForJsonRpc()
         };
 
-        try
-        {
-            return await this.jsonRpc.EstimateGasAsync(
-                transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
-        }
-        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
-        {
-            throw result!;
-        }
+        return await this.jsonRpc.EstimateGasAsync(
+            transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
     }
 
     //
@@ -227,17 +213,10 @@ internal class ContractClient
             Input = new Hex(encoded).ToString(),
         };
 
-        try
-        {
-            var result = await this.jsonRpc.CallAsync(
-                ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        var result = await this.jsonRpc.CallAsync(
+            ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
 
-            return (result, signature);
-        }
-        catch (JsonRpcRequestFailedException ex) when (IsExpectedException(ex, out var result))
-        {
-            throw result!;
-        }
+        return (result, signature);
     }
 
     //
@@ -278,31 +257,5 @@ internal class ContractClient
         {
             return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, rlpEncoder, chainId);
         }
-    }
-
-    private static bool IsExpectedException(Exception ex, out Exception? result)
-    {
-        var messages = string.Join(", ", ex.GetAllMessages());
-
-        if (messages.Contains("out of gas", StringComparison.OrdinalIgnoreCase))
-        {
-            result = new OutOfGasException(messages);
-            return true;
-        }
-
-        if (messages.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
-        {
-            result = new InvalidNonceException(messages);
-            return true;
-        }
-
-        if (messages.Contains("reverted", StringComparison.OrdinalIgnoreCase))
-        {
-            result = new RevertedTransactionException(messages);
-            return true;
-        }
-
-        result = null;
-        return false;
     }
 }

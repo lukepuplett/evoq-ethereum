@@ -12,7 +12,7 @@ public class JsonRpcErrorHandlerTests
     public void IsExpectedException_WithOutOfGasError_ReturnsOutOfGasException()
     {
         // Arrange
-        var error = new JsonRpcError { Code = 3, Message = "out of gas" };
+        var error = new JsonRpcError { Code = -32000, Message = "out of gas" };
         var exception = new JsonRpcProvidedErrorException(error);
 
         // Act
@@ -27,7 +27,7 @@ public class JsonRpcErrorHandlerTests
     public void IsExpectedException_WithNonceTooLowError_ReturnsInvalidNonceException()
     {
         // Arrange
-        var error = new JsonRpcError { Code = 3, Message = "nonce too low" };
+        var error = new JsonRpcError { Code = -32000, Message = "nonce too low" };
         var exception = new JsonRpcProvidedErrorException(error);
 
         // Act
@@ -42,7 +42,7 @@ public class JsonRpcErrorHandlerTests
     public void IsExpectedException_WithInsufficientFundsError_ReturnsInsufficientFundsException()
     {
         // Arrange
-        var error = new JsonRpcError { Code = 3, Message = "insufficient funds" };
+        var error = new JsonRpcError { Code = -32000, Message = "insufficient funds" };
         var exception = new JsonRpcProvidedErrorException(error);
 
         // Act
@@ -72,7 +72,7 @@ public class JsonRpcErrorHandlerTests
     public void IsExpectedException_WithNestedError_FindsExpectedException()
     {
         // Arrange
-        var innerError = new JsonRpcError { Code = 3, Message = "out of gas" };
+        var innerError = new JsonRpcError { Code = -32000, Message = "out of gas" };
         var innerException = new JsonRpcProvidedErrorException(innerError);
         var exception = new Exception("Outer exception", innerException);
 

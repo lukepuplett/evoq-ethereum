@@ -208,7 +208,7 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                 // other transactions and we just need to wait for our node to catch up, otherwise it indicates
                 // a bug in the nonce store or the node is misbehaving
 
-                this.logger.LogError(other, $"{functionName}: transaction failed to submit: '{other.Message}'");
+                this.logger.LogError(other, $"{functionName}: transaction failed with unexpected error: '{other.Message}'");
 
                 var r = await this.nonceStore.AfterSubmissionFailureAsync(nonce);
 

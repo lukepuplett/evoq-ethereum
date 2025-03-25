@@ -361,9 +361,17 @@ public class JsonRpcClient : IEthereumJsonRpc
             TimeSpan.FromSeconds(90),
             cancellationToken);
 
+
         if (response.Error != null)
         {
-            throw new JsonRpcProvidedErrorException(response.Error);
+            var baseException = new JsonRpcProvidedErrorException(response.Error);
+
+            if (JsonRpcErrorHandler.IsExpectedException(baseException, out var result))
+            {
+                throw result!;
+            }
+
+            throw baseException;
         }
 
         return response;

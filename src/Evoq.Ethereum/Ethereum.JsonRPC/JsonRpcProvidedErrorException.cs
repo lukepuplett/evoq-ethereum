@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace Evoq.Ethereum.JsonRPC;
 
 /// <summary>
-/// Represents a failure reported by a JSON-RPC provider.
+/// Represents a failure reported by a JSON-RPC provider with an error code.
 /// </summary>
 /// <remarks>
 /// The JSON-RPC invocation was successful, but the provider returned an error.
