@@ -13,7 +13,7 @@ namespace Evoq.Ethereum.JsonRPC;
 /// <summary>
 /// Makes the actual JSON-RPC request to the provider and deserializes the response.
 /// </summary>
-internal class JsonRpcProviderCaller<TResponseResult>
+public class JsonRpcProviderCaller<TResponseResult>
     where TResponseResult : class
 {
     private readonly JsonSerializerOptions jsonSerializerOptions;

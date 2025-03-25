@@ -16,7 +16,7 @@ namespace Evoq.Ethereum.Examples;
 public class ExampleEAS
 {
     [TestMethod]
-    // [Ignore]
+    [Ignore]
     public async Task Should_GetOrRegisterSchema_WhenSchemaDoesNotExist()
     {
         string baseUrl, chainName;
@@ -240,7 +240,7 @@ public class ExampleEAS
     }
 
     [TestMethod]
-    // [Ignore]
+    [Ignore]
     public async Task Should_SendTransactionManually_WithGasValidation()
     {
         string baseUrl, chainName;

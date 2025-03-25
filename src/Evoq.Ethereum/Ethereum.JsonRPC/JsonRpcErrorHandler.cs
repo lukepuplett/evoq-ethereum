@@ -17,7 +17,7 @@ internal static class JsonRpcErrorHandler
         public const int InvalidRequest = -32600;       // Malformed request or method not available
         public const int MethodNotFound = -32601;       // Method not available with provider
         public const int InvalidParams = -32602;        // Invalid request parameters
-        public const int InternalError = -32603;        // Node revert or malformed request
+        public const int InternalErrorOrRevert = -32603;// Node revert or malformed request
 
         // Ethereum specific
         public const int InvalidInput = -32000;         // Missing or invalid parameters

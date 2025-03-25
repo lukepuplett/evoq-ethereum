@@ -10,8 +10,12 @@ namespace Evoq.Ethereum.JsonRPC;
 /// The JSON-RPC invocation was successful, but the provider returned an error.
 /// </remarks>
 [Serializable]
-internal class JsonRpcProviderErrorException : JsonRpcException
+public class JsonRpcProviderErrorException : JsonRpcException
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JsonRpcProviderErrorException"/> class.
+    /// </summary>
+    /// <param name="error">The JSON-RPC error.</param>
     public JsonRpcProviderErrorException(JsonRpcError error)
     : base($"JSON-RPC provider error: {error.Code} - {error.Message}")
     {
@@ -25,13 +29,24 @@ internal class JsonRpcProviderErrorException : JsonRpcException
         }
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JsonRpcProviderErrorException"/> class with serialized data.
+    /// </summary>
+    /// <param name="info">The <see cref="SerializationInfo"/> that holds the serialized object data about the exception being thrown.</param>
+    /// <param name="context">The <see cref="StreamingContext"/> that contains contextual information about the source or destination.</param>
     protected JsonRpcProviderErrorException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
     }
 
     //
 
+    /// <summary>
+    /// Gets the JSON-RPC error code.
+    /// </summary>
     public int JsonRpcErrorCode { get; }
 
+    /// <summary>
+    /// Gets the JSON-RPC error data.
+    /// </summary>
     public object? JsonRpcErrorData { get; }
 }
