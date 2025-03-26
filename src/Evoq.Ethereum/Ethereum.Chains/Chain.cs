@@ -198,6 +198,20 @@ public class Chain
         return new Contract(this.ChainId, this.chainClient, contractClient, abiDocument, address);
     }
 
+    //
+
+    /// <summary>
+    /// Creates a default chain instance from an endpoint.
+    /// </summary>
+    /// <param name="endpoint">The endpoint.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(Endpoint endpoint)
+    {
+        var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
+
+        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory);
+    }
+
     /// <summary>
     /// Creates a default chain instance.
     /// </summary>

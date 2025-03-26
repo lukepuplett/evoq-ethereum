@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.Transactions;
 
 namespace Evoq.Ethereum;
@@ -167,5 +170,17 @@ public static class Extensions
         out IReadOnlyDictionary<string, object?>? data)
     {
         return contract.TryReadEventLogsFromReceipt(receipt, eventName, out indexed, out data);
+    }
+
+    /// <summary>
+    /// Creates a chain from an endpoint.
+    /// </summary>
+    /// <param name="endpoint">The endpoint.</param>
+    /// <returns>The chain.</returns>
+    public static Chain CreateChain(this Endpoint endpoint)
+    {
+        var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
+
+        return Chain.CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory);
     }
 }
