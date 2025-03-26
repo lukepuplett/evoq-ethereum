@@ -199,7 +199,7 @@ public class ContractAbiItem
     /// <summary>
     /// The outputs of the item.
     /// </summary>
-    public List<ContractAbiParameter>? Outputs { get; set; }
+    public List<ContractAbiParameter> Outputs { get; set; } = new();
     /// <summary>
     /// The state mutability of the item.
     /// </summary>

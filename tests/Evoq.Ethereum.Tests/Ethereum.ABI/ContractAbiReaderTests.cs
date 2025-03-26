@@ -138,7 +138,7 @@ public class ContractAbiReaderTests
         Assert.AreEqual(2, function.Inputs.Count);
         Assert.AreEqual("bytes32[]", function.Inputs[0].Type);
         Assert.AreEqual("string[]", function.Inputs[1].Type);
-        Assert.AreEqual(1, function.Outputs!.Count);
+        Assert.AreEqual(1, function.Outputs.Count);
         Assert.AreEqual("bool[]", function.Outputs[0].Type);
 
         var found = abi.TryGetFunction("batchProcess", out var function2);

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -11,6 +10,13 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiParameters : System.Collections.ObjectModel.ReadOnlyCollection<AbiParam>
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiParameters"/> class.
+    /// </summary>
+    public AbiParameters() : base(new List<AbiParam>())
+    {
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiParameters"/> class.
     /// </summary>

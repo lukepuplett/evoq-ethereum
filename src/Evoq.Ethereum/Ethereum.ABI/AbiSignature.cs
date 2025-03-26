@@ -20,7 +20,7 @@ public class AbiSignature
     /// <param name="name">The function name.</param>
     /// <param name="inputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
     /// <param name="outputsSignature">The function descriptor in parenthesis, e.g. "((string,uint256,address),bool)" or "(address,uint256)" or "(address[],uint256[])" or "(uint256[2][3])".</param>
-    public AbiSignature(AbiItemType type, string name, string inputsSignature, string outputsSignature = "")
+    public AbiSignature(AbiItemType type, string name, string inputsSignature = "", string outputsSignature = "")
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -28,24 +28,22 @@ public class AbiSignature
         }
 
         this.ItemType = type;
+        this.Name = name;
 
         inputsSignature = inputsSignature.Trim();
         outputsSignature = outputsSignature.Trim();
 
-        if (string.IsNullOrWhiteSpace(inputsSignature))
-        {
-            throw new ArgumentException("Function descriptor cannot be empty", nameof(inputsSignature));
-        }
-
         if (inputsSignature.StartsWith("(") && inputsSignature.EndsWith(")"))
         {
-            this.Name = name;
             this.Inputs = AbiParameters.Parse(inputsSignature);
+        }
+        else if (!string.IsNullOrEmpty(inputsSignature))
+        {
+            this.Inputs = AbiParameters.Parse($"({inputsSignature})");
         }
         else
         {
-            this.Name = name;
-            this.Inputs = AbiParameters.Parse($"({inputsSignature})");
+            this.Inputs = new AbiParameters();
         }
 
         if (outputsSignature.StartsWith("(") && outputsSignature.EndsWith(")"))
@@ -55,6 +53,10 @@ public class AbiSignature
         else if (!string.IsNullOrEmpty(outputsSignature))
         {
             this.Outputs = AbiParameters.Parse($"({outputsSignature})");
+        }
+        else
+        {
+            this.Outputs = new AbiParameters();
         }
     }
 
@@ -86,7 +88,7 @@ public class AbiSignature
     /// <summary>
     /// Gets the parameters of the function signature.
     /// </summary>
-    public AbiParameters? Outputs { get; }
+    public AbiParameters Outputs { get; }
 
     /// <summary>
     /// Gets a value indicating whether the function is anonymous.
@@ -103,6 +105,16 @@ public class AbiSignature
     /// <returns>The encoded full function signature.</returns>
     public byte[] AbiEncodeCallValues(IAbiEncoder encoder, IDictionary<string, object?> values)
     {
+        if (this.Inputs.Count == 0)
+        {
+            if (values.Count > 0)
+            {
+                throw new ArgumentException("No parameters expected, but values provided", nameof(values));
+            }
+
+            return this.GetSelector().ToByteArray();
+        }
+
         var result = encoder.EncodeParameters(this.Inputs, values);
 
         var selectorBytes = this.GetSelector().ToByteArray();

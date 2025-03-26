@@ -61,6 +61,24 @@ public class AbiEncoderTests
             $"Test case {caseNumber}: {testCase.Name} failed.\n{FormatSlotBlock(slots!)}");
     }
 
+    [TestMethod]
+    public void Encode_GetVersion_WithNoParameters_EncodesCorrectly()
+    {
+        // Arrange
+        var signature = AbiSignature.Parse(AbiItemType.Function, "getVersion()");
+        var values = new Dictionary<string, object?>(); // Empty list since no parameters
+
+        // Act
+        var result = this.encoder.EncodeParameters(signature.Inputs, values);
+        var hex = result.ToHexStruct();
+
+        // Assert
+        Assert.AreEqual(Hex.Empty, hex, "Should have no encoded parameters");
+
+        // The full call data would be: selector (4 bytes) + parameters (0 bytes)
+        // But this test only verifies parameter encoding
+    }
+
     private static IEnumerable<object[]> GetTestCases()
     {
         return AbiEncoderDecoderTestCases.Cases.Select(kvp => new object[] { kvp.Key, kvp.Value });

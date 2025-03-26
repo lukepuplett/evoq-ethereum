@@ -13,6 +13,29 @@ public class AbiSignatureTests
     }
 
     [TestMethod]
+    public void Constructor_WithNoInputsAndOutputs_CreatesCorrectSignature()
+    {
+        var signature = new AbiSignature(AbiItemType.Function, "noParams");
+
+        Assert.AreEqual("noParams()", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("()", signature.GetCanonicalOutputsSignature());
+        Assert.AreEqual(0, signature.Inputs.Count);
+        Assert.AreEqual(0, signature.Outputs.Count);
+    }
+
+    [TestMethod]
+    public void Constructor_WithNoInputsButOutput_CreatesCorrectSignature()
+    {
+        var signature = new AbiSignature(AbiItemType.Function, "getValue", "", "uint256");
+
+        Assert.AreEqual("getValue()", signature.GetCanonicalInputsSignature());
+        Assert.AreEqual("(uint256)", signature.GetCanonicalOutputsSignature());
+        Assert.AreEqual(0, signature.Inputs.Count);
+        Assert.AreEqual(1, signature.Outputs.Count);
+        Assert.AreEqual("uint256", signature.Outputs[0].AbiType);
+    }
+
+    [TestMethod]
     public void Constructor_WithNameAndTypes_CreatesCorrectSignature()
     {
         var signature = new AbiSignature(AbiItemType.Function, "transfer", "address recipient, uint256 amount");
@@ -150,6 +173,7 @@ public class AbiSignatureTests
     [DataRow("transfer(address,uint256)", "a9059cbb")]
     [DataRow("balanceOf(address)", "70a08231")]
     [DataRow("approve(address,uint256)", "095ea7b3")]
+    [DataRow("getValue()", "20965255")]
     public void GetSelector_ReturnsCorrectBytes(string fullSignature, string expectedHex)
     {
         var signature = AbiSignature.Parse(AbiItemType.Function, fullSignature);
