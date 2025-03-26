@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,7 @@ public class InMemoryNonceStore : INonceStore
     private readonly HashSet<uint> nonceStore = new();
     private readonly Dictionary<uint, DateTimeOffset> nonceFailedTimes = new();
     private readonly ILogger<InMemoryNonceStore> logger;
+    private readonly Func<Task<BigInteger>>? getTransactionCount;
 
     //
 
@@ -21,9 +23,13 @@ public class InMemoryNonceStore : INonceStore
     /// Initializes a new instance of the <see cref="InMemoryNonceStore"/> class.
     /// </summary>
     /// <param name="loggerFactory">The logger factory.</param>
-    public InMemoryNonceStore(ILoggerFactory loggerFactory)
+    /// <param name="getTransactionCount">Optional function to get the current transaction count from an external source (e.g., blockchain).</param>
+    public InMemoryNonceStore(
+        ILoggerFactory loggerFactory,
+        Func<Task<BigInteger>>? getTransactionCount = null)
     {
         this.logger = loggerFactory.CreateLogger<InMemoryNonceStore>();
+        this.getTransactionCount = getTransactionCount;
     }
 
     //
@@ -39,6 +45,19 @@ public class InMemoryNonceStore : INonceStore
         {
             lock (nonceStore)
             {
+                if (getTransactionCount != null)
+                {
+                    try
+                    {
+                        var currentNonce = getTransactionCount().Result;
+                        nonce = (uint)currentNonce;
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to get nonce from external source, using 0");
+                    }
+                }
+
                 if (!nonceStore.Contains(nonce))
                 {
                     nonceStore.Add(nonce);
