@@ -24,17 +24,18 @@ public class AbiEncoderPackedTests
         };
 
         // Expected result from Solidity docs
-        var expectedHex = "ffff42000348656c6c6f2c20776f726c6421";
-        var expected = Hex.Parse(expectedHex);
+        var expectedHexStr = "ffff42000348656c6c6f2c20776f726c6421";
+        var expectedHex = Hex.Parse(expectedHexStr);
 
         // Act
         var result = encoder.EncodeParameters(parameters, values);
+        var resultBytes = result.ToByteArray();
+        var resultHex = Hex.FromBytes(resultBytes);
 
         // Assert
         Assert.IsNotNull(result, "Result should not be null");
-        Assert.IsNotNull(result.ToByteArray(), "Result should not be null");
-        Assert.AreEqual(expectedHex, Hex.FromBytes(result.ToByteArray()), "Result should match expected hex");
-        Assert.AreEqual(expected, result.ToHexStruct(), "Result should match expected hex");
+        Assert.IsNotNull(resultBytes, "Result should not be null");
+        Assert.AreEqual(expectedHex, resultHex, "Result should match expected hex");
     }
 
     [TestMethod]
