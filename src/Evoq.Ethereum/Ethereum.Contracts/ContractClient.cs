@@ -10,6 +10,7 @@ using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.RLP;
 using Evoq.Ethereum.Transactions;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Contracts;
 
@@ -25,6 +26,7 @@ internal class ContractClient
     private readonly IAbiDecoder abiDecoder;
     private readonly ITransactionSigner? transactionSigner;
     private readonly IRlpTransactionEncoder rlpEncoder;
+    private readonly ILogger logger;
 
     //
 
@@ -37,19 +39,22 @@ internal class ContractClient
     /// <param name="transactionSigner">The transaction signer.</param>
     /// <param name="rlpEncoder">The RLP encoder.</param>
     /// <param name="chainId">The chain ID.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
     internal ContractClient(
         IEthereumJsonRpc jsonRpc,
         IAbiEncoder abiEncoder,
         IAbiDecoder abiDecoder,
         ITransactionSigner? transactionSigner,
         IRlpTransactionEncoder rlpEncoder,
-        ulong chainId)
+        ulong chainId,
+        ILoggerFactory loggerFactory)
     {
         this.jsonRpc = jsonRpc;
         this.abiEncoder = abiEncoder;
         this.abiDecoder = abiDecoder;
         this.transactionSigner = transactionSigner;
         this.rlpEncoder = rlpEncoder;
+        this.logger = loggerFactory?.CreateLogger<ContractClient>() ?? throw new ArgumentNullException(nameof(loggerFactory));
 
         this.ChainId = chainId;
     }
@@ -149,10 +154,17 @@ internal class ContractClient
                 nameof(options));
         }
 
-        var transactionHex = new Hex(rlpEncoded);
+        var rlpHex = new Hex(rlpEncoded);
+        var id = this.GetRandomId();
 
-        return await this.jsonRpc.SendRawTransactionAsync(
-            transactionHex, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        this.logger.LogInformation("Sending transaction: RLP: {Rlp}, ID: {Id}", rlpHex.ToString()[..18], id);
+
+        var transactionHash = await this.jsonRpc.SendRawTransactionAsync(
+            rlpHex, id: id, cancellationToken: cancellationToken);
+
+        this.logger.LogInformation("Transaction sent: ID: {Id}, Hash: {Hash}", id, transactionHash);
+
+        return transactionHash;
     }
 
     internal bool TryRead(
@@ -247,15 +259,19 @@ internal class ContractClient
         var abiDecoder = new AbiDecoder();
         var rlpEncoder = new RlpEncoder();
 
+        TransactionSigner? transactionSigner = null;
         if (sender.HasValue)
         {
-            var transactionSigner = TransactionSigner.CreateDefault(sender.Value.SenderAccount.PrivateKey.ToByteArray());
+            transactionSigner = TransactionSigner.CreateDefault(sender.Value.SenderAccount.PrivateKey.ToByteArray());
+        }
 
-            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, transactionSigner, rlpEncoder, chainId);
-        }
-        else
-        {
-            return new ContractClient(jsonRpc, abiEncoder, abiDecoder, null, rlpEncoder, chainId);
-        }
+        return new ContractClient(
+            jsonRpc,
+            abiEncoder,
+            abiDecoder,
+            transactionSigner,
+            rlpEncoder,
+            chainId,
+            endpoint.LoggerFactory);
     }
 }

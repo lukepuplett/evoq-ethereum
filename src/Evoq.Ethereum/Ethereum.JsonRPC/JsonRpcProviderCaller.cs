@@ -61,7 +61,7 @@ public class JsonRpcProviderCaller<TResponseResult>
         requestId = request.Id;
         this.logger?.LogDebug("Extracted request ID: {RequestId}", requestId);
 
-        using (this.logger?.BeginScope("Method: {MethodName}, ID: {Id}", methodInfo.MethodName, methodInfo.Id))
+        using (this.logger?.BeginScope("[Method: {MethodName}, ID: {Id}]", methodInfo.MethodName, methodInfo.Id))
         {
             if (requestId != methodInfo.Id)
             {
