@@ -32,7 +32,7 @@ public class JsonRpcProviderCaller<TResponseResult>
         ILoggerFactory? loggerFactory = null)
     {
         this.jsonSerializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions();
-        this.logger = loggerFactory?.CreateLogger("JsonRpcProviderCaller");
+        log = loggerFactory?.CreateLogger("JsonRpcProviderCaller");
     }
 
     //
@@ -61,11 +61,11 @@ public class JsonRpcProviderCaller<TResponseResult>
         requestId = request.Id;
         this.logger?.LogDebug("Extracted request ID: {RequestId}", requestId);
 
-        using (this.logger?.BeginScope("Method: {MethodName}, ID: {Id}", methodInfo.MethodName, methodInfo.Id))
+        using (var log = this.logger?.BeginScope("Method: {MethodName}, ID: {Id}", methodInfo.MethodName, methodInfo.Id))
         {
             if (requestId != methodInfo.Id)
             {
-                this.logger?.LogWarning("Request ID {RequestId} doesn't match method ID {MethodId}",
+                log?.LogWarning("Request ID {RequestId} doesn't match method ID {MethodId}",
                     requestId, methodInfo.Id);
 
                 Debug.Assert(false, "Request ID doesn't match method ID");
@@ -73,7 +73,7 @@ public class JsonRpcProviderCaller<TResponseResult>
 
             // Set up timeout
             TimeSpan actualTimeout = timeout ?? defaultTimeout;
-            this.logger?.LogDebug("Using timeout of {TimeoutSeconds} seconds", actualTimeout.TotalSeconds);
+            log?.LogDebug("Using timeout of {TimeoutSeconds} seconds", actualTimeout.TotalSeconds);
 
             while (true)
             {
@@ -82,7 +82,7 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                 attemptCount++;
 
-                this.logger?.LogDebug("Attempt {AttemptCount} for JSON-RPC method {MethodName} (ID: {Id})",
+                log?.LogDebug("Attempt {AttemptCount} for JSON-RPC method {MethodName} (ID: {Id})",
                      attemptCount, methodInfo.MethodName, methodInfo.Id);
 
                 // Create a timeout cancellation token source
@@ -94,7 +94,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                 {
                     // Serialize the request
                     var requestJson = JsonSerializer.Serialize(request, this.jsonSerializerOptions);
-                    this.logger?.LogTrace("JSON-RPC request: {RequestJson}", requestJson);
+                    log?.LogTrace("JSON-RPC request: {RequestJson}", requestJson);
 
                     var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
@@ -102,14 +102,14 @@ public class JsonRpcProviderCaller<TResponseResult>
                     if (!httpClient.DefaultRequestHeaders.Contains("Accept-Encoding"))
                     {
                         httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
-                        this.logger?.LogDebug("Added compression headers to request");
+                        log?.LogDebug("Added compression headers to request");
                     }
 
                     // Send the request
                     var requestRelativeUrl = "";
                     var requestRelativeUri = new Uri(requestRelativeUrl, UriKind.Relative);
 
-                    this.logger?.LogDebug("Sending request to {BaseAddress}{RelativeUri}",
+                    log?.LogDebug("Sending request to {BaseAddress}{RelativeUri}",
                         httpClient.BaseAddress, requestRelativeUri);
 
                     var response = await httpClient.PostAsync(requestRelativeUri, content, linkedCts.Token);
@@ -117,7 +117,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // Handle HTTP error status codes
                     if (!response.IsSuccessStatusCode)
                     {
-                        this.logger?.LogWarning("HTTP error response: {StatusCode} for method {MethodName}",
+                        log?.LogWarning("HTTP error response: {StatusCode} for method {MethodName}",
                             response.StatusCode, methodInfo.MethodName);
 
                         var faultInfo = new MethodFaultInfo(
@@ -127,13 +127,13 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                         if (shouldRetry != null && await shouldRetry(faultInfo))
                         {
-                            this.logger?.LogInformation("Retrying after HTTP error {StatusCode} for method {MethodName}",
+                            log?.LogInformation("Retrying after HTTP error {StatusCode} for method {MethodName}",
                                 response.StatusCode, methodInfo.MethodName);
 
                             continue; // Retry the request
                         }
 
-                        this.logger?.LogError("Request failed with status code {StatusCode} for method {MethodName}",
+                        log?.LogError("Request failed with status code {StatusCode} for method {MethodName}",
                             response.StatusCode, methodInfo.MethodName);
 
                         throw new JsonRpcRequestFailedException($"Request failed with status code {response.StatusCode}");
@@ -142,19 +142,19 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // Log compression info if available
                     if (response.Content.Headers.ContentEncoding.Count > 0)
                     {
-                        this.logger?.LogDebug("Response compressed using: {CompressionMethod}",
+                        log?.LogDebug("Response compressed using: {CompressionMethod}",
                             string.Join(", ", response.Content.Headers.ContentEncoding));
                     }
 
                     // Deserialize the response
                     var responseBodyStr = await response.Content.ReadAsStringAsync();
-                    this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
+                    log?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
 
                     // Add these detailed debug logs:
-                    this.logger?.LogInformation("Response Status: {StatusCode} {StatusReason}", (int)response.StatusCode, response.ReasonPhrase);
-                    this.logger?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
-                    this.logger?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
-                    // this.logger?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
+                    log?.LogInformation("Response Status: {StatusCode} {StatusReason}", (int)response.StatusCode, response.ReasonPhrase);
+                    log?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
+                    log?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
+                    // log?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
 
                     var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                         responseBodyStr, this.jsonSerializerOptions);
@@ -162,7 +162,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // After deserialization, add more detailed logging:
                     if (responseDto == null)
                     {
-                        this.logger?.LogWarning("Null response for method {MethodName}", methodInfo.MethodName);
+                        log?.LogWarning("Null response for method {MethodName}", methodInfo.MethodName);
 
                         var faultInfo = new MethodFaultInfo(
                             methodInfo,
@@ -171,35 +171,35 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                         if (shouldRetry != null && await shouldRetry(faultInfo))
                         {
-                            this.logger?.LogInformation("Retrying after null response for method {MethodName}",
+                            log?.LogInformation("Retrying after null response for method {MethodName}",
                                 methodInfo.MethodName);
 
                             continue; // Retry the request
                         }
 
-                        this.logger?.LogError("Request failed with null response for method {MethodName}",
+                        log?.LogError("Request failed with null response for method {MethodName}",
                             methodInfo.MethodName);
 
                         throw new JsonRpcRequestFailedException("Request failed with null response");
                     }
                     else
                     {
-                        this.logger?.LogDebug("Deserialized Response - ID: {Id}, Has Error: {HasError}, Has Result: {HasResult}",
+                        log?.LogDebug("Deserialized Response - ID: {Id}, Has Error: {HasError}, Has Result: {HasResult}",
                             responseDto.Id,
                             responseDto.Error != null,
                             responseDto.Result != null);
 
                         if (responseDto.Result != null)
                         {
-                            this.logger?.LogDebug("Result Type: {ResultType}", responseDto.Result.GetType().Name);
-                            this.logger?.LogDebug("Result Value: {@Result}", responseDto.Result);
+                            log?.LogDebug("Result Type: {ResultType}", responseDto.Result.GetType().Name);
+                            log?.LogDebug("Result Value: {@Result}", responseDto.Result);
                         }
                     }
 
                     // Validate response ID matches request ID
                     if (requestId.HasValue && responseDto.Id != requestId.Value)
                     {
-                        this.logger?.LogWarning("Response ID {ResponseId} doesn't match request ID {RequestId} for method {MethodName}",
+                        log?.LogWarning("Response ID {ResponseId} doesn't match request ID {RequestId} for method {MethodName}",
                             responseDto.Id, requestId.Value, methodInfo.MethodName);
 
                         var idMismatchException = new JsonRpcRequestFailedException(
@@ -212,13 +212,13 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                         if (shouldRetry != null && await shouldRetry(faultInfo))
                         {
-                            this.logger?.LogInformation("Retrying after ID mismatch for method {MethodName}",
+                            log?.LogInformation("Retrying after ID mismatch for method {MethodName}",
                                 methodInfo.MethodName);
 
                             continue; // Retry the request
                         }
 
-                        this.logger?.LogError("Response ID mismatch for method {MethodName}: expected {RequestId}, got {ResponseId}",
+                        log?.LogError("Response ID mismatch for method {MethodName}: expected {RequestId}, got {ResponseId}",
                             methodInfo.MethodName, requestId.Value, responseDto.Id);
 
                         throw idMismatchException;
@@ -227,7 +227,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // Check if the response contains an error
                     if (responseDto.Error != null)
                     {
-                        this.logger?.LogWarning(
+                        log?.LogWarning(
                             "JSON-RPC Error | Method: {MethodName} | Code: {ErrorCode} | Message: {ErrorMessage}",
                             methodInfo.MethodName,
                             responseDto.Error.Code,
@@ -242,7 +242,7 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                         if (shouldRetry != null && await shouldRetry(faultInfo))
                         {
-                            this.logger?.LogInformation(
+                            log?.LogInformation(
                                 "Retrying request | Method: {MethodName} | Previous error code: {ErrorCode}",
                                 methodInfo.MethodName,
                                 responseDto.Error.Code);
@@ -251,7 +251,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                         }
 
                         // If we shouldn't retry, throw the exception
-                        this.logger?.LogError(
+                        log?.LogError(
                             "JSON-RPC Error | Method: {MethodName} | Code: {ErrorCode} | Message: {ErrorMessage}",
                             methodInfo.MethodName,
                             responseDto.Error.Code,
@@ -260,7 +260,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                         throw providerException;
                     }
 
-                    this.logger?.LogDebug("Successfully completed JSON-RPC method {MethodName} (ID: {Id}) in {AttemptCount} attempts",
+                    log?.LogDebug("Successfully completed JSON-RPC method {MethodName} (ID: {Id}) in {AttemptCount} attempts",
                         methodInfo.MethodName, methodInfo.Id, attemptCount);
 
                     return responseDto;
@@ -270,7 +270,7 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // Check if it was a timeout or a regular cancellation
                     if (timeoutCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                     {
-                        this.logger?.LogWarning("Request timed out after {TimeoutSeconds} seconds for method {MethodName}",
+                        log?.LogWarning("Request timed out after {TimeoutSeconds} seconds for method {MethodName}",
                             actualTimeout.TotalSeconds, methodInfo.MethodName);
 
                         var timeoutException = new TimeoutException(
@@ -283,25 +283,25 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                         if (shouldRetry != null && await shouldRetry(faultInfo))
                         {
-                            this.logger?.LogInformation("Retrying after timeout for method {MethodName}",
+                            log?.LogInformation("Retrying after timeout for method {MethodName}",
                                 methodInfo.MethodName);
 
                             continue; // Retry the request
                         }
 
-                        this.logger?.LogError("Request timed out for method {MethodName}", methodInfo.MethodName);
+                        log?.LogError("Request timed out for method {MethodName}", methodInfo.MethodName);
                         throw new JsonRpcRequestFailedException($"Request timed out after {actualTimeout.TotalSeconds} seconds", timeoutException);
                     }
                     else
                     {
-                        this.logger?.LogInformation("Request cancelled for method {MethodName}", methodInfo.MethodName);
+                        log?.LogInformation("Request cancelled for method {MethodName}", methodInfo.MethodName);
                         // Propagate regular cancellation exceptions directly
                         throw;
                     }
                 }
                 catch (HttpRequestException ex)
                 {
-                    this.logger?.LogWarning(ex, "HTTP request exception for method {MethodName}: {Message}",
+                    log?.LogWarning(ex, "HTTP request exception for method {MethodName}: {Message}",
                         methodInfo.MethodName, ex.Message);
 
                     var faultInfo = new MethodFaultInfo(
@@ -311,19 +311,19 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                     if (shouldRetry != null && !cancellationToken.IsCancellationRequested && await shouldRetry(faultInfo))
                     {
-                        this.logger?.LogInformation("Retrying after HTTP request exception for method {MethodName}",
+                        log?.LogInformation("Retrying after HTTP request exception for method {MethodName}",
                             methodInfo.MethodName);
                         continue; // Retry the request
                     }
 
-                    this.logger?.LogError(ex, "Request failed due to network error for method {MethodName}",
+                    log?.LogError(ex, "Request failed due to network error for method {MethodName}",
                         methodInfo.MethodName);
 
                     throw new JsonRpcRequestFailedException("Request failed due to network error", ex);
                 }
                 catch (JsonException ex)
                 {
-                    this.logger?.LogWarning(ex, "JSON deserialization exception for method {MethodName}: {Message}",
+                    log?.LogWarning(ex, "JSON deserialization exception for method {MethodName}: {Message}",
                         methodInfo.MethodName, ex.Message);
 
                     var faultInfo = new MethodFaultInfo(
@@ -333,19 +333,19 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                     if (shouldRetry != null && !cancellationToken.IsCancellationRequested && await shouldRetry(faultInfo))
                     {
-                        this.logger?.LogInformation("Retrying after JSON deserialization exception for method {MethodName}",
+                        log?.LogInformation("Retrying after JSON deserialization exception for method {MethodName}",
                             methodInfo.MethodName);
                         continue; // Retry the request
                     }
 
-                    this.logger?.LogError(ex, "Failed to deserialize JSON-RPC response for method {MethodName}",
+                    log?.LogError(ex, "Failed to deserialize JSON-RPC response for method {MethodName}",
                         methodInfo.MethodName);
 
                     throw new JsonRpcRequestFailedException("Failed to deserialize JSON-RPC response", ex);
                 }
                 catch (Exception ex) when (ex is not JsonRpcRequestFailedException)
                 {
-                    this.logger?.LogWarning(ex, "Unexpected exception for method {MethodName}: {Message}",
+                    log?.LogWarning(ex, "Unexpected exception for method {MethodName}: {Message}",
                         methodInfo.MethodName, ex.Message);
 
                     var faultInfo = new MethodFaultInfo(
@@ -355,12 +355,12 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                     if (shouldRetry != null && !cancellationToken.IsCancellationRequested && await shouldRetry(faultInfo))
                     {
-                        this.logger?.LogInformation("Retrying after unexpected exception for method {MethodName}",
+                        log?.LogInformation("Retrying after unexpected exception for method {MethodName}",
                             methodInfo.MethodName);
                         continue; // Retry the request
                     }
 
-                    this.logger?.LogError(ex, "Unexpected error during JSON-RPC request for method {MethodName}",
+                    log?.LogError(ex, "Unexpected error during JSON-RPC request for method {MethodName}",
                         methodInfo.MethodName);
 
                     throw new JsonRpcRequestFailedException("Unexpected error during JSON-RPC request", ex);
