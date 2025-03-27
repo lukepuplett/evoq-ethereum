@@ -13,8 +13,8 @@ public class AbiDynamicTypeEncoders : System.Collections.ObjectModel.ReadOnlyCol
     public AbiDynamicTypeEncoders()
         : base(new List<IAbiEncode>
         {
-            new StringTypeEncoder(),
-            new BytesTypeEncoder()
+            new BytesTypeEncoder(),
+            new StringTypeEncoder()
         })
     {
     }
@@ -31,8 +31,8 @@ public class AbiDynamicTypeDecoders : System.Collections.ObjectModel.ReadOnlyCol
     public AbiDynamicTypeDecoders()
         : base(new List<IAbiDecode>
         {
-            new StringTypeEncoder(),
-            new BytesTypeEncoder()
+            new BytesTypeEncoder(),
+            new StringTypeEncoder()
         })
     {
     }

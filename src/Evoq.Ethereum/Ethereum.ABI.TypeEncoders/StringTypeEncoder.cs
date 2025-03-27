@@ -13,7 +13,9 @@ internal class StringTypeEncoder : AbiCompatChecker, IAbiEncode, IAbiDecode
     /// Initializes a new instance of the <see cref="StringTypeEncoder"/> class.
     /// </summary>
     public StringTypeEncoder()
-        : base(new HashSet<string> { "string", "bytes" }, new HashSet<Type> { typeof(string) })
+        : base(
+            new HashSet<string> { "string", "bytes" },
+            new HashSet<Type> { typeof(string) })
     {
     }
 
