@@ -55,6 +55,28 @@ public class AbiConverterTests
     }
 
     [TestMethod]
+    public void UserWithAddress_ConvertFromHexAddress_Success()
+    {
+        // Arrange
+        var dictionary = new Dictionary<string, object?>
+        {
+            { "Name", "Alice" },
+            { "WalletAddress", Hex.Parse("0x1234567890123456789012345678901234567890") }
+        };
+
+        // Act
+        var user = this.converter.DictionaryToObject<UserWithAddress>(dictionary);
+
+        // Assert
+        Assert.IsNotNull(user);
+        Assert.AreEqual("Alice", user.Name);
+        Assert.IsTrue(string.Equals(
+            "0x1234567890123456789012345678901234567890",
+            user.WalletAddress.ToString(),
+            StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
     public void UserWithArrays_ConvertFromDictionary_Success()
     {
         // Arrange

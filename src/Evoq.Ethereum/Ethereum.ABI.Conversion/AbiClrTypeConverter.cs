@@ -336,6 +336,13 @@ internal class AbiClrTypeConverter
                     byteArray.Length);
             }
         }
+        else if (value is Hex hex)
+        {
+            result = new EthereumAddress(hex.ToByteArray());
+            this.logger.LogDebug("Converted Hex of length {Length} to EthereumAddress", hex.Length);
+
+            return true;
+        }
         else if (value is EthereumAddress address)
         {
             result = address;
