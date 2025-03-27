@@ -89,6 +89,48 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Converts a <see cref="DateTime"/> to a Unix timestamp.
+    /// </summary>
+    /// <param name="dateTime">The date time to convert.</param>
+    /// <returns>The Unix timestamp.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the DateTime is not in UTC or is before Unix epoch.</exception>
+    public static ulong ToUnixTimestamp(this DateTime dateTime)
+    {
+        if (dateTime.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("DateTime must be in UTC", nameof(dateTime));
+        }
+
+        if (dateTime < new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
+        {
+            throw new ArgumentException("DateTime must not be before Unix epoch (1970-01-01 00:00:00 UTC)");
+        }
+
+        return dateTime.ToDateTimeOffset(TimeSpan.Zero).ToUnixTimestamp();
+    }
+
+    /// <summary>
+    /// Converts a <see cref="DateTimeOffset"/> to a Unix timestamp.
+    /// </summary>
+    /// <param name="dateTimeOffset">The date time offset to convert.</param>
+    /// <returns>The Unix timestamp.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the DateTimeOffset is not in UTC or is before Unix epoch.</exception>
+    public static ulong ToUnixTimestamp(this DateTimeOffset dateTimeOffset)
+    {
+        if (dateTimeOffset.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException("DateTimeOffset must be in UTC", nameof(dateTimeOffset));
+        }
+
+        if (dateTimeOffset < new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero))
+        {
+            throw new ArgumentException("DateTimeOffset must not be before Unix epoch (1970-01-01 00:00:00 UTC)", nameof(dateTimeOffset));
+        }
+
+        return (ulong)dateTimeOffset.ToUnixTimeSeconds();
+    }
+
+    /// <summary>
     /// Tries to parse a hex string.
     /// </summary>
     /// <param name="hexString">The hex string to parse.</param>

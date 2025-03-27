@@ -533,4 +533,118 @@ public class ExtensionsTests
         Assert.AreEqual("0x12", hexString, "The hex string should not include unnecessary leading zeros");
     }
 
+    /// <summary>
+    /// Tests that a UTC DateTime is correctly converted to a Unix timestamp.
+    /// </summary>
+    [TestMethod]
+    public void ToUnixTimestamp_UtcDateTime_ConvertsCorrectly()
+    {
+        // Arrange
+        var utcTime = new DateTime(2024, 3, 14, 12, 0, 0, DateTimeKind.Utc);
+        var expected = 1710417600UL; // Pre-calculated Unix timestamp for 2024-03-14 12:00:00 UTC
+
+        // Act
+        var timestamp = utcTime.ToUnixTimestamp();
+
+        // Assert
+        Assert.AreEqual(expected, timestamp);
+    }
+
+    /// <summary>
+    /// Tests that non-UTC DateTime throws an InvalidOperationException.
+    /// </summary>
+    [TestMethod]
+    [ExpectedException(typeof(ArgumentException))]
+    public void ToUnixTimestamp_NonUtcDateTime_ThrowsException()
+    {
+        // Arrange
+        var localTime = new DateTime(2024, 3, 14, 12, 0, 0, DateTimeKind.Local);
+
+        // Act
+        _ = localTime.ToUnixTimestamp(); // Should throw
+    }
+
+    /// <summary>
+    /// Tests that a UTC DateTimeOffset is correctly converted to a Unix timestamp.
+    /// </summary>
+    [TestMethod]
+    public void ToUnixTimestamp_UtcDateTimeOffset_ConvertsCorrectly()
+    {
+        // Arrange
+        var utcOffset = new DateTimeOffset(2024, 3, 14, 12, 0, 0, TimeSpan.Zero);
+        var expected = 1710417600UL; // Pre-calculated Unix timestamp for 2024-03-14 12:00:00 UTC
+
+        // Act
+        var timestamp = utcOffset.ToUnixTimestamp();
+
+        // Assert
+        Assert.AreEqual(expected, timestamp);
+    }
+
+    /// <summary>
+    /// Tests that non-UTC DateTimeOffset throws an InvalidOperationException.
+    /// </summary>
+    [TestMethod]
+    [ExpectedException(typeof(ArgumentException))]
+    public void ToUnixTimestamp_NonUtcDateTimeOffset_ThrowsException()
+    {
+        // Arrange
+        var nonUtcOffset = new DateTimeOffset(2024, 3, 14, 12, 0, 0, TimeSpan.FromHours(1));
+
+        // Act
+        _ = nonUtcOffset.ToUnixTimestamp(); // Should throw
+    }
+
+    /// <summary>
+    /// Tests Unix timestamp conversion for the Unix epoch (1970-01-01 00:00:00 UTC).
+    /// </summary>
+    [TestMethod]
+    public void ToUnixTimestamp_UnixEpoch_ReturnsZero()
+    {
+        // Arrange
+        var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var epochOffset = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        // Act & Assert
+        Assert.AreEqual(0UL, epoch.ToUnixTimestamp());
+        Assert.AreEqual(0UL, epochOffset.ToUnixTimestamp());
+    }
+
+    /// <summary>
+    /// Tests Unix timestamp conversion for a future date to ensure proper handling of large values.
+    /// </summary>
+    [TestMethod]
+    public void ToUnixTimestamp_FutureDate_ConvertsCorrectly()
+    {
+        // Arrange
+        var futureDate = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var expected = 4102444800UL; // Pre-calculated Unix timestamp for 2100-01-01 00:00:00 UTC
+
+        // Act
+        var timestamp = futureDate.ToUnixTimestamp();
+
+        // Assert
+        Assert.AreEqual(expected, timestamp);
+    }
+
+    /// <summary>
+    /// Tests that dates before Unix epoch (1970-01-01) throw an exception
+    /// since Ethereum block timestamps are always positive.
+    /// </summary>
+    [TestMethod]
+    [DataRow(1969, 12, 31, 23, 59, 59)] // One second before epoch
+    [DataRow(1960, 1, 1, 0, 0, 0)]      // A decade before epoch
+    [DataRow(1800, 1, 1, 0, 0, 0)]      // Way before epoch
+    [ExpectedException(typeof(ArgumentException))]
+    public void ToUnixTimestamp_PreEpochDate_ThrowsException(int year, int month, int day, int hour, int minute, int second)
+    {
+        // Arrange
+        var preEpochDate = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
+        var preEpochOffset = new DateTimeOffset(year, month, day, hour, minute, second, TimeSpan.Zero);
+
+        // Act & Assert
+        _ = preEpochDate.ToUnixTimestamp(); // Should throw
+        _ = preEpochOffset.ToUnixTimestamp(); // Should throw
+    }
+
 }
