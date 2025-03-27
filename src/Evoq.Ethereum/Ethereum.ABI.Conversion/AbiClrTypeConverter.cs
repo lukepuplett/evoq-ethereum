@@ -1,6 +1,8 @@
 using System;
 using System.Numerics;
 using Evoq.Blockchain;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Evoq.Ethereum.ABI.Conversion;
 
@@ -21,6 +23,20 @@ namespace Evoq.Ethereum.ABI.Conversion;
 /// </remarks>
 internal class AbiClrTypeConverter
 {
+    private readonly ILogger<AbiClrTypeConverter> logger;
+
+    //
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AbiClrTypeConverter"/> class.
+    /// </summary>
+    public AbiClrTypeConverter(ILoggerFactory? loggerFactory = null)
+    {
+        this.logger = loggerFactory?.CreateLogger<AbiClrTypeConverter>() ?? NullLogger<AbiClrTypeConverter>.Instance;
+    }
+
+    //
+
     /// <summary>
     /// Attempts to convert a value to the specified target type, optionally using ABI type information to guide the conversion.
     /// </summary>
@@ -38,55 +54,80 @@ internal class AbiClrTypeConverter
     /// </remarks>
     public bool TryConvert(object? value, Type targetType, out object? result, string? abiType = null)
     {
-        // Handle null values - return true only if target type can accept nulls
+        this.logger.LogDebug(
+            "Converting value of type {SourceType} to {TargetType} (ABI type hint: {AbiType})",
+            value?.GetType().Name ?? "null",
+            targetType.Name,
+            abiType ?? "none");
+
         if (value == null)
         {
             result = null;
-            return targetType.IsClass || Nullable.GetUnderlyingType(targetType) != null;
+            bool canBeNull = targetType.IsClass || Nullable.GetUnderlyingType(targetType) != null;
+
+            this.logger.LogDebug(
+                "Handling null value for type {TargetType} (can be null: {CanBeNull})",
+                targetType.Name,
+                canBeNull);
+
+            return canBeNull;
         }
 
-        // If we have an ABI type, try to use it for conversion
-        // This helps with cases where the ABI type provides more specific type information
         if (!string.IsNullOrEmpty(abiType) && AbiTypes.TryGetDefaultClrType(abiType, out var defaultClrType))
         {
-            // If the target type is compatible with the default CLR type, use it
             if (targetType.IsAssignableFrom(defaultClrType))
             {
+                this.logger.LogDebug(
+                    "Using ABI type hint to adjust target type from {OriginalType} to {NewType}",
+                    targetType.Name,
+                    defaultClrType.Name);
+
                 targetType = defaultClrType;
             }
         }
 
-        // Handle specific type conversions based on target type
+        bool success = false;
         if (targetType == typeof(BigInteger))
         {
-            return this.TryConvertToBigInteger(value, out result);
+            success = this.TryConvertToBigInteger(value, out result);
         }
-        if (targetType == typeof(byte[]))
+        else if (targetType == typeof(byte[]))
         {
-            return this.TryConvertToByteArray(value, out result);
+            success = this.TryConvertToByteArray(value, out result);
         }
-        if (targetType == typeof(Hex))
+        else if (targetType == typeof(Hex))
         {
-            return this.TryConvertToHex(value, out result);
+            success = this.TryConvertToHex(value, out result);
         }
-        if (targetType == typeof(EthereumAddress))
+        else if (targetType == typeof(EthereumAddress))
         {
-            return this.TryConvertToEthereumAddress(value, out result);
+            success = this.TryConvertToEthereumAddress(value, out result);
         }
-        if (targetType == typeof(DateTime))
+        else if (targetType == typeof(DateTime))
         {
-            return this.TryConvertToDateTime(value, out result);
+            success = this.TryConvertToDateTime(value, out result);
         }
-        if (targetType == typeof(DateTimeOffset))
+        else if (targetType == typeof(DateTimeOffset))
         {
-            return this.TryConvertToDateTimeOffset(value, out result);
+            success = this.TryConvertToDateTimeOffset(value, out result);
         }
-        if (targetType.IsEnum)
+        else if (targetType.IsEnum)
         {
-            return this.TryConvertToEnum(value, targetType, out result);
+            success = this.TryConvertToEnum(value, targetType, out result);
+        }
+        else
+        {
+            success = this.TryStandardConversion(value, targetType, out result);
         }
 
-        return this.TryStandardConversion(value, targetType, out result);
+        this.logger.LogDebug(
+            "Conversion {Status}: {SourceType} -> {TargetType} = {Result}",
+            success ? "succeeded" : "failed",
+            value.GetType().Name,
+            targetType.Name,
+            result?.ToString() ?? "null");
+
+        return success;
     }
 
     /// <summary>
@@ -101,60 +142,42 @@ internal class AbiClrTypeConverter
     /// </remarks>
     private bool TryConvertToBigInteger(object value, out object? result)
     {
+        this.logger.LogDebug("Converting {Type} to BigInteger", value.GetType().Name);
         result = null;
 
-        // Try to convert from string representation
-        if (value is string strValue && BigInteger.TryParse(strValue, out var bigInt))
+        if (value is string strValue)
         {
-            result = bigInt;
-            return true;
+            if (BigInteger.TryParse(strValue, out var bigInt))
+            {
+                result = bigInt;
+                this.logger.LogDebug("Converted string '{Value}' to BigInteger {Result}", strValue, bigInt);
+
+                return true;
+            }
         }
-        // Handle various numeric types
-        else if (value is int intValue)
-        {
-            result = new BigInteger(intValue);
-            return true;
-        }
-        else if (value is uint uintValue)
-        {
-            result = new BigInteger(uintValue);
-            return true;
-        }
-        else if (value is long longValue)
-        {
-            result = new BigInteger(longValue);
-            return true;
-        }
-        else if (value is ulong ulongValue)
-        {
-            result = new BigInteger(ulongValue);
-            return true;
-        }
-        else if (value is byte byteValue)
-        {
-            result = new BigInteger(byteValue);
-            return true;
-        }
-        else if (value is sbyte sbyteValue)
-        {
-            result = new BigInteger(sbyteValue);
-            return true;
-        }
-        else if (value is short shortValue)
-        {
-            result = new BigInteger(shortValue);
-            return true;
-        }
-        else if (value is ushort ushortValue)
-        {
-            result = new BigInteger(ushortValue);
-            return true;
-        }
-        // If already a BigInteger, just return it
         else if (value is BigInteger bigIntValue)
         {
             result = bigIntValue;
+            this.logger.LogDebug("Value already BigInteger: {Value}", bigIntValue);
+
             return true;
+        }
+        else if (value is IConvertible)
+        {
+            try
+            {
+                result = new BigInteger(Convert.ToInt64(value));
+                this.logger.LogDebug("Converted numeric value {Value} to BigInteger {Result}", value, result);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogWarning(
+                    ex,
+                    "Failed to convert {Value} to BigInteger",
+                    value);
+            }
         }
 
         return false;
@@ -172,32 +195,36 @@ internal class AbiClrTypeConverter
     /// </remarks>
     private bool TryConvertToByteArray(object value, out object? result)
     {
+        this.logger.LogDebug("Converting {Type} to byte[]", value.GetType().Name);
         result = null;
 
-        // Try to convert from hex string
         if (value is string hexString)
         {
             try
             {
-                // Assume the string starts with "0x" and parse the rest
-                result = Hex.Parse(hexString[2..]).ToByteArray();
+                var options = HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString;
+                result = Hex.Parse(hexString[2..], options).ToByteArray();
+                this.logger.LogDebug("Converted hex string of length {Length} to byte array", hexString.Length);
+
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                this.logger.LogWarning(ex, "Failed to parse hex string '{Value}'", hexString);
             }
         }
-        // If already a byte array, just return it
         else if (value is byte[] byteArray)
         {
             result = byteArray;
+            this.logger.LogDebug("Value already byte array of length {Length}", byteArray.Length);
+
             return true;
         }
-        // Convert from Hex object
         else if (value is Hex hex)
         {
             result = hex.ToByteArray();
+            this.logger.LogDebug("Converted Hex of length {Length} to byte array", hex.Length);
+
             return true;
         }
 
@@ -216,6 +243,7 @@ internal class AbiClrTypeConverter
     /// </remarks>
     private bool TryConvertToHex(object value, out object? result)
     {
+        this.logger.LogDebug("Converting {Type} to Hex", value.GetType().Name);
         result = null;
 
         if (value is string hexString)
@@ -224,21 +252,27 @@ internal class AbiClrTypeConverter
             {
                 var options = HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString;
                 result = Hex.Parse(hexString, options);
+                this.logger.LogDebug("Parsed string '{Value}' to Hex", hexString);
+
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                this.logger.LogWarning(ex, "Failed to parse hex string '{Value}'", hexString);
             }
         }
         else if (value is byte[] byteArray)
         {
             result = new Hex(byteArray);
+            this.logger.LogDebug("Converted byte array of length {Length} to Hex", byteArray.Length);
+
             return true;
         }
         else if (value is Hex hex)
         {
             result = hex;
+            this.logger.LogDebug("Value already Hex of length {Length}", hex.Length);
+
             return true;
         }
 
@@ -257,38 +291,56 @@ internal class AbiClrTypeConverter
     /// </remarks>
     private bool TryConvertToEthereumAddress(object value, out object? result)
     {
+        this.logger.LogDebug("Converting {Type} to EthereumAddress", value.GetType().Name);
         result = null;
 
-        // Try to convert from string
         if (value is string addressStr)
         {
             try
             {
                 result = new EthereumAddress(addressStr);
+                this.logger.LogDebug("Parsed string '{Value}' to EthereumAddress", addressStr);
+
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                this.logger.LogWarning(
+                    ex,
+                    "Failed to parse address string '{Value}'",
+                    addressStr);
             }
         }
-        // Convert from byte array (must be 20 bytes for Ethereum address)
-        else if (value is byte[] byteArray && byteArray.Length == 20)
+        else if (value is byte[] byteArray)
         {
-            try
+            if (byteArray.Length == 20)
             {
-                result = new EthereumAddress(byteArray);
-                return true;
+                try
+                {
+                    result = new EthereumAddress(byteArray);
+                    this.logger.LogDebug("Converted 20-byte array to EthereumAddress");
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    this.logger.LogWarning(
+                        ex,
+                        "Failed to create address from byte array");
+                }
             }
-            catch
+            else
             {
-                return false;
+                this.logger.LogWarning(
+                    "Invalid byte array length {Length} for EthereumAddress (expected 20)",
+                    byteArray.Length);
             }
         }
-        // If already an EthereumAddress, just return it
         else if (value is EthereumAddress address)
         {
             result = address;
+            this.logger.LogDebug("Value already EthereumAddress: {Address}", address);
+
             return true;
         }
 
@@ -316,6 +368,7 @@ internal class AbiClrTypeConverter
             try
             {
                 result = Enum.Parse(enumType, enumStr, true);
+
                 return true;
             }
             catch
@@ -329,6 +382,7 @@ internal class AbiClrTypeConverter
             try
             {
                 result = Enum.ToObject(enumType, enumInt);
+
                 return true;
             }
             catch
@@ -340,6 +394,7 @@ internal class AbiClrTypeConverter
         else if (value.GetType().IsEnum && value.GetType() == enumType)
         {
             result = value;
+
             return true;
         }
 
@@ -417,12 +472,20 @@ internal class AbiClrTypeConverter
     /// </remarks>
     private bool TryStandardConversion(object value, Type targetType, out object? result)
     {
+        this.logger.LogDebug(
+            "Attempting standard conversion from {SourceType} to {TargetType}",
+            value.GetType().Name,
+            targetType.Name);
+
         result = null;
 
-        // Handle nullable types by unwrapping them and converting to the underlying type
-        Type underlyingType = Nullable.GetUnderlyingType(targetType);
+        Type? underlyingType = Nullable.GetUnderlyingType(targetType);
         if (underlyingType != null)
         {
+            this.logger.LogDebug(
+                "Handling nullable type conversion to {UnderlyingType}",
+                underlyingType.Name);
+
             if (TryStandardConversion(value, underlyingType, out var innerResult))
             {
                 result = innerResult;
@@ -431,25 +494,34 @@ internal class AbiClrTypeConverter
             return false;
         }
 
-        // Direct assignment if types are compatible (no conversion needed)
         if (targetType.IsAssignableFrom(value.GetType()))
         {
+            this.logger.LogDebug("Direct assignment possible, no conversion needed");
             result = value;
+
             return true;
         }
 
-        // Try standard conversion using Convert.ChangeType for IConvertible types
         try
         {
             if (value is IConvertible convertible)
             {
                 result = Convert.ChangeType(convertible, targetType);
+                this.logger.LogDebug(
+                    "Standard conversion succeeded: {Value} -> {Result}",
+                    value,
+                    result);
+
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            this.logger.LogWarning(
+                ex,
+                "Standard conversion failed from {SourceType} to {TargetType}",
+                value.GetType().Name,
+                targetType.Name);
         }
 
         return false;

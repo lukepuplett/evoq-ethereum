@@ -26,6 +26,7 @@ internal class ContractClient
     private readonly IAbiDecoder abiDecoder;
     private readonly ITransactionSigner? transactionSigner;
     private readonly IRlpTransactionEncoder rlpEncoder;
+    private readonly ILoggerFactory loggerFactory;
     private readonly ILogger logger;
 
     //
@@ -54,6 +55,7 @@ internal class ContractClient
         this.abiDecoder = abiDecoder;
         this.transactionSigner = transactionSigner;
         this.rlpEncoder = rlpEncoder;
+        this.loggerFactory = loggerFactory;
         this.logger = loggerFactory?.CreateLogger<ContractClient>() ?? throw new ArgumentNullException(nameof(loggerFactory));
 
         this.ChainId = chainId;
@@ -81,7 +83,7 @@ internal class ContractClient
 
         var decoded = signature.AbiDecodeOutputs(this.abiDecoder, result.ToByteArray());
 
-        return decoded.Parameters.ToObject<T>();
+        return decoded.Parameters.ToObject<T>(this.loggerFactory);
     }
 
     internal async Task<Dictionary<string, object?>> CallAsync(
@@ -255,8 +257,8 @@ internal class ContractClient
             : throw new InvalidOperationException($"Cannot create a {nameof(ContractClient)} for an unsupported network.");
 
         var jsonRpc = new JsonRpcClient(new Uri(endpoint.URL), endpoint.LoggerFactory);
-        var abiEncoder = new AbiEncoder();
-        var abiDecoder = new AbiDecoder();
+        var abiEncoder = new AbiEncoder(endpoint.LoggerFactory);
+        var abiDecoder = new AbiDecoder(endpoint.LoggerFactory);
         var rlpEncoder = new RlpEncoder();
 
         TransactionSigner? transactionSigner = null;

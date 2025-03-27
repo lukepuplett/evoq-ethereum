@@ -244,7 +244,7 @@ public class ExampleEAS
     }
 
     [TestMethod]
-    [Ignore]
+    // [Ignore]
     public async Task Should_Attest_ThenGetAttestation()
     {
         string baseUrl, chainName;
@@ -282,7 +282,7 @@ public class ExampleEAS
             ("expirationTime", 0UL),               // uint64 - no expiration
             ("revocable", true),                   // bool
             ("refUID", Hex.Zero),                  // bytes32 - no reference
-            ("data", new byte[] { 1 }),            // bytes - simple boolean true
+            ("data", Hex.Empty),                   // see how it handles empty bytes
             ("value", BigInteger.Zero)             // uint256 - no value
         );
 
@@ -324,20 +324,35 @@ public class ExampleEAS
 
         // get the attestation we just made
 
-        var rootDic = await eas.CallAsync("getAttestation", senderAddress, AbiKeyValues.Create("uid", uidHex));
+        AttestationDTO dto;
+        bool useManualConversion = false;
 
-        Assert.IsNotNull(rootDic);
+        if (useManualConversion)
+        {
+            var rootDic = await eas.CallAsync(
+                "getAttestation",
+                senderAddress,
+                AbiKeyValues.Create("uid", uidHex));
 
-        var attestationDic = rootDic.First().Value as IReadOnlyDictionary<string, object?>;
+            Assert.IsNotNull(rootDic);
 
-        Assert.IsNotNull(attestationDic);
+            var attestationDic = rootDic.First().Value as IReadOnlyDictionary<string, object?>;
 
-        var converter = new AbiConverter();
+            Assert.IsNotNull(attestationDic);
 
-        var dto = converter.DictionaryToObject<AttestationDTO>(attestationDic);
+            var converter = new AbiConverter();
+
+            dto = converter.DictionaryToObject<AttestationDTO>(attestationDic);
+        }
+        else
+        {
+            dto = await eas.CallAsync<AttestationDTO>(
+                "getAttestation",
+                senderAddress,
+                AbiKeyValues.Create("uid", uidHex));
+        }
 
         Assert.IsNotNull(dto);
-
         Assert.AreEqual(uidHex, dto.UID);
         Assert.AreEqual(schemaUID, dto.Schema);
 

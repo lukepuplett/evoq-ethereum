@@ -195,7 +195,8 @@ public class Chain
     {
         var contractClient = ContractClient.CreateDefault(endpoint, sender);
 
-        return new Contract(this.ChainId, this.chainClient, contractClient, abiDocument, address);
+        return new Contract(
+            this.ChainId, this.chainClient, contractClient, abiDocument, address, endpoint.LoggerFactory);
     }
 
     //

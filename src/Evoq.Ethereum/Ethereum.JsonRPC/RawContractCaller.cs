@@ -85,7 +85,7 @@ public class RawContractCaller
                 badSig);
         }
 
-        var encoder = new AbiEncoder();
+        var encoder = new AbiEncoder(this.Endpoint.LoggerFactory);
         var encodedBytes = sig.AbiEncodeCallValues(encoder, simpleParams.ToDictionary(p => p.name, p => p.value));
 
         var jsonRpcClient = new JsonRpcClient(new Uri(this.Endpoint.URL), this.Endpoint.LoggerFactory);
@@ -114,7 +114,7 @@ public class RawContractCaller
     /// <param name="result">The result to decode.</param>
     public AbiDecodingResult DecodeParameters(string returnSignature, Hex result)
     {
-        var decoder = new AbiDecoder();
+        var decoder = new AbiDecoder(this.Endpoint.LoggerFactory);
         var parameters = AbiParameters.Parse(returnSignature);
 
         return decoder.DecodeParameters(parameters, result);

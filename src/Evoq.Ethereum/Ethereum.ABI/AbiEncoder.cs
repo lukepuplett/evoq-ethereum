@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.TypeEncoders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -102,6 +104,7 @@ internal record class EncodingContext(
 /// </summary>
 public class AbiEncoder : IAbiEncoder
 {
+    private readonly ILogger<AbiEncoder> logger;
     private readonly IReadOnlyList<IAbiEncode> staticTypeEncoders;
     private readonly IReadOnlyList<IAbiEncode> dynamicTypeEncoders;
 
@@ -110,8 +113,10 @@ public class AbiEncoder : IAbiEncoder
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiEncoder"/> class.
     /// </summary>
-    public AbiEncoder()
+    /// <param name="loggerFactory">Optional logger factory.</param>
+    public AbiEncoder(ILoggerFactory? loggerFactory = null)
     {
+        this.logger = loggerFactory?.CreateLogger<AbiEncoder>() ?? NullLoggerFactory.Instance.CreateLogger<AbiEncoder>();
         this.staticTypeEncoders = new AbiStaticTypeEncoders();
         this.dynamicTypeEncoders = new AbiDynamicTypeEncoders();
     }
@@ -121,8 +126,13 @@ public class AbiEncoder : IAbiEncoder
     /// </summary>
     /// <param name="staticTypeEncoders">The static type encoders.</param>
     /// <param name="dynamicTypeEncoders">The dynamic type encoders.</param>
-    public AbiEncoder(IReadOnlyList<IAbiEncode> staticTypeEncoders, IReadOnlyList<IAbiEncode> dynamicTypeEncoders)
+    /// <param name="loggerFactory">Optional logger factory.</param>
+    public AbiEncoder(
+        IReadOnlyList<IAbiEncode> staticTypeEncoders,
+        IReadOnlyList<IAbiEncode> dynamicTypeEncoders,
+        ILoggerFactory? loggerFactory = null)
     {
+        this.logger = loggerFactory?.CreateLogger<AbiEncoder>() ?? NullLoggerFactory.Instance.CreateLogger<AbiEncoder>();
         this.staticTypeEncoders = staticTypeEncoders;
         this.dynamicTypeEncoders = dynamicTypeEncoders;
     }
@@ -740,29 +750,58 @@ public class AbiEncoder : IAbiEncoder
     {
         if (context.Value == null)
         {
-            encoder = _ => new Slot(Name(context, "null"), new byte[32]); // null value is encoded as a 32-byte zero value
+            this.logger.LogDebug(
+                "Creating null encoder for '{Key}' (type: {AbiType})",
+                context.Key,
+                context.AbiType);
+
+            encoder = _ => new Slot(Name(context, "null"), new byte[32]);
             return true;
         }
 
         // get the canonical type
-
         if (!AbiTypes.TryGetCanonicalType(context.AbiType, out var canonicalType) || canonicalType == null)
         {
-            // canonical type not found; this should never happen
+            this.logger.LogError(
+                "Failed to resolve canonical type for '{Key}' (type: {AbiType})",
+                context.Key,
+                context.AbiType);
 
             throw new InvalidOperationException(
                 $"Internal error: Failed to resolve canonical type for '{context.AbiType}'. " +
                 $"This is likely a bug in the ABI encoder implementation.");
         }
 
+        this.logger.LogDebug(
+            "Searching encoder for '{Key}' (type: {AbiType}, value type: {ValueType})",
+            context.Key,
+            canonicalType,
+            context.Value.GetType().Name);
+
         foreach (var staticEncoder in this.staticTypeEncoders)
         {
+            this.logger.LogTrace(
+                "Trying {EncoderType} for '{Key}'",
+                staticEncoder.GetType().Name,
+                context.Key);
+
             if (staticEncoder.TryEncode(canonicalType, context.Value, out var bytes))
             {
+                this.logger.LogDebug(
+                    "Found encoder {EncoderType} for '{Key}'",
+                    staticEncoder.GetType().Name,
+                    context.Key);
+
                 encoder = _ => new Slot(Name(context, "value"), bytes);
                 return true;
             }
         }
+
+        this.logger.LogWarning(
+            "No encoder found for '{Key}' (type: {AbiType}, value type: {ValueType})",
+            context.Key,
+            canonicalType,
+            context.Value.GetType().Name);
 
         encoder = null;
         return false;
@@ -772,27 +811,56 @@ public class AbiEncoder : IAbiEncoder
     {
         if (context.Value == null)
         {
-            encoder = _ => new byte[32]; // null value is encoded as a 32-byte zero value
+            this.logger.LogDebug(
+                "Creating null encoder for '{Key}' (type: {AbiType})",
+                context.Key,
+                context.AbiType);
+
+            encoder = _ => new byte[32];
             return true;
         }
 
         // get the canonical type
-
         if (!AbiTypes.TryGetCanonicalType(context.AbiType, out var canonicalType) || canonicalType == null)
         {
-            // canonical type not found; this should never happen
+            this.logger.LogError(
+                "Failed to resolve canonical type for '{Key}' (type: {AbiType})",
+                context.Key,
+                context.AbiType);
 
             throw new InvalidOperationException($"Canonical type not found for {context.AbiType}");
         }
 
+        this.logger.LogDebug(
+            "Searching encoder for '{Key}' (type: {AbiType}, value type: {ValueType})",
+            context.Key,
+            canonicalType,
+            context.Value.GetType().Name);
+
         foreach (var dynamicEncoder in this.dynamicTypeEncoders)
         {
+            this.logger.LogTrace(
+                "Trying {EncoderType} for '{Key}'",
+                dynamicEncoder.GetType().Name,
+                context.Key);
+
             if (dynamicEncoder.TryEncode(canonicalType, context.Value, out var bytes))
             {
+                this.logger.LogDebug(
+                    "Found encoder {EncoderType} for '{Key}'",
+                    dynamicEncoder.GetType().Name,
+                    context.Key);
+
                 encoder = _ => bytes;
                 return true;
             }
         }
+
+        this.logger.LogWarning(
+            "No encoder found for '{Key}' (type: {AbiType}, value type: {ValueType})",
+            context.Key,
+            canonicalType,
+            context.Value.GetType().Name);
 
         encoder = null;
         return false;

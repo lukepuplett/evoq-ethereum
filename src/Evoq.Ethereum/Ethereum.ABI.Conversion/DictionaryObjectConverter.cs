@@ -18,14 +18,6 @@ internal class DictionaryObjectConverter
     //
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="DictionaryObjectConverter"/> class.
-    /// </summary>
-    public DictionaryObjectConverter()
-        : this(new AbiClrTypeConverter())
-    {
-    }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="DictionaryObjectConverter"/> class with a custom type converter.
     /// </summary>
     /// <param name="typeConverter">The type converter to use.</param>

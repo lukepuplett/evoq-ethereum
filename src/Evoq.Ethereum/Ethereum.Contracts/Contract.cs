@@ -10,6 +10,7 @@ using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Chains;
 using Evoq.Ethereum.Transactions;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Contracts;
 
@@ -20,6 +21,7 @@ public class Contract
 {
     private readonly ContractAbi abi;
     private readonly ContractClient contractClient;
+    private readonly ILoggerFactory? loggerFactory;
 
     //
 
@@ -31,10 +33,18 @@ public class Contract
     /// <param name="contractClient">The contract client.</param>
     /// <param name="abiDocument">The stream containing the ABI.</param>
     /// <param name="address">The address of the contract.</param>
-    internal Contract(ulong chainId, ChainClient chainClient, ContractClient contractClient, Stream abiDocument, EthereumAddress address)
+    /// <param name="loggerFactory">The logger factory to use.</param>
+    internal Contract(
+        ulong chainId,
+        ChainClient chainClient,
+        ContractClient contractClient,
+        Stream abiDocument,
+        EthereumAddress address,
+        ILoggerFactory? loggerFactory = null)
     {
         this.abi = AbiJsonReader.Read(abiDocument);
         this.contractClient = contractClient;
+        this.loggerFactory = loggerFactory;
 
         this.Address = address;
         this.Chain = new Chain(chainId, chainClient);
@@ -286,7 +296,7 @@ public class Contract
 
         if (this.contractClient.TryRead(receipt, eventSignature, out var indexedDictionary, out var dataDictionary))
         {
-            var converter = new AbiConverter();
+            var converter = new AbiConverter(this.loggerFactory);
 
             indexed = converter.DictionaryToObject<TIndexed>(indexedDictionary!);
             data = converter.DictionaryToObject<TData>(dataDictionary!);

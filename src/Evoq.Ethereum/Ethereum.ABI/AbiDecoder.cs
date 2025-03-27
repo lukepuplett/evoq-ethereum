@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Evoq.Ethereum.ABI.TypeEncoders;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -38,6 +40,7 @@ namespace Evoq.Ethereum.ABI;
 /// </summary>
 public class AbiDecoder : IAbiDecoder
 {
+    private readonly ILogger<AbiDecoder> logger;
     private readonly IReadOnlyList<IAbiDecode> staticTypeDecoders;
     private readonly IReadOnlyList<IAbiDecode> dynamicTypeDecoders;
 
@@ -46,8 +49,10 @@ public class AbiDecoder : IAbiDecoder
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiDecoder"/> class.
     /// </summary>
-    public AbiDecoder()
+    /// <param name="loggerFactory">Optional logger factory.</param>
+    public AbiDecoder(ILoggerFactory? loggerFactory = null)
     {
+        this.logger = loggerFactory?.CreateLogger<AbiDecoder>() ?? NullLoggerFactory.Instance.CreateLogger<AbiDecoder>();
         this.staticTypeDecoders = new AbiStaticTypeDecoders();
         this.dynamicTypeDecoders = new AbiDynamicTypeDecoders();
     }
@@ -57,8 +62,13 @@ public class AbiDecoder : IAbiDecoder
     /// </summary>
     /// <param name="staticTypeDecoders">The static type decoders.</param>
     /// <param name="dynamicTypeDecoders">The dynamic type decoders.</param>
-    public AbiDecoder(IReadOnlyList<IAbiDecode> staticTypeDecoders, IReadOnlyList<IAbiDecode> dynamicTypeDecoders)
+    /// <param name="loggerFactory">Optional logger factory.</param>
+    public AbiDecoder(
+        IReadOnlyList<IAbiDecode> staticTypeDecoders,
+        IReadOnlyList<IAbiDecode> dynamicTypeDecoders,
+        ILoggerFactory? loggerFactory = null)
     {
+        this.logger = loggerFactory?.CreateLogger<AbiDecoder>() ?? NullLoggerFactory.Instance.CreateLogger<AbiDecoder>();
         this.staticTypeDecoders = staticTypeDecoders;
         this.dynamicTypeDecoders = dynamicTypeDecoders;
     }
@@ -99,6 +109,12 @@ public class AbiDecoder : IAbiDecoder
 
         foreach (var p in parameters)
         {
+            this.logger.LogDebug(
+                "Decoding parameter '{Name}' (type: {AbiType}, isDynamic: {IsDynamic})",
+                p.SafeName,
+                p.AbiType,
+                p.IsDynamic);
+
             var slot = subSlots[consumedSlots];
 
             if (p.IsDynamic)
@@ -595,18 +611,24 @@ public class AbiDecoder : IAbiDecoder
 
     private object? DecodeString(string abiType, Type clrType, IList<Slot> slots, int length)
     {
+        this.logger.LogDebug(
+            "Decoding string (type: {AbiType}, length: {Length})",
+            abiType,
+            length);
+
         if (length == 0)
         {
+            this.logger.LogDebug("Empty string detected, returning empty string");
             return string.Empty;
         }
 
         var bytes = SlotsToBytes(slots, length);
 
-        // get the canonical type
-
         if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
         {
-            // canonical type not found; this should never happen
+            this.logger.LogError(
+                "Failed to resolve canonical type for '{AbiType}'",
+                abiType);
 
             throw new AbiInternalException(
                 $"Internal error: Failed to resolve canonical type for '{abiType}'. " +
@@ -616,11 +638,25 @@ public class AbiDecoder : IAbiDecoder
 
         foreach (var decoder in this.dynamicTypeDecoders)
         {
+            this.logger.LogTrace(
+                "Trying {DecoderType} for string decoding",
+                decoder.GetType().Name);
+
             if (decoder.TryDecode(canonicalType, bytes, clrType, out var value))
             {
+                this.logger.LogDebug(
+                    "Successfully decoded string using {DecoderType}: {Value}",
+                    decoder.GetType().Name,
+                    value?.ToString() ?? "null");
+
                 return value;
             }
         }
+
+        this.logger.LogError(
+            "No decoder found for string (type: {AbiType}, CLR type: {ClrType})",
+            abiType,
+            clrType.Name);
 
         throw new AbiNotSupportedException(
             $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
@@ -631,11 +667,16 @@ public class AbiDecoder : IAbiDecoder
 
     private object? DecodeStaticSlotValue(string abiType, Type clrType, Slot slot)
     {
-        // get the canonical type
+        this.logger.LogDebug(
+            "Decoding static slot (type: {AbiType}, CLR type: {ClrType})",
+            abiType,
+            clrType.Name);
 
         if (!AbiTypes.TryGetCanonicalType(abiType, out var canonicalType) || canonicalType == null)
         {
-            // canonical type not found; this should never happen
+            this.logger.LogError(
+                "Failed to resolve canonical type for '{AbiType}'",
+                abiType);
 
             throw new AbiInternalException(
                 $"Internal error: Failed to resolve canonical type for '{abiType}'. " +
@@ -645,16 +686,32 @@ public class AbiDecoder : IAbiDecoder
 
         foreach (var staticDecoder in this.staticTypeDecoders)
         {
+            this.logger.LogTrace(
+                "Trying {DecoderType} for static value",
+                staticDecoder.GetType().Name);
+
             if (staticDecoder.TryDecode(canonicalType, slot.Data, clrType, out var value))
             {
+                this.logger.LogDebug(
+                    "Successfully decoded static value using {DecoderType}: {AbiType} -> {Value}",
+                    staticDecoder.GetType().Name,
+                    abiType,
+                    value?.ToString() ?? "null");
+
                 return value;
             }
         }
 
         if (slot.IsNull)
         {
+            this.logger.LogDebug("Null slot detected, returning null");
             return null;
         }
+
+        this.logger.LogError(
+            "No decoder found for static value (type: {AbiType}, CLR type: {ClrType})",
+            abiType,
+            clrType.Name);
 
         throw new AbiNotSupportedException(
             $"No decoder found: ABI type '{abiType}' with CLR type '{clrType.Name}' is not supported. " +
@@ -665,25 +722,48 @@ public class AbiDecoder : IAbiDecoder
 
     private object? DecodeDynamicSlotValue(string abiType, Type clrType, Slot pointer, SlotCollection allSlots)
     {
-        // a dynamic value has its pointer and then the length and then the data slots, e.g. string, bytes, etc.
+        this.logger.LogDebug(
+            "Decoding dynamic slot (type: {AbiType}, CLR type: {ClrType})",
+            abiType,
+            clrType.Name);
 
         var subSlots = allSlots.SkipToPoint(pointer);
         var lengthSlot = subSlots[0];
         int length = this.DecodeLength(lengthSlot);
-        var dataSlots = subSlots.Skip(1).Take(length).ToList();
 
-        //
+        this.logger.LogDebug(
+            "Dynamic value length: {Length} slots",
+            length);
+
+        var dataSlots = subSlots.Skip(1).Take(length).ToList();
 
         if (abiType == AbiTypeNames.Bytes)
         {
-            return SlotsToBytes(dataSlots, length);
+            this.logger.LogDebug(
+                "Decoding as bytes array of length {Length} from {SlotCount} slots",
+                length,
+                dataSlots.Count);
+
+            var result = SlotsToBytes(dataSlots, length);
+
+            this.logger.LogDebug(
+                "Decoded bytes array: 0x{Bytes}",
+                BitConverter.ToString(result).Replace("-", ""));
+
+            return result;
         }
         else if (abiType == AbiTypeNames.String)
         {
+            this.logger.LogDebug("Decoding as string");
+
             return this.DecodeString(abiType, clrType, dataSlots, length);
         }
         else
         {
+            this.logger.LogError(
+                "Unsupported dynamic type: {AbiType}",
+                abiType);
+
             throw new AbiTypeException(
                 $"Unsupported dynamic type: '{abiType}' is not a recognized dynamic ABI type. " +
                 $"Only 'bytes' and 'string' are supported as basic dynamic types.",
@@ -695,6 +775,10 @@ public class AbiDecoder : IAbiDecoder
     {
         var bigLength = (BigInteger)this.DecodeStaticSlotValue(AbiTypeNames.IntegerTypes.Uint, typeof(BigInteger), lengthSlot)!;
         var length = (int)bigLength;
+        this.logger.LogDebug(
+            "Decoded length value: {Length} (from BigInteger {BigLength})",
+            length,
+            bigLength);
         return length;
     }
 
@@ -714,9 +798,5 @@ public class AbiDecoder : IAbiDecoder
         return bytes;
     }
 
-    private static string Name(EncodingContext context, string name)
-    {
-        return $"{context}.{name}";
-    }
 }
 

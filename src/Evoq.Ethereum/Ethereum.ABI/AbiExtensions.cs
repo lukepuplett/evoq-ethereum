@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.ABI.TypeEncoders;
+using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.ABI;
 
@@ -128,38 +129,6 @@ public static class AbiExtensions
 
             return formattedParams;
         }
-    }
-
-    /// <summary>
-    /// Converts an <see cref="AbiParameters"/> object to a strongly-typed object.
-    /// </summary>
-    /// <typeparam name="T">The type of the object to convert to.</typeparam>
-    /// <param name="parameters">The parameters to convert.</param>
-    /// <returns>A strongly-typed object.</returns>
-    public static T ToObject<T>(this AbiParameters parameters) where T : new()
-    {
-        // if a function returns a tuple, it will be the first and only unnamed parameter
-        // in the dictionary
-
-        // the consumer doesn't expect this unusual situation and expects to just
-        // convert the tuple directly, else they'd have to create a root POCO with a
-        // single 'actual' POCO property for the tuple
-
-        // we can detect this situation 'edit out' the extra dictionary layer
-        // and just convert the tuple directly
-
-        Dictionary<string, object?> keyValues = parameters.ToDictionary(true);
-
-        if (keyValues.Count == 1 &&
-            keyValues.First().Value is Dictionary<string, object?> innerActual &&
-            parameters.Count == 1 &&
-            string.IsNullOrEmpty(parameters.First().Name) &&
-            parameters.First().IsTupleStrict)
-        {
-            keyValues = innerActual;
-        }
-
-        return new AbiConverter().DictionaryToObject<T>(keyValues);
     }
 
     // encode
@@ -329,6 +298,39 @@ public static class AbiExtensions
     }
 
     //
+
+    /// <summary>
+    /// Converts an <see cref="AbiParameters"/> object to a strongly-typed object.
+    /// </summary>
+    /// <typeparam name="T">The type of the object to convert to.</typeparam>
+    /// <param name="parameters">The parameters to convert.</param>
+    /// <param name="loggerFactory">The logger factory to use.</param>
+    /// <returns>A strongly-typed object.</returns>
+    internal static T ToObject<T>(this AbiParameters parameters, ILoggerFactory? loggerFactory = null) where T : new()
+    {
+        // if a function returns a tuple, it will be the first and only unnamed parameter
+        // in the dictionary
+
+        // the consumer doesn't expect this unusual situation and expects to just
+        // convert the tuple directly, else they'd have to create a root POCO with a
+        // single 'actual' POCO property for the tuple
+
+        // we can detect this situation 'edit out' the extra dictionary layer
+        // and just convert the tuple directly
+
+        Dictionary<string, object?> keyValues = parameters.ToDictionary(true);
+
+        if (keyValues.Count == 1 &&
+            keyValues.First().Value is Dictionary<string, object?> innerActual &&
+            parameters.Count == 1 &&
+            string.IsNullOrEmpty(parameters.First().Name) &&
+            parameters.First().IsTupleStrict)
+        {
+            keyValues = innerActual;
+        }
+
+        return new AbiConverter(loggerFactory).DictionaryToObject<T>(keyValues);
+    }
 
     /// <summary>
     /// Converts an ITuple of two values to a KeyValuePair.

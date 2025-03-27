@@ -17,8 +17,9 @@ public class AbiConverter
     /// <summary>
     /// Initializes a new instance of the <see cref="AbiConverter"/> class.
     /// </summary>
-    public AbiConverter()
-        : this(new AbiClrTypeConverter())
+    /// <param name="loggerFactory">The logger factory to use.</param>
+    public AbiConverter(ILoggerFactory? loggerFactory = null)
+        : this(new AbiClrTypeConverter(loggerFactory))
     {
     }
 
