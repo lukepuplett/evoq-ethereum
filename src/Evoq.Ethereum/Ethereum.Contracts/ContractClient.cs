@@ -84,7 +84,7 @@ internal class ContractClient
         return decoded.Parameters.ToObject<T>();
     }
 
-    internal async Task<IDictionary<string, object?>> CallAsync(
+    internal async Task<Dictionary<string, object?>> CallAsync(
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,

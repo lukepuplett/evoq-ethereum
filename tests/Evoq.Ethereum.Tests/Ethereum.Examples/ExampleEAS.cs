@@ -185,7 +185,7 @@ public class ExampleEAS
 
         //
 
-        string attestationSignature = "bool isTest";
+        string attestationSignature = "bool isTestTwo";
 
         var registerArgs = AbiKeyValues.Create(
             ("schema", attestationSignature),
@@ -235,8 +235,112 @@ public class ExampleEAS
             Console.WriteLine($"{key}: {value}");
         }
 
+        var first = data.First().Value as IDictionary<string, object?>;
+        var uidValue = first!.Values.First();
+        var uid = Hex.FromBytes((byte[])uidValue!); // "0x2fb3f7363a44f93b647d58a3090f2b64106c76ed9f9c73a99a0a11f963d3940e"
+
         Assert.IsNotNull(registerReceipt);
         Assert.IsTrue(registerReceipt.Success);
+    }
+
+    [TestMethod]
+    [Ignore]
+    public async Task Should_Attest_ThenGetAttestation()
+    {
+        string baseUrl, chainName;
+        IConfigurationRoot configuration;
+        ulong chainId;
+        ILoggerFactory loggerFactory;
+
+        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+
+        //
+
+        EthereumAddress senderAddress;
+        SenderAccount senderAccount;
+        SetupAccount(configuration, out senderAddress, out senderAccount);
+
+        //
+
+        var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
+
+        Sender sender = SetupSender(loggerFactory, senderAddress, senderAccount, chain);
+
+        //
+
+        var endpoint = new Endpoint(chainName, chainName, baseUrl, loggerFactory!);
+
+        Contract eas = SetupEASContract(endpoint, chain, sender);
+
+        //
+
+        var schemaUID = Hex.Parse("0x2fb3f7363a44f93b647d58a3090f2b64106c76ed9f9c73a99a0a11f963d3940e");
+
+        // Create the inner AttestationRequestData tuple
+        var attestationRequestData = AbiKeyValues.Create(
+            ("recipient", senderAddress),           // address
+            ("expirationTime", 0UL),               // uint64 - no expiration
+            ("revocable", true),                   // bool
+            ("refUID", Hex.Zero),                  // bytes32 - no reference
+            ("data", new byte[] { 1 }),            // bytes - simple boolean true
+            ("value", BigInteger.Zero)             // uint256 - no value
+        );
+
+        // Create the outer AttestationRequest tuple
+        var attestationRequest = AbiKeyValues.Create(
+            ("schema", schemaUID),                 // bytes32
+            ("data", attestationRequestData)       // tuple
+        );
+
+        var attestationEstimate = await eas.EstimateTransactionFeeAsync(
+            "attest",
+            senderAddress,
+            null,
+            AbiKeyValues.Create("request", attestationRequest));
+
+        attestationEstimate = attestationEstimate.InEther();
+
+        // attest
+
+        var attestationOptions = new ContractInvocationOptions(attestationEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
+        var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+        var receipt = await runner.RunTransactionAsync(
+            eas,
+            "attest",
+            attestationOptions,
+            AbiKeyValues.Create("request", attestationRequest),
+            CancellationToken.None);
+
+        Console.WriteLine(receipt);
+
+        // get the event to get the attestation UID
+
+        Assert.IsTrue(eas.TryReadEventLogsFromReceipt(receipt, "Attested", out var _, out var attested));
+        Assert.IsTrue(attested!.TryGetValue("uid", out var uid));
+        Assert.IsTrue(uid is byte[]);
+
+        var uidHex = Hex.FromBytes((byte[])uid);
+
+        // get the attestation we just made
+
+        var rootDic = await eas.CallAsync("getAttestation", senderAddress, AbiKeyValues.Create("uid", uidHex));
+
+        Assert.IsNotNull(rootDic);
+
+        var attestationDic = rootDic.First().Value as IReadOnlyDictionary<string, object?>;
+
+        Assert.IsNotNull(attestationDic);
+
+        var converter = new AbiConverter();
+
+        var dto = converter.DictionaryToObject<AttestationDTO>(attestationDic);
+
+        Assert.IsNotNull(dto);
+
+        Assert.AreEqual(uidHex, dto.UID);
+        Assert.AreEqual(schemaUID, dto.Schema);
+
     }
 
     [TestMethod]
@@ -340,8 +444,15 @@ public class ExampleEAS
         var abiStream = AbiFileHelper.GetAbiStream("EASSchemaRegistry.abi.json");
         var schemaRegistryAddress = new EthereumAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3");
 
-        var contract = chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
-        return contract;
+        return chain.GetContract(schemaRegistryAddress, endpoint, sender, abiStream);
+    }
+
+    private static Contract SetupEASContract(Endpoint endpoint, Chain chain, Sender sender)
+    {
+        var abiStream = AbiFileHelper.GetAbiStream("EAS.abi.json");
+        var easAddress = new EthereumAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
+
+        return chain.GetContract(easAddress, endpoint, sender, abiStream);
     }
 
     private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain, bool useInMemoryNonces = false)
@@ -398,3 +509,70 @@ public record SchemaRecordDto(
     EthereumAddress Resolver,
     bool Revocable,
     Hex Schema);
+
+
+/// <summary>
+/// A DTO for an attestation.
+/// </summary>
+public class AttestationDTO
+{
+    /// <summary>
+    /// The UID of the attestation.
+    /// </summary>
+    [AbiParameter("uid", AbiType = AbiTypeNames.FixedByteArrays.Bytes32)]
+    public Hex UID { get; set; } = Hex.Empty;
+
+    /// <summary>
+    /// The schema of the attestation.
+    /// </summary>
+    [AbiParameter("schema", AbiType = AbiTypeNames.FixedByteArrays.Bytes32)]
+    public Hex Schema { get; set; } = Hex.Empty;
+
+    /// <summary>
+    /// The time of the attestation.
+    /// </summary>
+    [AbiParameter("time", AbiType = AbiTypeNames.IntegerTypes.Uint64)]
+    public DateTimeOffset Time { get; set; }
+
+    /// <summary>
+    /// The expiration time of the attestation.
+    /// </summary>
+    [AbiParameter("expirationTime", AbiType = AbiTypeNames.IntegerTypes.Uint64)]
+    public DateTimeOffset ExpirationTime { get; set; }
+
+    /// <summary>
+    /// The revocation time of the attestation.
+    /// </summary>
+    [AbiParameter("revocationTime", AbiType = AbiTypeNames.IntegerTypes.Uint64)]
+    public DateTimeOffset RevocationTime { get; set; }
+
+    /// <summary>
+    /// The refUID of the attestation.
+    /// </summary>
+    [AbiParameter("refUID", AbiType = AbiTypeNames.FixedByteArrays.Bytes32)]
+    public Hex RefUID { get; set; } = Hex.Empty;
+
+    /// <summary>
+    /// The recipient of the attestation.
+    /// </summary>
+    [AbiParameter("recipient", AbiType = AbiTypeNames.Address)]
+    public EthereumAddress Recipient { get; set; } = EthereumAddress.Zero;
+
+    /// <summary>
+    /// The address that created the attestation.
+    /// </summary>
+    [AbiParameter("attester", AbiType = AbiTypeNames.Address)]
+    public EthereumAddress Attester { get; set; } = EthereumAddress.Zero;
+
+    /// <summary>
+    /// Whether the attestation can be revoked.
+    /// </summary>
+    [AbiParameter("revocable", AbiType = AbiTypeNames.Bool)]
+    public bool Revocable { get; set; }
+
+    /// <summary>
+    /// The data of the attestation.
+    /// </summary>
+    [AbiParameter("data", AbiType = AbiTypeNames.Bytes)]
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+}

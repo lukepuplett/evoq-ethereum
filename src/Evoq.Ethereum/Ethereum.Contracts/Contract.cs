@@ -121,7 +121,7 @@ public class Contract
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into a dictionary.</returns>
-    public async Task<IDictionary<string, object?>> CallAsync(
+    public async Task<Dictionary<string, object?>> CallAsync(
         string methodName,
         EthereumAddress senderAddress,
         IDictionary<string, object?> arguments,
