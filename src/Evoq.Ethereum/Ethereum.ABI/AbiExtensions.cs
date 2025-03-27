@@ -306,7 +306,8 @@ public static class AbiExtensions
     /// <param name="parameters">The parameters to convert.</param>
     /// <param name="loggerFactory">The logger factory to use.</param>
     /// <returns>A strongly-typed object.</returns>
-    internal static T ToObject<T>(this AbiParameters parameters, ILoggerFactory? loggerFactory = null) where T : new()
+    internal static T ToObject<T>(this AbiParameters parameters, ILoggerFactory? loggerFactory = null)
+        where T : new()
     {
         // if a function returns a tuple, it will be the first and only unnamed parameter
         // in the dictionary
@@ -320,13 +321,22 @@ public static class AbiExtensions
 
         Dictionary<string, object?> keyValues = parameters.ToDictionary(true);
 
-        if (keyValues.Count == 1 &&
-            keyValues.First().Value is Dictionary<string, object?> innerActual &&
-            parameters.Count == 1 &&
-            string.IsNullOrEmpty(parameters.First().Name) &&
-            parameters.First().IsTupleStrict)
+        if (keyValues.Count == 1)
         {
-            keyValues = innerActual;
+            if (keyValues.Count == 1 &&
+                keyValues.TryFirst(out var kv) &&
+                kv.Key == "0" &&
+                kv.Value is IConvertible convertible)
+            {
+                return (T)convertible;
+            }
+            else if (keyValues.First().Value is Dictionary<string, object?> innerActual &&
+                parameters.Count == 1 &&
+                string.IsNullOrEmpty(parameters.First().Name) &&
+                parameters.First().IsTupleStrict)
+            {
+                keyValues = innerActual;
+            }
         }
 
         return new AbiConverter(loggerFactory).DictionaryToObject<T>(keyValues);
