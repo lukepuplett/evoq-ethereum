@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Evoq.Blockchain;
 using Evoq.Ethereum.ABI.TypeEncoders;
 
 namespace Evoq.Ethereum.ABI;
@@ -361,15 +362,20 @@ public class AbiEncoder : IAbiEncoder
 
         if (context.Value is byte[] bytesValue)
         {
-            length = bytesValue.Length;
+            length = bytesValue.Length; // original bytes length
         }
         else if (context.Value is string stringValue)
         {
-            length = Encoding.UTF8.GetBytes(stringValue).Length;
+            length = Encoding.UTF8.GetBytes(stringValue).Length; // original bytes length
+        }
+        else if (context.Value is Hex hexValue)
+        {
+            length = hexValue.Length; // original bytes length
         }
         else
         {
-            throw new ArgumentException($"The value of type {context.Value.GetType()} must be a byte array or string");
+            throw new AbiEncodingException(
+                $"The value '{context.Key}' of type {context.Value.GetType()} must be a Hex, byte[] array or string");
         }
 
         // encode the value into the tail and add the offset pointer to the head
