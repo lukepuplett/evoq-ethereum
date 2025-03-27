@@ -214,6 +214,15 @@ public readonly struct EtherAmount : IEquatable<EtherAmount>, IComparable<EtherA
     }
 
     /// <summary>
+    /// Converts the amount to a BigInteger as Wei.
+    /// </summary>
+    /// <returns>The Wei amount in BigInteger.</returns>
+    public BigInteger ToBigInteger()
+    {
+        return this.WeiValue;
+    }
+
+    /// <summary>
     /// Gets the amount in the display unit.
     /// </summary>
     /// <returns>The amount in the display unit.</returns>
