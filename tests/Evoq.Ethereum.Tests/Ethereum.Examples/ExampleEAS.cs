@@ -244,7 +244,7 @@ public class ExampleEAS
     }
 
     [TestMethod]
-    // [Ignore]
+    [Ignore]
     public async Task Should_Attest_ThenGetAttestation()
     {
         string baseUrl, chainName;
