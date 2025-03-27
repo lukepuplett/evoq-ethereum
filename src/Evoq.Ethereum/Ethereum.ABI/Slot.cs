@@ -226,7 +226,6 @@ internal class Slot
     /// Decodes the pointer that this slot points to setting the OffsetByte, PointsTo and RelativeTo.
     /// </summary>
     /// <param name="relativeTo">The slot space that the pointer is relative to.</param>
-    /// <exception cref="NotImplementedException">Thrown if the pointer is not implemented.</exception>
     internal void DecodePointer(SlotCollection relativeTo)
     {
         if (this.IsPointer)

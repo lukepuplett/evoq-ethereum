@@ -135,16 +135,27 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The balance of the Ethereum address.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
-    public Task<Hex> GetBalanceAsync(
+    /// <returns>The balance of the Ethereum address as an EtherAmount in Wei.</returns>
+    public async Task<EtherAmount> GetBalanceAsync(
         EthereumAddress address,
         string blockParameter = "latest",
         int id = 1,
         CancellationToken cancellationToken = default)
     {
-        // Implements eth_getBalance
-        throw new NotImplementedException("eth_getBalance method not implemented. This method retrieves the balance of an Ethereum address.");
+        var request = JsonRpcRequestDtoFactory.CreateGetBalanceRequest(
+            address.ToString(),
+            blockParameter,
+            id);
+
+        var response = await this.SendAsync<string>(
+            request,
+            new MethodInfo(request.Method, id),
+            cancellationToken);
+
+        // Parse the hex response and convert to EtherAmount
+        var hexResponse = ParseHexResponse(response);
+
+        return EtherAmount.FromWei(hexResponse);
     }
 
     /// <summary>
@@ -197,11 +208,24 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="id">The ID of the request.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The hash of the transaction.</returns>
-    public Task<Hex> SendTransactionAsync(
-        TransactionParamsDto transactionParams, int id = 1, CancellationToken cancellationToken = default)
+    /// <exception cref="JsonRpcNullResultException">
+    /// Thrown when the JSON-RPC response has a null result.
+    /// </exception>
+    public async Task<Hex> SendTransactionAsync(
+        TransactionParamsDto transactionParams,
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
-        // Implements eth_sendTransaction
-        throw new NotImplementedException("eth_sendTransaction method not implemented. This method creates and sends a new transaction from a local account.");
+        var request = JsonRpcRequestDtoFactory.CreateSendTransactionRequest(
+            transactionParams,
+            id);
+
+        var response = await this.SendAsync<string>(
+            request,
+            new MethodInfo(request.Method, id),
+            cancellationToken);
+
+        return ParseHexResponse(response);
     }
 
     /// <summary>
@@ -243,7 +267,6 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// <param name="id">The request identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The block number.</returns>
-    /// <exception cref="NotImplementedException">Thrown when the method is not implemented.</exception>
     public async Task<Hex> BlockNumberAsync(
         int id = 1, CancellationToken cancellationToken = default)
     {

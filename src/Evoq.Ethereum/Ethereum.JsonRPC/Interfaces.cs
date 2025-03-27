@@ -107,8 +107,8 @@ public interface IGetBalance
     /// <param name="blockParameter">The block parameter</param>
     /// <param name="id">The request identifier</param>
     /// <param name="cancellationToken">The cancellation token</param>
-    /// <returns>The balance as a hex value</returns>
-    Task<Hex> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1, CancellationToken cancellationToken = default);
+    /// <returns>The balance as an EtherAmount in Wei</returns>
+    Task<EtherAmount> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest", int id = 1, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -176,6 +176,17 @@ internal class ChainClient
         return (null, true);
     }
 
+    /// <summary>
+    /// Gets the balance of an Ethereum address at a specific block.
+    /// </summary>
+    /// <param name="address">The address to get the balance for.</param>
+    /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
+    /// <returns>The balance as an EtherAmount in Wei.</returns>
+    internal async Task<EtherAmount> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest")
+    {
+        return await this.jsonRpc.GetBalanceAsync(address, blockParameter, this.GetRandomId());
+    }
+
     //
 
     /// <summary>
