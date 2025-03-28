@@ -232,13 +232,17 @@ public class JsonRpcClient : IEthereumJsonRpc
     /// Gets the code of a contract at a specific Ethereum address.
     /// </summary>
     /// <param name="address">The Ethereum address.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The code of the contract.</returns>
     public async Task<Hex> GetCodeAsync(
-        EthereumAddress address, int id = 1, CancellationToken cancellationToken = default)
+        EthereumAddress address,
+        string blockParameter = "latest",
+        int id = 1,
+        CancellationToken cancellationToken = default)
     {
-        var request = JsonRpcRequestDtoFactory.CreateGetCodeRequest(address.ToString(), "latest", id);
+        var request = JsonRpcRequestDtoFactory.CreateGetCodeRequest(address.ToString(), blockParameter, id);
 
         var response = await this.SendAsync<string>(request, new MethodInfo(request.Method, id), cancellationToken);
 

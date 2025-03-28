@@ -120,10 +120,11 @@ public interface IGetCode
     /// Gets the code of a contract.
     /// </summary>
     /// <param name="address">The address of the contract to get the code for.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <param name="id">The request identifier</param>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>The code of the contract.</returns>
-    Task<Hex> GetCodeAsync(EthereumAddress address, int id = 1, CancellationToken cancellationToken = default);
+    Task<Hex> GetCodeAsync(EthereumAddress address, string blockParameter = "latest", int id = 1, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

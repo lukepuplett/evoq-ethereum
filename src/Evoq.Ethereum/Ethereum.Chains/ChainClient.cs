@@ -187,6 +187,17 @@ internal class ChainClient
         return await this.jsonRpc.GetBalanceAsync(address, blockParameter, this.GetRandomId());
     }
 
+    /// <summary>
+    /// Gets the code of a contract at a specific Ethereum address.
+    /// </summary>
+    /// <param name="address">The Ethereum address.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
+    /// <returns>The code of the contract.</returns>
+    internal async Task<Hex> GetCodeAsync(EthereumAddress address, string blockParameter = "latest")
+    {
+        return await this.jsonRpc.GetCodeAsync(address, blockParameter, this.GetRandomId());
+    }
+
     //
 
     /// <summary>

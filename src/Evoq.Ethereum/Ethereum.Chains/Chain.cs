@@ -192,6 +192,17 @@ public class Chain
         return await this.chainClient.GetBalanceAsync(address, blockParameter);
     }
 
+    /// <summary>
+    /// Gets the code of a contract at a specific Ethereum address.
+    /// </summary>
+    /// <param name="address">The Ethereum address.</param>
+    /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
+    /// <returns>The code of the contract.</returns>
+    public async Task<Hex> GetCodeAsync(EthereumAddress address, string blockParameter = "latest")
+    {
+        return await this.chainClient.GetCodeAsync(address, blockParameter);
+    }
+
     //
 
     /// <summary>
