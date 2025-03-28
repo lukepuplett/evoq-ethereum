@@ -37,10 +37,25 @@ public class RawContractCaller
     //
 
     /// <summary>
-    /// Calls a function on a contract without using the ABI.
+    /// Calls a function on a contract without using the ABI, using a signature with unnamed parameters.
     /// </summary>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
+    /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
+    /// <returns>The result of the function call.</returns>
+    public async Task<Hex> CallAsync(
+        EthereumAddress contractAddress,
+        string functionSignature,
+        params object?[] simpleParams)
+    {
+        return await this.CallAsync(contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
+    }
+
+    /// <summary>
+    /// Calls a function on a contract without using the ABI, using a signature with named parameters.
+    /// </summary>
+    /// <param name="contractAddress">The address of the contract to call.</param>
+    /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address to,uint256 value)".</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
@@ -52,11 +67,32 @@ public class RawContractCaller
     }
 
     /// <summary>
-    /// Calls a function on a contract without using the ABI.
+    /// Calls a function on a contract without using the ABI, using a signature with unnamed parameters.
     /// </summary>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="from">The address of the account to use to call the function.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
+    /// <param name="value">The value to send with the call.</param>
+    /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
+    /// <returns>The result of the function call.</returns>
+    public async Task<Hex> CallAsync(
+        EthereumAddress contractAddress,
+        EthereumAddress from,
+        string functionSignature,
+        BigInteger value,
+        params object?[] simpleParams)
+    {
+        var indexNamedParams = simpleParams.Select((p, i) => (i.ToString(), p)).ToArray();
+
+        return await this.CallAsync(contractAddress, from, functionSignature, value, indexNamedParams);
+    }
+
+    /// <summary>
+    /// Calls a function on a contract without using the ABI, using a signature with named parameters.
+    /// </summary>
+    /// <param name="contractAddress">The address of the contract to call.</param>
+    /// <param name="from">The address of the account to use to call the function.</param>
+    /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address to,uint256 value)".</param>
     /// <param name="value">The value to send with the call.</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
