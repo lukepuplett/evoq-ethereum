@@ -25,13 +25,15 @@ public class EIP165Native : IEIP165
     /// <summary>
     /// Constructs a new EIP165Native instance.
     /// </summary>
+    /// <param name="contractAddress">The contract to be checked.</param>
     /// <param name="endpoint">The endpoint to use for the EIP-165 contract.</param>
-    public EIP165Native(Endpoint endpoint)
+    public EIP165Native(EthereumAddress contractAddress, Endpoint endpoint)
     {
         this.logger = endpoint.LoggerFactory.CreateLogger<EIP165Native>();
         this.caller = new RawContractCaller(this.Endpoint);
 
         this.Endpoint = endpoint;
+        this.ContractAddress = contractAddress;
     }
 
     //
@@ -41,17 +43,21 @@ public class EIP165Native : IEIP165
     /// </summary>
     public Endpoint Endpoint { get; }
 
+    /// <summary>
+    /// Gets the address of the contract which is to be checked.
+    /// </summary>
+    public EthereumAddress ContractAddress { get; }
+
     //
 
     /// <summary>
     /// Checks if the contract supports a given interface.
     /// </summary>
-    /// <param name="contractAddress">The address of the contract to check.</param>
     /// <param name="interfaceId">The interface ID to check.</param>
     /// <returns>True if the contract supports the interface, false otherwise.</returns>
-    public async Task<bool> SupportsInterface(EthereumAddress contractAddress, Hex interfaceId)
+    public async Task<bool> SupportsInterface(Hex interfaceId)
     {
-        string key = $"{contractAddress.ToString()}:{interfaceId.ToString()}";
+        string key = $"{this.ContractAddress.ToString()}:{interfaceId.ToString()}";
         if (this.supportsInterfaceCache.TryGetValue(key, out var cached))
         {
             return cached;
@@ -60,7 +66,7 @@ public class EIP165Native : IEIP165
         // Step 1: Check if contract supports ERC-165 itself by checking
         // that it returns true for the ERC-165 interface ID.
 
-        var supportsERC165 = await this.SupportsERC165(contractAddress, ERC165_ID);
+        var supportsERC165 = await this.SupportsERC165(ERC165_ID);
         if (!supportsERC165) // not!
         {
             this.supportsInterfaceCache[key] = false;
@@ -70,7 +76,7 @@ public class EIP165Native : IEIP165
         // Step 2: Validate that supportsInterface is implemented correctly by
         // checking that it returns false for an invalid interface ID.
 
-        var supportsNonsense = await this.SupportsERC165(contractAddress, INVALID_ID);
+        var supportsNonsense = await this.SupportsERC165(INVALID_ID);
         if (supportsNonsense)
         {
             this.logger.LogInformation("Contract supports nonsense so it doesn't support ERC-165");
@@ -82,7 +88,7 @@ public class EIP165Native : IEIP165
         // Step 3: Check the actual interface support by calling the function
         // with the interface ID.
 
-        var supportsInterface = await this.SupportsERC165(contractAddress, interfaceId);
+        var supportsInterface = await this.SupportsERC165(interfaceId);
         this.supportsInterfaceCache[key] = supportsInterface;
 
         this.logger.LogInformation("Contract supports interface {InterfaceId}: {SupportsInterface}", interfaceId, supportsInterface);
@@ -92,13 +98,13 @@ public class EIP165Native : IEIP165
 
     //
 
-    private async Task<bool> SupportsERC165(EthereumAddress contractAddress, Hex interfaceId)
+    private async Task<bool> SupportsERC165(Hex interfaceId)
     {
         try
         {
             this.logger.LogDebug("Checking if contract supports {InterfaceId}", interfaceId);
 
-            var hex = await this.caller.CallAsync(contractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, ("interfaceId", interfaceId));
+            var hex = await this.caller.CallAsync(this.ContractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, ("interfaceId", interfaceId));
 
             return !hex.IsZeroValue();
         }
