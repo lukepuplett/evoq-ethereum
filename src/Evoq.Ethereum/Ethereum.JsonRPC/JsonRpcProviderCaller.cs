@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -146,15 +148,26 @@ public class JsonRpcProviderCaller<TResponseResult>
                             string.Join(", ", response.Content.Headers.ContentEncoding));
                     }
 
-                    // Deserialize the response
-                    var responseBodyStr = await response.Content.ReadAsStringAsync();
+                    // Read and decompress the response if needed
+                    string responseBodyStr;
+                    if (response.Content.Headers.ContentEncoding.Contains("gzip"))
+                    {
+                        using var compressedStream = await response.Content.ReadAsStreamAsync();
+                        using var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress);
+                        using var reader = new StreamReader(gzipStream);
+                        responseBodyStr = await reader.ReadToEndAsync();
+                    }
+                    else
+                    {
+                        responseBodyStr = await response.Content.ReadAsStringAsync();
+                    }
+
                     this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
 
                     // Add these detailed debug logs:
                     this.logger?.LogInformation("Response Status: {StatusCode} {StatusReason}", (int)response.StatusCode, response.ReasonPhrase);
                     this.logger?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
                     this.logger?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
-                    // this.logger?.LogDebug("Raw Response Body: {Body}", responseBodyStr);
 
                     var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                         responseBodyStr, this.jsonSerializerOptions);
