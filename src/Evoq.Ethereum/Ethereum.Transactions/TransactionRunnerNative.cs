@@ -56,7 +56,7 @@ public class TransactionRunnerNative
     {
         var startTime = DateTime.UtcNow;
 
-        var id = await contract.InvokeMethodAsync(
+        var transactionHash = await contract.InvokeMethodAsync(
             functionName,
             nonce,
             options,
@@ -64,19 +64,20 @@ public class TransactionRunnerNative
             cancellationToken);
 
         var submittedAt = DateTime.UtcNow;
+        var timeout = options.WaitForReceiptTimeout;
 
         var (receipt, deadlineReached) = await contract.Chain.TryWaitForTransactionAsync(
-            id, TimeSpan.FromSeconds(120), cancellationToken);
+            transactionHash, timeout, cancellationToken);
 
         var receiptAt = DateTime.UtcNow;
 
         this.logger.LogInformation(
             "Transaction {Id}: hash: {Hash}, submitted-ms: {SubmitMs}, receipt-ms: {ReceiptMs}",
-            id, receipt?.TransactionHash, (submittedAt - startTime).TotalMilliseconds, (receiptAt - submittedAt).TotalMilliseconds);
+            transactionHash, receipt?.TransactionHash, (submittedAt - startTime).TotalMilliseconds, (receiptAt - submittedAt).TotalMilliseconds);
 
         if (deadlineReached)
         {
-            throw new TransactionTimeoutException(id);
+            throw new TransactionTimeoutException(transactionHash);
         }
 
         return receipt!;
@@ -104,6 +105,11 @@ public class TransactionRunnerNative
         if (ex is RevertedTransactionException)
         {
             return CommonTransactionFailure.Reverted;
+        }
+
+        if (ex is ReceiptNotFoundException)
+        {
+            return CommonTransactionFailure.ReceiptNotFound;
         }
 
         return CommonTransactionFailure.Other;

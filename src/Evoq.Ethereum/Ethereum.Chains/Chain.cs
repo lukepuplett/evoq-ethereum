@@ -256,7 +256,7 @@ public class Chain
     /// <param name="timeout">The maximum time to wait. Defaults to 5 minutes if not specified.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The transaction receipt.</returns>
-    /// <exception cref="TransactionNotFoundException">Thrown when the transaction is not found within the timeout period.</exception>
+    /// <exception cref="ReceiptNotFoundException">Thrown when the transaction is not found within the timeout period.</exception>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task<(TransactionReceipt? Receipt, bool DeadlineReached)> TryWaitForTransactionAsync(
         Hex transactionHash,
@@ -274,7 +274,7 @@ public class Chain
 
         if (receipt == null)
         {
-            throw new TransactionNotFoundException(transactionHash);
+            throw new ReceiptNotFoundException(transactionHash);
         }
 
         return (receipt, deadlineReached);

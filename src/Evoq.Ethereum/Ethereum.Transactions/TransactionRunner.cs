@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Evoq.Blockchain;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Transactions;
@@ -30,6 +31,10 @@ public enum CommonTransactionFailure
     /// The transaction failed because the nonce was too high.
     /// </summary>
     NonceTooHigh,
+    /// <summary>
+    /// The transaction submitted successfully but the receipt was not found.
+    /// </summary>
+    ReceiptNotFound,
 }
 
 /// <summary>
@@ -196,6 +201,35 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                         // other response
                         throw new RevertedTransactionException(
                             $"Transaction reverted: {r}. The nonce may not have been removed.");
+                }
+            }
+            catch (Exception receiptNotFound)
+                when (this.GetExpectedFailure(receiptNotFound) == CommonTransactionFailure.ReceiptNotFound)
+            {
+                // receipt not found, this burns the nonce and we cannot retry since we already have
+                // a deadline to honor
+
+                Hex transactionHash = Hex.Empty;
+
+                if (receiptNotFound is ReceiptNotFoundException receiptNotFoundException)
+                {
+                    transactionHash = receiptNotFoundException.TransactionHash;
+
+                    this.logger.LogWarning(
+                        $"{functionName}: receipt not found. Nonce {nonce} consumed on successfully submitted transaction {transactionHash}");
+
+                    await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
+
+                    throw;
+                }
+                else
+                {
+                    this.logger.LogWarning(
+                        $"{functionName}: receipt not found. Nonce {nonce} consumed on successfully submitted transaction");
+
+                    await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
+
+                    throw new ReceiptNotFoundException(Hex.Empty, receiptNotFound);
                 }
             }
             catch (Exception other)

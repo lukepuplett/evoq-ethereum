@@ -246,7 +246,7 @@ public class Contract
     /// <param name="options">The options for the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The result of the method call decoded into an object.</returns>
+    /// <returns>The transaction hash.</returns>
     public async Task<Hex> InvokeMethodAsync(
         string methodName,
         ulong nonce,

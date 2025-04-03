@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 
 namespace Evoq.Ethereum.Contracts;
@@ -27,6 +28,11 @@ public class ContractInvocationOptions
     /// Amount of ETH (in wei) to send with the transaction
     /// </summary>
     public EtherAmount Value { get; }
+
+    /// <summary>
+    /// The amount of time to wait for the transaction to be mined.
+    /// </summary>
+    public TimeSpan WaitForReceiptTimeout { get; set; } = TimeSpan.FromMinutes(5);
 }
 
 /// <summary>
