@@ -161,6 +161,16 @@ public class TransactionReceipt
     /// </summary>
     /// <returns>A string representation of the transaction receipt.</returns>
     public override string ToString() => $"Tx {TransactionHash} Block {BlockNumber} {(Success ? "✓" : "✗")}";
+
+    /// <summary>
+    /// Creates a transaction receipt with only the transaction hash set.
+    /// </summary>
+    /// <param name="transactionHash">The hash of the transaction.</param>
+    /// <returns>A minimal transaction receipt containing just the hash.</returns>
+    public static TransactionReceipt FromTransactionHash(Hex transactionHash) => new()
+    {
+        TransactionHash = transactionHash
+    };
 }
 
 /// <summary>

@@ -63,6 +63,16 @@ public class TransactionRunnerNative
             args,
             cancellationToken);
 
+        if (options.WaitForReceiptTimeout == TimeSpan.Zero)
+        {
+            this.logger.LogInformation("Transaction {Id}: hash: {Hash}, submitted-ms: {SubmitMs}",
+                transactionHash, transactionHash, (DateTime.UtcNow - startTime).TotalMilliseconds);
+
+            return TransactionReceipt.FromTransactionHash(transactionHash);
+        }
+
+        // Wait for the receipt
+
         var submittedAt = DateTime.UtcNow;
         var timeout = options.WaitForReceiptTimeout;
 
