@@ -85,7 +85,7 @@ public static class Extensions
         }
 
         // Use the same logic as ToHexString to handle leading zero bytes
-        return value.Value.ToHexString(true);
+        return value.Value.ToHexString(trimLeadingZeroDigits: true);
     }
 
     /// <summary>

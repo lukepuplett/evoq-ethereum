@@ -218,13 +218,13 @@ internal class ContractClient
         CancellationToken cancellationToken = default)
     {
         var signature = contract.GetFunctionSignature(methodName);
-        var encoded = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
+        var encodedBytes = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
 
         var ethCallParams = new EthCallParamObjectDto
         {
             To = contract.Address.HasValue ? contract.Address.ToString() : throw new InvalidOperationException("Contract address is not set"),
             From = senderAddress.HasValue ? senderAddress.ToString() : throw new InvalidOperationException("Sender address is not set"),
-            Input = new Hex(encoded).ToString(),
+            Input = new Hex(encodedBytes).ToString(),
         };
 
         var result = await this.jsonRpc.CallAsync(

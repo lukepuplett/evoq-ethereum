@@ -130,7 +130,7 @@ public class RawContractCaller
         {
             From = from.IsEmpty ? null : from.ToString(),
             To = contractAddress.ToString(),
-            Input = encodedBytes.ToHex(),
+            Input = new Hex(encodedBytes).ToString(),
             Value = value.ToHexString(trimLeadingZeroDigits: true),
         };
 
