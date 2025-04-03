@@ -96,6 +96,8 @@ public interface ITransactionFeeEstimate : ISuggestedGasOptions, IGasOptionsFact
 /// </remarks>
 public class TransactionFeeEstimate : ITransactionFeeEstimate
 {
+    internal const int BaseFeeSafetyMarginScale = 2;
+
     /// <summary>
     /// The estimated gas limit for the transaction.
     /// </summary>
@@ -226,8 +228,15 @@ public static class GasOptionsExtensions
     /// <param name="tipFactor">The multiplier for the max priority fee per gas, 1.0 is normal and 2.0 is urgent, while 0.5 is whenever possible.</param>
     /// <returns>A new EIP-1559 gas options object.</returns>
     public static GasOptions ToSuggestedWithTip(this IGasOptionsFactory estimate, decimal tipFactor) =>
-        estimate.ToGasOptions(estimate => new EIP1559GasOptions(
-            gasLimit: (ulong)estimate.EstimatedGasLimit,
-            maxFeePerGas: estimate.SuggestedMaxFeePerGas,
-            maxPriorityFeePerGas: estimate.SuggestedMaxPriorityFeePerGas * tipFactor));
+        estimate.ToGasOptions(estimate =>
+        {
+            var safetyMargin = TransactionFeeEstimate.BaseFeeSafetyMarginScale;
+            var scaledTip = estimate.SuggestedMaxPriorityFeePerGas * tipFactor;
+            var scaledMaxFee = estimate.CurrentBaseFeePerGas * safetyMargin + scaledTip;  // Recalculate with new tip
+
+            return new EIP1559GasOptions(
+                gasLimit: (ulong)estimate.EstimatedGasLimit,
+                maxFeePerGas: scaledMaxFee,
+                maxPriorityFeePerGas: scaledTip);
+        });
 }

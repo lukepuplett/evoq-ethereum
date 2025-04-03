@@ -122,7 +122,6 @@ public class Chain
     // Presumably this class would be a good place to surface it but I am not sure
     // how to do that yet.
 
-
     /// <summary>
     /// Suggests appropriate fee values for EIP-1559 (Type 2) transactions.
     /// </summary>
@@ -130,25 +129,42 @@ public class Chain
     /// <exception cref="InvalidOperationException">Thrown when the network doesn't support EIP-1559 (pre-London fork).</exception>
     public async Task<(BigInteger MaxFeePerGasInWei, BigInteger MaxPriorityFeePerGasInWei)> SuggestEip1559FeesAsync()
     {
-        // This will throw if the network doesn't support EIP-1559
+        // Fetch the current base fee from the network (in wei).
+        // This is the minimum fee per gas set by the Ethereum protocol for the latest block.
+        // Throws InvalidOperationException if the network doesn't support EIP-1559 (pre-London fork).
         var baseFee = await this.GetBaseFeeAsync();
 
-        // Default priority fee
-        var priorityFee = WeiAmounts.StandardPriorityFee;
+        // Set a default priority fee (tip) of 2 Gwei (2,000,000,000 wei).
+        // This is the amount paid to miners/validators to prioritize the transaction.
+        // Assumes WeiAmounts.StandardPriorityFee is predefined as 2 Gwei.
+        var tip = WeiAmounts.StandardPriorityFee;
 
-        // Use fee history to get a more accurate priority fee suggestion
-        var feeHistory = await this.GetFeeHistoryAsync(10, BlockParameter.Latest, new[] { 50.0 });
-        if (feeHistory != null && feeHistory.Reward.Length > 0 && feeHistory.Reward[0].Length > 0)
+        // Fetch fee history for the last 10 blocks to refine the tip.
+        // Parameters: 10 blocks, latest block, 50th percentile reward (median tip).
+        // This helps estimate what others are paying as tips in recent blocks.
+        var tipHistory = await this.GetFeeHistoryAsync(10, BlockParameter.Latest, new[] { 50.0 });
+
+        // Check if fee history data is valid and contains reward data.
+        // tipHistory.Reward is an array of arrays: each inner array has percentile tips for a block.
+        if (tipHistory != null && tipHistory.Reward.Length > 0 && tipHistory.Reward[0].Length > 0)
         {
-            // Use the median (50th percentile) priority fee from recent blocks
-            priorityFee = feeHistory.Reward[0][0];
+            // Use the median tip (50th percentile) from the most recent block in the history.
+            // This overrides the default 2 Gwei with a data-driven value based on network conditions.
+            tip = tipHistory.Reward[0][0];
         }
 
-        // Max fee is typically set to 2x base fee + priority fee to account for base fee increases
-        // The base fee can increase by up to 12.5% per block in the EIP-1559 model
-        var maxFee = (baseFee * 2) + priorityFee;
+        // Calculate the maxFeePerGas, which is the maximum you're willing to pay per gas unit.
+        // Formula: (baseFee * 2) + tip where 2 is the safety margin
+        // - Doubling baseFee provides a buffer for potential increases (up to 12.5% per block).
+        // - Adding tip ensures the total covers both the base fee and priority fee.
+        // BigInteger.Max ensures maxFee is at least as large as tip (though rare, as baseFee >= 0).
+        var maxFee = BigInteger.Max((baseFee * TransactionFeeEstimate.BaseFeeSafetyMarginScale) + tip, tip);
 
-        return (maxFee, priorityFee);
+        // Return the tuple with suggested values in wei.
+        // - maxFee: The cap on total fee per gas (base fee + priority fee).
+        // - tip: The suggested priority fee to incentivize inclusion.
+        // Actual cost will be: Gas Used * (current baseFee + effective tip), capped by maxFee.
+        return (maxFee, tip);
     }
 
     /// <summary>
