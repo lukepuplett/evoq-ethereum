@@ -163,11 +163,12 @@ public class JsonRpcProviderCaller<TResponseResult>
                     }
 
                     this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
-
-                    // Add these detailed debug logs:
-                    this.logger?.LogInformation("Response Status: {StatusCode} {StatusReason}", (int)response.StatusCode, response.ReasonPhrase);
-                    this.logger?.LogDebug("Response Content Type: {ContentType}", response.Content.Headers.ContentType);
-                    this.logger?.LogDebug("Response Length: {Length} bytes", responseBodyStr.Length);
+                    this.logger?.LogInformation(
+                        "Response: Status={StatusCode} {StatusReason}, Type={ContentType}, Length={Length} bytes",
+                        (int)response.StatusCode,
+                        response.ReasonPhrase,
+                        response.Content.Headers.ContentType,
+                        responseBodyStr.Length);
 
                     var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                         responseBodyStr, this.jsonSerializerOptions);
