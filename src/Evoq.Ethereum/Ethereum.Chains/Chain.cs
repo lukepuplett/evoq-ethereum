@@ -133,8 +133,8 @@ public class Chain
         // This will throw if the network doesn't support EIP-1559
         var baseFee = await this.GetBaseFeeAsync();
 
-        // Default priority fee of 2 Gwei
-        var priorityFee = BigInteger.Parse("2000000000");
+        // Default priority fee
+        var priorityFee = WeiAmounts.StandardPriorityFee;
 
         // Use fee history to get a more accurate priority fee suggestion
         var feeHistory = await this.GetFeeHistoryAsync(10, BlockParameter.Latest, new[] { 50.0 });

@@ -70,27 +70,9 @@ public static class WeiAmounts
     /// </summary>
     public static readonly BigInteger ContractDeploymentGas = BigInteger.Parse("4000000");
 
-    // Common gas prices
+    // Priority fees
 
-    /// <summary>
-    /// Low priority gas price (1 gwei).
-    /// </summary>
-    public static readonly BigInteger LowPriorityFee = 1 * Gwei;
-
-    /// <summary>
-    /// Standard priority gas price (2 gwei).
-    /// </summary>
-    public static readonly BigInteger StandardPriorityFee = 2 * Gwei;
-
-    /// <summary>
-    /// High priority gas price (3 gwei).
-    /// </summary>
-    public static readonly BigInteger HighPriorityFee = 3 * Gwei;
-
-    /// <summary>
-    /// Urgent priority gas price (5 gwei).
-    /// </summary>
-    public static readonly BigInteger UrgentPriorityFee = 5 * Gwei;
+    internal static readonly BigInteger StandardPriorityFee = 2 * Gwei;
 
     // Conversion methods
 

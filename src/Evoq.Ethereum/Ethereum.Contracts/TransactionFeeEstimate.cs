@@ -1,3 +1,4 @@
+using System;
 using System.Numerics;
 
 namespace Evoq.Ethereum.Contracts;
@@ -15,13 +16,25 @@ public interface ISuggestedGasOptions
 }
 
 /// <summary>
+/// A factory for creating gas options objects.
+/// </summary>
+public interface IGasOptionsFactory
+{
+    /// <summary>
+    /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
+    /// </summary>
+    /// <returns>A new EIP-1559 gas options object.</returns>
+    GasOptions ToGasOptions(Func<ITransactionFeeEstimate, GasOptions> gasOptionsFactory);
+}
+
+/// <summary>
 /// Represents a complete transaction fee estimate for EIP-1559 transactions.
 /// </summary>
 /// <remarks>
 /// EIP-1559 introduced a new fee market in Ethereum (London fork, August 2021) that uses a base fee 
 /// which is burned and a priority fee which goes to miners/validators.
 /// </remarks>
-public interface ITransactionFeeEstimate : ISuggestedGasOptions
+public interface ITransactionFeeEstimate : ISuggestedGasOptions, IGasOptionsFactory
 {
     /// <summary>
     /// The estimated gas limit for the transaction.
@@ -190,4 +203,31 @@ public class TransactionFeeEstimate : ITransactionFeeEstimate
         gasLimit: (ulong)EstimatedGasLimit,
         maxFeePerGas: SuggestedMaxFeePerGas,
         maxPriorityFeePerGas: SuggestedMaxPriorityFeePerGas);
+
+    /// <summary>
+    /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
+    /// </summary>
+    /// <returns>A new EIP-1559 gas options object.</returns>
+    public GasOptions ToGasOptions(Func<ITransactionFeeEstimate, GasOptions> gasOptionsFactory)
+    {
+        return gasOptionsFactory(this);
+    }
+}
+
+/// <summary>
+/// Extension methods for the GasOptions class.
+/// </summary>
+public static class GasOptionsExtensions
+{
+    /// <summary>
+    /// Returns a new EIP-1559 gas options object with the estimated gas limit and suggested max fee per gas.
+    /// </summary>
+    /// <param name="estimate">The transaction fee estimate.</param>
+    /// <param name="tipFactor">The multiplier for the max priority fee per gas, 1.0 is normal and 2.0 is urgent, while 0.5 is whenever possible.</param>
+    /// <returns>A new EIP-1559 gas options object.</returns>
+    public static GasOptions ToSuggestedWithTip(this IGasOptionsFactory estimate, decimal tipFactor) =>
+        estimate.ToGasOptions(estimate => new EIP1559GasOptions(
+            gasLimit: (ulong)estimate.EstimatedGasLimit,
+            maxFeePerGas: estimate.SuggestedMaxFeePerGas,
+            maxPriorityFeePerGas: estimate.SuggestedMaxPriorityFeePerGas * tipFactor));
 }
