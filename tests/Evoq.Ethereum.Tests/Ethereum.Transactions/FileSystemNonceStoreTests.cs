@@ -978,4 +978,26 @@ public class FileSystemNonceStoreTests
             // Expected
         }
     }
+
+    [TestMethod]
+    public async Task AfterSubmissionFailureAsync_WithZeroRetryPeriod_RemovesNonceImmediately()
+    {
+        // Arrange
+        var store = new FileSystemNonceStore(testDirectory, loggerFactory);
+        store.RetryPeriod = TimeSpan.Zero;
+        var nonce = 5u;
+        var noncePath = Path.Combine(testDirectory, $"{nonce}.nonce");
+        var failurePath = Path.Combine(testDirectory, $"{nonce}.failed");
+
+        Directory.CreateDirectory(testDirectory);
+        File.WriteAllText(noncePath, string.Empty);
+
+        // Act
+        var result = await store.AfterSubmissionFailureAsync(nonce);
+
+        // Assert
+        Assert.AreEqual(NonceRollbackResponse.RemovedOkay, result);
+        Assert.IsFalse(File.Exists(noncePath), "Nonce file should be removed with zero retry period");
+        Assert.IsFalse(File.Exists(failurePath), "Failure marker should not be created with zero retry period");
+    }
 }

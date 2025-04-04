@@ -35,6 +35,10 @@ public enum CommonTransactionFailure
     /// The transaction submitted successfully but the receipt was not found.
     /// </summary>
     ReceiptNotFound,
+    /// <summary>
+    /// The transaction failed because the sender had insufficient funds.
+    /// </summary>
+    InsufficientFunds,
 }
 
 /// <summary>
@@ -230,6 +234,43 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
                     await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
 
                     throw new ReceiptNotFoundException(Hex.Empty, receiptNotFound);
+                }
+            }
+            catch (Exception insufficientFunds)
+                when (this.GetExpectedFailure(insufficientFunds) == CommonTransactionFailure.InsufficientFunds)
+            {
+                // Transaction rejected due to insufficient funds
+                this.logger.LogWarning($"{functionName}: insufficient funds to cover transaction.");
+
+                // Notify the nonce store about the submission failure
+                var r = await this.nonceStore.AfterSubmissionFailureAsync(nonce);
+
+                this.logger.LogInformation($"{functionName}: store response: {r}");
+
+                // Different handling based on nonce store response
+                switch (r)
+                {
+                    case NonceRollbackResponse.NotRemovedShouldRetry:
+                        // We could implement retry logic here, but insufficient funds 
+                        // likely requires user intervention
+                        throw new InsufficientFundsException(
+                            "Transaction rejected: Insufficient funds to cover gas costs plus value.",
+                            insufficientFunds);
+                    case NonceRollbackResponse.RemovedOkay:
+                        throw new InsufficientFundsException(
+                            $"Transaction rejected due to insufficient funds: {r}. The nonce was removed.",
+                            insufficientFunds);
+                    case NonceRollbackResponse.RemovedGapDetected:
+                        throw new InsufficientFundsException(
+                            $"Transaction rejected due to insufficient funds: {r}. The nonce was removed and a gap was created.",
+                            insufficientFunds)
+                        {
+                            WasNonceGapCreated = true
+                        };
+                    default:
+                        throw new InsufficientFundsException(
+                            $"Transaction rejected due to insufficient funds: {r}.",
+                            insufficientFunds);
                 }
             }
             catch (Exception other)

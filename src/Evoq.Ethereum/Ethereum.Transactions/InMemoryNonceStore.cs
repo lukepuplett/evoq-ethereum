@@ -35,6 +35,13 @@ public class InMemoryNonceStore : INonceStore
     //
 
     /// <summary>
+    /// Gets or sets the period of time to retry a failed submission.
+    /// </summary>
+    public TimeSpan RetryPeriod { get; set; } = TimeSpan.FromSeconds(10);
+
+    //
+
+    /// <summary>
     /// Gets the next available nonce.
     /// </summary>
     /// <returns>The next available nonce.</returns>
@@ -133,9 +140,9 @@ public class InMemoryNonceStore : INonceStore
     /// <returns>The response to the caller.</returns>
     public Task<NonceRollbackResponse> AfterSubmissionFailureAsync(uint nonce)
     {
-        if (nonceFailedTimes.TryGetValue(nonce, out var failedTime))
+        if (nonceFailedTimes.TryGetValue(nonce, out var firstFailedAt))
         {
-            if (failedTime.AddSeconds(10) > DateTimeOffset.UtcNow)
+            if (firstFailedAt.Add(this.RetryPeriod) > DateTimeOffset.UtcNow)
             {
                 logger.LogInformation(
                     "Nonce {Nonce} failed recently. Caller should keep trying for now.", nonce);
@@ -143,7 +150,7 @@ public class InMemoryNonceStore : INonceStore
                 return Task.FromResult(NonceRollbackResponse.NotRemovedShouldRetry);
             }
 
-            // fall through
+            // fall through to remove nonce
 
             return RemoveNonceUnderLockAsync(nonce);
         }

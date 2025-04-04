@@ -38,4 +38,11 @@ public class InsufficientFundsException : Exception
     /// <param name="info">The SerializationInfo that holds the serialized object data about the exception being thrown.</param>
     /// <param name="context">The StreamingContext that contains contextual information about the source or destination.</param>
     protected InsufficientFundsException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+
+    //
+
+    /// <summary>
+    /// Gets a value indicating whether a nonce gap was created.
+    /// </summary>
+    public bool WasNonceGapCreated { get; init; }
 }

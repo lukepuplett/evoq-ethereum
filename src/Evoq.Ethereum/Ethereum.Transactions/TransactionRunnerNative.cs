@@ -122,6 +122,11 @@ public class TransactionRunnerNative
             return CommonTransactionFailure.ReceiptNotFound;
         }
 
+        if (ex is InsufficientFundsException)
+        {
+            return CommonTransactionFailure.InsufficientFunds;
+        }
+
         return CommonTransactionFailure.Other;
     }
 }

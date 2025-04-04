@@ -60,6 +60,13 @@ public class FileSystemNonceStore : INonceStore
     //
 
     /// <summary>
+    /// Gets or sets the period of time to retry a failed submission.
+    /// </summary>
+    public TimeSpan RetryPeriod { get; set; } = TimeSpan.FromSeconds(10);
+
+    //
+
+    /// <summary>
     /// Gets the next nonce to use.
     /// </summary>
     /// <returns>The next nonce to use.</returns>
@@ -160,6 +167,7 @@ public class FileSystemNonceStore : INonceStore
                 if (!File.Exists(nonceFilePath))
                 {
                     logger.LogWarning("Nonce file {Nonce} not found during failure handling", nonce);
+
                     return Task.FromResult(NonceRollbackResponse.NonceNotFound);
                 }
 
@@ -167,25 +175,38 @@ public class FileSystemNonceStore : INonceStore
                 {
                     var failureTimeText = File.ReadAllText(failureFilePath);
                     var failureTime = DateTimeOffset.Parse(failureTimeText);
-                    if (DateTimeOffset.UtcNow.Subtract(failureTime).TotalSeconds < 10)
+                    if (DateTimeOffset.UtcNow.Subtract(failureTime).TotalSeconds < RetryPeriod.TotalSeconds)
                     {
-                        logger.LogInformation(
-                            "Nonce {Nonce} failed recently. Caller should keep trying for now.", nonce);
+                        logger.LogInformation("Nonce {Nonce} failed recently. Caller should keep trying for now.", nonce);
+
                         return Task.FromResult(NonceRollbackResponse.NotRemovedShouldRetry);
                     }
 
                     return RemoveNonceUnderLockAsync(nonce);
                 }
+                else if (this.RetryPeriod.TotalSeconds <= 0)
+                {
+                    // No retries
 
-                // First-time failure - store UTC timestamp
-                File.WriteAllText(failureFilePath, DateTimeOffset.UtcNow.ToString("O"));
-                logger.LogDebug("First-time failure for nonce {Nonce}, recording for retry", nonce);
-                return Task.FromResult(NonceRollbackResponse.NotRemovedShouldRetry);
+                    logger.LogInformation("Nonce {Nonce} failed. No retries allowed.", nonce);
+
+                    return RemoveNonceUnderLockAsync(nonce);
+                }
+                else
+                {
+                    // First-time failure - store UTC timestamp
+
+                    File.WriteAllText(failureFilePath, DateTimeOffset.UtcNow.ToString("O"));
+                    logger.LogDebug("First-time failure for nonce {Nonce}, recording for retry", nonce);
+
+                    return Task.FromResult(NonceRollbackResponse.NotRemovedShouldRetry);
+                }
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error handling submission failure for nonce {Nonce}", nonce);
+
             return Task.FromResult(NonceRollbackResponse.NotRemovedDueToError);
         }
     }
