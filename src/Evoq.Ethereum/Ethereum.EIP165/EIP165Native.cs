@@ -104,13 +104,13 @@ public class EIP165Native : IEIP165
         {
             this.logger.LogDebug("Checking if contract supports {InterfaceId}", interfaceId);
 
-            var hex = await this.caller.CallAsync(this.ContractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, ("interfaceId", interfaceId));
+            var hex = await this.caller.CallAsync(this.ContractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, interfaceId);
 
             return !hex.IsZeroValue();
         }
         catch (Exception ex)
         {
-            this.logger.LogWarning(ex, "Error checking if contract supports {InterfaceId}", interfaceId);
+            this.logger.LogError(ex, "Error checking if contract supports {InterfaceId}", interfaceId);
 
             return false;
         }
