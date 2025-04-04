@@ -13,6 +13,9 @@ public class EthereumAddressTests
     private const string ValidMessage = "Hello World";
     private const string VitalikAddress = "0x000000000000000000000000d8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 
+    // 32-byte padded version of ValidAddress (first 12 bytes are zero)
+    private const string PaddedValidAddressHex = "0x000000000000000000000000C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+
     [TestMethod]
     public void Constructor_WithValidBytes_CreatesInstance()
     {
@@ -64,9 +67,7 @@ public class EthereumAddressTests
     public void Constructor_With32BytesPadded_ParsesCorrectly()
     {
         // Arrange
-        // Create 32 bytes where first 12 are zero (24 hex chars)
-        byte[] bytes = new byte[32];
-        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, bytes, 12, 20);
+        byte[] bytes = Convert.FromHexString(PaddedValidAddressHex[2..]);
 
         // Act
         var address = new EthereumAddress(bytes);
@@ -112,8 +113,7 @@ public class EthereumAddressTests
     public void FromPaddedBytes_WithValidPaddedBytes_CreatesCorrectAddress()
     {
         // Arrange
-        byte[] paddedBytes = new byte[32];
-        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, paddedBytes, 12, 20);
+        byte[] paddedBytes = Convert.FromHexString(PaddedValidAddressHex[2..]);
 
         // Act
         var address = EthereumAddress.FromPaddedBytes(paddedBytes);
