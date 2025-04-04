@@ -77,6 +77,82 @@ public class EthereumAddressTests
     }
 
     [TestMethod]
+    public void Constructor_With32BytesNonZeroPrefix_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] bytes = new byte[32];
+        bytes[0] = 1; // First byte is not zero
+        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, bytes, 12, 20);
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(bytes));
+    }
+
+    [TestMethod]
+    public void Constructor_With31Bytes_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] bytes = new byte[31]; // Wrong length, should be 20 or 32
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(bytes));
+    }
+
+    [TestMethod]
+    public void Constructor_With33Bytes_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] bytes = new byte[33]; // Wrong length, should be 20 or 32
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(bytes));
+    }
+
+    [TestMethod]
+    public void FromPaddedBytes_WithValidPaddedBytes_CreatesCorrectAddress()
+    {
+        // Arrange
+        byte[] paddedBytes = new byte[32];
+        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, paddedBytes, 12, 20);
+
+        // Act
+        var address = EthereumAddress.FromPaddedBytes(paddedBytes);
+
+        // Assert
+        Assert.AreEqual(ValidAddress, address.ToString());
+        Assert.AreEqual(20, address.Address.Length); // Should store only 20 bytes
+    }
+
+    [TestMethod]
+    public void FromPaddedBytes_WithNullBytes_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.ThrowsException<ArgumentNullException>(() => EthereumAddress.FromPaddedBytes(null));
+    }
+
+    [TestMethod]
+    public void FromPaddedBytes_WithInvalidLength_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] invalidBytes = new byte[31]; // Should be 32 bytes
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => EthereumAddress.FromPaddedBytes(invalidBytes));
+    }
+
+    [TestMethod]
+    public void FromPaddedBytes_WithNonZeroPrefix_ThrowsArgumentException()
+    {
+        // Arrange
+        byte[] invalidBytes = new byte[32];
+        invalidBytes[0] = 1; // First byte is not zero
+        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, invalidBytes, 12, 20);
+
+        // Act & Assert
+        Assert.ThrowsException<ArgumentException>(() => EthereumAddress.FromPaddedBytes(invalidBytes));
+    }
+
+    [TestMethod]
     public void Constructor_WithInvalidLengthViaHex_ThrowsArgumentException()
     {
         // Arrange
@@ -385,6 +461,21 @@ public class EthereumAddressTests
         // Assert
         Assert.AreEqual(52, padded.Length); // 50 + "0x"
         Assert.IsTrue(padded.StartsWith("0x" + new string('0', 10)));
+        Assert.IsTrue(padded.EndsWith(ValidAddress[2..]));
+    }
+
+    [TestMethod]
+    public void ToPadded_With32Bytes_ReturnsCorrectlyPaddedAddress()
+    {
+        // Arrange
+        var address = EthereumAddress.Parse(ValidAddress, EthereumAddressChecksum.DoNotCheck);
+
+        // Act
+        string padded = address.ToPadded(64); // 32 bytes = 64 hex chars
+
+        // Assert
+        Assert.AreEqual(66, padded.Length); // 64 + "0x"
+        Assert.IsTrue(padded.StartsWith("0x" + new string('0', 24))); // 12 bytes = 24 hex chars
         Assert.IsTrue(padded.EndsWith(ValidAddress[2..]));
     }
 
