@@ -30,7 +30,7 @@ public class EIP165Native : IEIP165
     public EIP165Native(EthereumAddress contractAddress, Endpoint endpoint)
     {
         this.logger = endpoint.LoggerFactory.CreateLogger<EIP165Native>();
-        this.caller = new RawContractCaller(this.Endpoint);
+        this.caller = new RawContractCaller(endpoint);
 
         this.Endpoint = endpoint;
         this.ContractAddress = contractAddress;
