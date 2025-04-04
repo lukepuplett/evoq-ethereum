@@ -110,6 +110,20 @@ public class EthereumAddressTests
     }
 
     [TestMethod]
+    public void Constructor_WithHexPaddedAddress_ParsesCorrectly()
+    {
+        // Arrange
+        var paddedHex = Hex.Parse(PaddedValidAddressHex);
+
+        // Act
+        var address = new EthereumAddress(paddedHex);
+
+        // Assert
+        Assert.AreEqual(ValidAddress, address.ToString());
+        Assert.AreEqual(20, address.Address.Length); // Should store only 20 bytes
+    }
+
+    [TestMethod]
     public void Constructor_WithInvalidLengthViaHex_ThrowsArgumentException()
     {
         // Arrange

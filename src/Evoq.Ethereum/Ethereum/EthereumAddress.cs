@@ -65,12 +65,24 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
             throw new ArgumentException("An empty address is not permitted. Use Empty or Zero instead.", nameof(address));
         }
 
-        if (address.Length != 20)
+        else if (address.Length == 32)
+        {
+            var addressBytes = address.ToByteArray();
+            if (!addressBytes.Take(12).All(b => b == 0))
+            {
+                throw new ArgumentException("Padded address must start with 12 zero bytes.", nameof(address));
+            }
+
+            this.Address = new Hex(addressBytes.Skip(12).Take(20).ToArray());
+        }
+        else if (address.Length != 20)
         {
             throw new ArgumentException("Ethereum addresses must be 20 bytes.", nameof(address));
         }
-
-        this.Address = address;
+        else
+        {
+            this.Address = address;
+        }
     }
 
     /// <summary>
