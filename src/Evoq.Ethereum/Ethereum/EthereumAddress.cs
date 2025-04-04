@@ -455,36 +455,6 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     }
 
     /// <summary>
-    /// Creates an Ethereum address from a 32-byte padded value.
-    /// </summary>
-    /// <param name="paddedBytes">The 32-byte padded value where the first 12 bytes are zeros and the last 20 bytes represent the address.</param>
-    /// <returns>The Ethereum address derived from the padded bytes.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if the padded bytes are null.</exception>
-    /// <exception cref="ArgumentException">Thrown if the padded bytes are not exactly 32 bytes or if the first 12 bytes are not zeros.</exception>
-    public static EthereumAddress FromPaddedBytes(byte[] paddedBytes)
-    {
-        if (paddedBytes == null)
-        {
-            throw new ArgumentNullException(nameof(paddedBytes));
-        }
-
-        if (paddedBytes.Length != 32)
-        {
-            throw new ArgumentException("Padded bytes must be exactly 32 bytes", nameof(paddedBytes));
-        }
-
-        // Verify first 12 bytes are zero
-        if (!paddedBytes.Take(12).All(b => b == 0))
-        {
-            throw new ArgumentException("Padded address must start with 12 zero bytes", nameof(paddedBytes));
-        }
-
-        // Extract the actual address from the padded format
-        var addressBytes = paddedBytes.Skip(12).Take(20).ToArray();
-        return new EthereumAddress(addressBytes);
-    }
-
-    /// <summary>
     /// Validates an Ethereum address according to EIP-55 checksum rules.
     /// </summary>
     /// <remarks>

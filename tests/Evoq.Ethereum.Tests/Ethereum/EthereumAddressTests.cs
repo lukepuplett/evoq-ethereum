@@ -110,49 +110,6 @@ public class EthereumAddressTests
     }
 
     [TestMethod]
-    public void FromPaddedBytes_WithValidPaddedBytes_CreatesCorrectAddress()
-    {
-        // Arrange
-        byte[] paddedBytes = Convert.FromHexString(PaddedValidAddressHex[2..]);
-
-        // Act
-        var address = EthereumAddress.FromPaddedBytes(paddedBytes);
-
-        // Assert
-        Assert.AreEqual(ValidAddress, address.ToString());
-        Assert.AreEqual(20, address.Address.Length); // Should store only 20 bytes
-    }
-
-    [TestMethod]
-    public void FromPaddedBytes_WithNullBytes_ThrowsArgumentNullException()
-    {
-        // Act & Assert
-        Assert.ThrowsException<ArgumentNullException>(() => EthereumAddress.FromPaddedBytes(null));
-    }
-
-    [TestMethod]
-    public void FromPaddedBytes_WithInvalidLength_ThrowsArgumentException()
-    {
-        // Arrange
-        byte[] invalidBytes = new byte[31]; // Should be 32 bytes
-
-        // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => EthereumAddress.FromPaddedBytes(invalidBytes));
-    }
-
-    [TestMethod]
-    public void FromPaddedBytes_WithNonZeroPrefix_ThrowsArgumentException()
-    {
-        // Arrange
-        byte[] invalidBytes = new byte[32];
-        invalidBytes[0] = 1; // First byte is not zero
-        Buffer.BlockCopy(Convert.FromHexString(ValidAddressNoPrefix), 0, invalidBytes, 12, 20);
-
-        // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => EthereumAddress.FromPaddedBytes(invalidBytes));
-    }
-
-    [TestMethod]
     public void Constructor_WithInvalidLengthViaHex_ThrowsArgumentException()
     {
         // Arrange
@@ -271,16 +228,6 @@ public class EthereumAddressTests
 
         // Assert
         Assert.AreEqual(VitalikAddress, address.ToPadded(64));
-    }
-
-    [TestMethod]
-    public void Constructor_WithInvalidLength_ThrowsArgumentException()
-    {
-        // Arrange
-        byte[] bytes = new byte[10]; // Wrong length, should be 20
-
-        // Act & Assert
-        Assert.ThrowsException<ArgumentException>(() => new EthereumAddress(bytes));
     }
 
     [TestMethod]
