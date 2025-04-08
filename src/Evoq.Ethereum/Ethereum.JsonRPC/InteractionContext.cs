@@ -14,7 +14,8 @@ public class InteractionContext : JsonRpcContext<ITransactionFeeEstimate>
     public InteractionContext(
         Endpoint endpoint,
         Sender sender,
-        Func<ITransactionFeeEstimate, GasOptions>? feeEstimateToGasOptions = null)
+        Func<ITransactionFeeEstimate, GasOptions>? feeEstimateToGasOptions = null,
+        IJsonRpcCache? cache = null)
         : base()
     {
         this.Endpoint = endpoint;
@@ -23,6 +24,11 @@ public class InteractionContext : JsonRpcContext<ITransactionFeeEstimate>
         if (feeEstimateToGasOptions != null)
         {
             this.FeeEstimateToGasOptions = feeEstimateToGasOptions;
+        }
+
+        if (cache != null)
+        {
+            this.Cache = cache;
         }
     }
 

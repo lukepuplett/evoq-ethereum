@@ -11,6 +11,11 @@ public abstract class JsonRpcContext<TFeeEstimate>
     where TFeeEstimate : ISuggestedGasOptions
 {
     /// <summary>
+    /// The cache to use for the interaction.
+    /// </summary>
+    public IJsonRpcCache? Cache { get; init; }
+
+    /// <summary>
     /// The endpoint to use for the interaction.
     /// </summary>
     public Endpoint Endpoint { get; init; }

@@ -21,6 +21,7 @@ public class JsonRpcProviderCaller<TResponseResult>
     private readonly JsonSerializerOptions jsonSerializerOptions;
     private readonly ILogger? logger;
     private readonly TimeSpan defaultTimeout = TimeSpan.FromSeconds(30);
+    private readonly IJsonRpcCache cache = new DefaultJsonRpcCache();
 
     //
 
@@ -29,12 +30,19 @@ public class JsonRpcProviderCaller<TResponseResult>
     /// </summary>
     /// <param name="jsonSerializerOptions">The JSON serializer options.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="cache">The cache to use for the interaction.</param>
     public JsonRpcProviderCaller(
         JsonSerializerOptions? jsonSerializerOptions = null,
-        ILoggerFactory? loggerFactory = null)
+        ILoggerFactory? loggerFactory = null,
+        IJsonRpcCache? cache = null)
     {
         this.jsonSerializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions();
         this.logger = loggerFactory?.CreateLogger("JsonRpcProviderCaller");
+
+        if (cache != null)
+        {
+            this.cache = cache;
+        }
     }
 
     //
@@ -79,7 +87,6 @@ public class JsonRpcProviderCaller<TResponseResult>
 
             while (true)
             {
-                // Check for cancellation before each attempt
                 cancellationToken.ThrowIfCancellationRequested();
 
                 attemptCount++;
@@ -97,6 +104,27 @@ public class JsonRpcProviderCaller<TResponseResult>
                     // Serialize the request
                     var requestJson = JsonSerializer.Serialize(request, this.jsonSerializerOptions);
                     this.logger?.LogTrace("JSON-RPC request: {RequestJson}", requestJson);
+
+                    var cacheKey = this.cache.GetCacheKey(methodInfo.MethodName, requestJson);
+                    var (cacheResult, isFound) = await this.cache.GetAsync(cacheKey);
+
+                    if (isFound && cacheResult!.Expiration.IsInTheFuture())
+                    {
+                        this.logger?.LogDebug("Cache hit for method {MethodName}: {StatusCode}", methodInfo.MethodName, cacheResult.StatusCode);
+
+                        if (cacheResult.StatusCode == HttpStatusCode.OK) // Could also support other non-negative status codes
+                        {
+                            var cachedDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
+                                cacheResult.Json, this.jsonSerializerOptions);
+
+                            if (cachedDto != null)
+                            {
+                                this.logger?.LogDebug("Returning cached response for method {MethodName}", methodInfo.MethodName);
+
+                                return cachedDto;
+                            }
+                        }
+                    }
 
                     var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
@@ -169,6 +197,16 @@ public class JsonRpcProviderCaller<TResponseResult>
                         response.ReasonPhrase,
                         response.Content.Headers.ContentType,
                         responseBodyStr.Length);
+
+                    if (this.cache.CreateItem(
+                        methodInfo.MethodName,
+                        responseBodyStr,
+                        response.StatusCode,
+                        TimeSpan.FromMinutes(5),
+                        out var item))
+                    {
+                        await this.cache.SetAsync(cacheKey, item!);
+                    }
 
                     var responseDto = JsonSerializer.Deserialize<JsonRpcResponseDto<TResponseResult>>(
                         responseBodyStr, this.jsonSerializerOptions);
