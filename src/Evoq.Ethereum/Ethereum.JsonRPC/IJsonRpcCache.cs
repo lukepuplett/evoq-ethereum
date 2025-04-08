@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Evoq.Ethereum.JsonRPC;
 
@@ -30,7 +33,7 @@ public interface IJsonRpcCacheItem
 }
 
 /// <summary>
-/// 
+/// A result from a cache lookup.
 /// </summary>
 /// <param name="Item">The item from the cache.</param>
 /// <param name="IsFound">Whether the item was found in the cache.</param>
@@ -86,14 +89,25 @@ public interface IJsonRpcCache
 public class DefaultJsonRpcCache : IJsonRpcCache
 {
     private readonly Dictionary<string, TimeSpan> cacheableMethods = new()
-{
-    { "eth_estimateGas".ToLowerInvariant(), TimeSpan.FromMinutes(3) },
-    { "eth_gasPrice".ToLowerInvariant(), TimeSpan.FromMinutes(3) },    // Fixed from eth_getGasPrice
-    { "eth_feeHistory".ToLowerInvariant(), TimeSpan.FromMinutes(3) },
-};
+    {
+        { "eth_estimateGas".ToLowerInvariant(), TimeSpan.FromMinutes(3) },
+        { "eth_gasPrice".ToLowerInvariant(), TimeSpan.FromMinutes(3) },    // Fixed from eth_getGasPrice
+        { "eth_feeHistory".ToLowerInvariant(), TimeSpan.FromMinutes(3) },
+    };
 
     private readonly Dictionary<string, IJsonRpcCacheItem> cache = new();
     private readonly object lockObject = new();
+    private readonly ILogger<DefaultJsonRpcCache>? logger;
+
+    //
+
+    /// <summary>
+    /// Initializes a new instance.
+    /// </summary>
+    public DefaultJsonRpcCache(ILogger<DefaultJsonRpcCache>? logger = null)
+    {
+        this.logger = logger;
+    }
 
     //
 
@@ -106,15 +120,22 @@ public class DefaultJsonRpcCache : IJsonRpcCache
     {
         lock (lockObject)
         {
+            logger?.LogDebug("Cache lookup for key: {Key}", key);
+
             if (cache.TryGetValue(key, out var item))
             {
                 if (item.Expiration > DateTimeOffset.UtcNow)
                 {
+                    logger?.LogDebug("Cache hit for key: {Key}, expires: {Expiration}", key, item.Expiration);
                     return Task.FromResult(new JsonRpcCacheResult(item, true));
                 }
 
-                // Remove expired item
+                logger?.LogDebug("Cache item expired for key: {Key}, expired: {Expiration}", key, item.Expiration);
                 cache.Remove(key);
+            }
+            else
+            {
+                logger?.LogDebug("Cache miss for key: {Key}", key);
             }
 
             return Task.FromResult(new JsonRpcCacheResult(null, false));
@@ -131,6 +152,7 @@ public class DefaultJsonRpcCache : IJsonRpcCache
     {
         lock (lockObject)
         {
+            logger?.LogDebug("Setting cache item - Key: {Key}, Expires: {Expiration}", key, value.Expiration);
             cache[key] = value;
         }
         return Task.CompletedTask;
@@ -144,7 +166,9 @@ public class DefaultJsonRpcCache : IJsonRpcCache
     /// <returns>The cache key.</returns>
     public string GetCacheKey(string functionName, string requestJson)
     {
-        return $"{functionName}:{requestJson}";
+        var key = $"{functionName}:{requestJson}";
+        logger?.LogDebug("Generated cache key: {Key}", key);
+        return key;
     }
 
     /// <summary>
@@ -165,16 +189,22 @@ public class DefaultJsonRpcCache : IJsonRpcCache
     {
         if (this.cacheableMethods.TryGetValue(functionName.ToLowerInvariant(), out var ttl))
         {
+            var expiration = DateTimeOffset.UtcNow + ttl;
+            logger?.LogDebug(
+                "Creating cache item - Method: {Method}, TTL: {TTL}, Expires: {Expiration}",
+                functionName, ttl, expiration);
+
             item = new JsonRpcCacheItem
             {
                 Json = json,
                 StatusCode = statusCode,
-                Expiration = DateTimeOffset.UtcNow + ttl
+                Expiration = expiration
             };
 
             return true;
         }
 
+        logger?.LogDebug("Method not cacheable: {Method}", functionName);
         item = null;
         return false;
     }
@@ -191,16 +221,25 @@ public class DefaultJsonRpcCache : IJsonRpcCache
         {
             try
             {
+                logger?.LogDebug("Loading cache from stream");
                 using var reader = new StreamReader(stream);
                 var json = reader.ReadToEnd();
                 var items = JsonSerializer.Deserialize<List<CacheEntry>>(json);
 
-                if (items == null) return;
+                if (items == null)
+                {
+                    logger?.LogDebug("No items found in cache stream");
+                    return;
+                }
 
                 cache.Clear();
+                var now = DateTimeOffset.UtcNow;
+                var loadedCount = 0;
+                var expiredCount = 0;
+
                 foreach (var entry in items)
                 {
-                    if (entry.Expiration > DateTimeOffset.UtcNow)
+                    if (entry.Expiration > now)
                     {
                         cache[entry.Key] = new JsonRpcCacheItem
                         {
@@ -208,12 +247,21 @@ public class DefaultJsonRpcCache : IJsonRpcCache
                             StatusCode = entry.StatusCode,
                             Expiration = entry.Expiration
                         };
+                        loadedCount++;
+                    }
+                    else
+                    {
+                        expiredCount++;
                     }
                 }
+
+                logger?.LogDebug(
+                    "Cache loaded - Items loaded: {LoadedCount}, Items expired: {ExpiredCount}",
+                    loadedCount, expiredCount);
             }
-            catch
+            catch (Exception ex)
             {
-                // If loading fails, start with empty cache
+                logger?.LogWarning(ex, "Failed to load cache from stream");
                 cache.Clear();
             }
         }
@@ -229,6 +277,7 @@ public class DefaultJsonRpcCache : IJsonRpcCache
         {
             try
             {
+                logger?.LogDebug("Saving cache to stream");
                 var entries = new List<CacheEntry>();
                 foreach (var kvp in cache)
                 {
@@ -241,14 +290,15 @@ public class DefaultJsonRpcCache : IJsonRpcCache
                     });
                 }
 
+                logger?.LogDebug("Saving {Count} cache entries", entries.Count);
                 var json = JsonSerializer.Serialize(entries);
-                var writer = new StreamWriter(stream);
+                var writer = new StreamWriter(stream, Encoding.UTF8, 1024, true);
                 writer.Write(json);
                 writer.Flush();
             }
-            catch
+            catch (Exception ex)
             {
-                // If saving fails, continue with in-memory cache
+                logger?.LogWarning(ex, "Failed to save cache to stream");
             }
         }
     }
@@ -260,7 +310,9 @@ public class DefaultJsonRpcCache : IJsonRpcCache
     {
         lock (lockObject)
         {
+            var count = cache.Count;
             cache.Clear();
+            logger?.LogDebug("Cache cleared - Removed {Count} items", count);
         }
     }
 
@@ -281,6 +333,8 @@ public class DefaultJsonRpcCache : IJsonRpcCache
             {
                 cache.Remove(key);
             }
+
+            logger?.LogDebug("Cleared {Count} expired cache items", expiredKeys.Count);
         }
     }
 
