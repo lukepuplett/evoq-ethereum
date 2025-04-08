@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>2.2.9</Version>
+    <Version>2.3.0</Version>
     <Authors>Luke Puplett</Authors>
     <Company>Evoq</Company>
     <Description>Ethereum-specific utilities and extensions for .NET applications</Description>
