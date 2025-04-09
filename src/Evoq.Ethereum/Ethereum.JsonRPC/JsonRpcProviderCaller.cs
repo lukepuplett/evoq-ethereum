@@ -52,7 +52,6 @@ public class JsonRpcProviderCaller<TResponseResult>
     /// </summary>
     /// <param name="request">The JSON-RPC request.</param>
     /// <param name="httpClient">The HTTP client to use for the request.</param>
-    /// <param name="methodInfo">Information about the method being called.</param>
     /// <param name="shouldRetry">A function that determines whether a failed request should be retried.</param>
     /// <param name="timeout">The timeout for the request. If null, the default timeout of 30 seconds is used.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
@@ -60,27 +59,15 @@ public class JsonRpcProviderCaller<TResponseResult>
     public async Task<JsonRpcResponseDto<TResponseResult>> CallAsync(
         JsonRpcRequestDto request,
         HttpClient httpClient,
-        MethodInfo methodInfo,
         Func<MethodFaultInfo, Task<bool>> shouldRetry,
         TimeSpan? timeout,
         CancellationToken cancellationToken)
     {
+        var methodInfo = new MethodInfo(request.Method, request.Id);
         int attemptCount = 0;
-        int? requestId = null;
-
-        requestId = request.Id;
-        this.logger?.LogDebug("Extracted request ID: {RequestId}", requestId);
 
         using (this.logger?.BeginScope("[Method: {MethodName}, ID: {Id}]", methodInfo.MethodName, methodInfo.Id))
         {
-            if (requestId != methodInfo.Id)
-            {
-                this.logger?.LogWarning("Request ID {RequestId} doesn't match method ID {MethodId}",
-                    requestId, methodInfo.Id);
-
-                Debug.Assert(false, "Request ID doesn't match method ID");
-            }
-
             // Set up timeout
             TimeSpan actualTimeout = timeout ?? defaultTimeout;
             this.logger?.LogDebug("Using timeout of {TimeoutSeconds} seconds", actualTimeout.TotalSeconds);
@@ -249,13 +236,13 @@ public class JsonRpcProviderCaller<TResponseResult>
                     }
 
                     // Validate response ID matches request ID
-                    if (requestId.HasValue && responseDto.Id != requestId.Value)
+                    if (responseDto.Id != methodInfo.Id)
                     {
                         this.logger?.LogWarning("Response ID {ResponseId} doesn't match request ID {RequestId} for method {MethodName}",
-                            responseDto.Id, requestId.Value, methodInfo.MethodName);
+                            responseDto.Id, methodInfo.Id, methodInfo.MethodName);
 
                         var idMismatchException = new JsonRpcRequestFailedException(
-                            $"Response ID {responseDto.Id} doesn't match request ID {requestId.Value}");
+                            $"Response ID {responseDto.Id} doesn't match request ID {methodInfo.Id}");
 
                         var faultInfo = new MethodFaultInfo(
                             methodInfo,
@@ -270,8 +257,8 @@ public class JsonRpcProviderCaller<TResponseResult>
                             continue; // Retry the request
                         }
 
-                        this.logger?.LogError("Response ID mismatch for method {MethodName}: expected {RequestId}, got {ResponseId}",
-                            methodInfo.MethodName, requestId.Value, responseDto.Id);
+                        this.logger?.LogError("Response ID mismatch for method {MethodName}: expected {ExpectedId}, got {ActualId}",
+                            methodInfo.MethodName, methodInfo.Id, responseDto.Id);
 
                         throw idMismatchException;
                     }

@@ -7,33 +7,28 @@ namespace Evoq.Ethereum.JsonRPC;
 /// <summary>
 /// A context for interacting with the Ethereum blockchain.
 /// </summary>
-public abstract class JsonRpcContext<TFeeEstimate>
-    where TFeeEstimate : ISuggestedGasOptions
+public class JsonRpcContext : IJsonRpcContext
 {
-    /// <summary>
-    /// The cache to use for the interaction.
-    /// </summary>
-    public IJsonRpcCache? Cache { get; init; }
+    private static readonly Random rng = new Random();
+
+    //
 
     /// <summary>
-    /// The endpoint to use for the interaction.
+    /// The ID of the request.
     /// </summary>
-    public Endpoint Endpoint { get; init; }
+    public Func<int> GetNextId { get; init; } = () => rng.Next();
 
-    /// <summary>
-    /// The sender to use for the interaction.
-    /// </summary>
-    public Sender Sender { get; init; }
-
-    /// <summary>
-    /// A function that converts a fee estimate to a gas options object.
-    /// </summary>
-    public Func<TFeeEstimate, GasOptions> FeeEstimateToGasOptions { get; init; } = (feeEstimate) => feeEstimate.ToSuggestedGasOptions();
+    //
 
     /// <summary>
     /// The cancellation token to use for the interaction.
     /// </summary>
     public CancellationToken CancellationToken { get; init; } = CancellationToken.None;
+
+    /// <summary>
+    /// The cache to use for the interaction.
+    /// </summary>
+    public IJsonRpcCache? Cache { get; init; }
 
     //
 
@@ -41,15 +36,16 @@ public abstract class JsonRpcContext<TFeeEstimate>
     /// Whether the cancellation token has been cancelled.
     /// </summary>
     public bool IsCancelled => this.CancellationToken.IsCancellationRequested;
+}
 
-    //
-
+/// <summary>
+/// A context for interacting with the Ethereum blockchain.
+/// </summary>
+public abstract class JsonRpcContext<TFeeEstimate> : JsonRpcContext
+    where TFeeEstimate : ISuggestedGasOptions
+{
     /// <summary>
-    /// Returns a string representation of the interaction context.
+    /// A function that converts a fee estimate to a gas options object.
     /// </summary>
-    /// <returns>A string representation of the interaction context.</returns>
-    public override string ToString()
-    {
-        return $"Endpoint: {this.Endpoint}, Sender: {this.Sender}";
-    }
+    public Func<TFeeEstimate, GasOptions> FeeEstimateToGasOptions { get; init; } = (feeEstimate) => feeEstimate.ToSuggestedGasOptions();
 }

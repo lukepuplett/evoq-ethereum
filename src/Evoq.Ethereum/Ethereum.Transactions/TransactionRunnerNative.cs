@@ -39,29 +39,29 @@ public class TransactionRunnerNative
     /// <summary>
     /// Submit a transaction using the native Ethereum client.
     /// </summary>
+    /// <param name="context">The context to use for the transaction.</param>
     /// <param name="contract">The contract to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
     /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to pass to the function.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     protected override async Task<TransactionReceipt> SubmitTransactionAsync(
+        IJsonRpcContext context,
         Contract contract,
         string functionName,
         ulong nonce,
         ContractInvocationOptions options,
-        IDictionary<string, object?> args,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> args)
     {
         var startTime = DateTime.UtcNow;
 
         var transactionHash = await contract.InvokeMethodAsync(
+            context,
             functionName,
             nonce,
             options,
-            args,
-            cancellationToken);
+            args);
 
         if (options.WaitForReceiptTimeout == TimeSpan.Zero)
         {
@@ -76,8 +76,8 @@ public class TransactionRunnerNative
         var submittedAt = DateTime.UtcNow;
         var timeout = options.WaitForReceiptTimeout;
 
-        var (receipt, deadlineReached) = await contract.Chain.TryWaitForTransactionAsync(
-            transactionHash, timeout, cancellationToken);
+        var (receipt, deadlineReached) =
+            await contract.Chain.TryWaitForTransactionAsync(context, transactionHash, timeout);
 
         var receiptAt = DateTime.UtcNow;
 

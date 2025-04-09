@@ -39,36 +39,41 @@ public class RawContractCaller
     /// <summary>
     /// Calls a function on a contract without using the ABI, using a signature with unnamed parameters.
     /// </summary>
+    /// <param name="context">The context to use for the call.</param>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
+        IJsonRpcContext context,
         EthereumAddress contractAddress,
         string functionSignature,
         params object?[] simpleParams)
     {
-        return await this.CallAsync(contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
+        return await this.CallAsync(context, contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
     }
 
     /// <summary>
     /// Calls a function on a contract without using the ABI, using a signature with named parameters.
     /// </summary>
+    /// <param name="context">The context to use for the call.</param>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address to,uint256 value)".</param>
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
+        IJsonRpcContext context,
         EthereumAddress contractAddress,
         string functionSignature,
         params (string name, object? value)[] simpleParams)
     {
-        return await this.CallAsync(contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
+        return await this.CallAsync(context, contractAddress, EthereumAddress.Zero, functionSignature, BigInteger.Zero, simpleParams);
     }
 
     /// <summary>
     /// Calls a function on a contract without using the ABI, using a signature with unnamed parameters.
     /// </summary>
+    /// <param name="context">The context to use for the call.</param>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="from">The address of the account to use to call the function.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address,uint256)".</param>
@@ -76,6 +81,7 @@ public class RawContractCaller
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
+        IJsonRpcContext context,
         EthereumAddress contractAddress,
         EthereumAddress from,
         string functionSignature,
@@ -84,12 +90,13 @@ public class RawContractCaller
     {
         var indexNamedParams = simpleParams.Select((p, i) => (i.ToString(), p)).ToArray();
 
-        return await this.CallAsync(contractAddress, from, functionSignature, value, indexNamedParams);
+        return await this.CallAsync(context, contractAddress, from, functionSignature, value, indexNamedParams);
     }
 
     /// <summary>
     /// Calls a function on a contract without using the ABI, using a signature with named parameters.
     /// </summary>
+    /// <param name="context">The context to use for the call.</param>
     /// <param name="contractAddress">The address of the contract to call.</param>
     /// <param name="from">The address of the account to use to call the function.</param>
     /// <param name="functionSignature">The ABI signature of the function to call like "transfer(address to,uint256 value)".</param>
@@ -97,6 +104,7 @@ public class RawContractCaller
     /// <param name="simpleParams">The parameters to call the function with, made up of simple types.</param>
     /// <returns>The result of the function call.</returns>
     public async Task<Hex> CallAsync(
+        IJsonRpcContext context,
         EthereumAddress contractAddress,
         EthereumAddress from,
         string functionSignature,
@@ -136,7 +144,7 @@ public class RawContractCaller
 
         this.logger.LogInformation("Calling signature: {Signature}", sig);
 
-        var result = await jsonRpcClient.CallAsync(dto);
+        var result = await jsonRpcClient.CallAsync(context, dto);
 
         this.logger.LogDebug("Result: {Result}...", result.ToString().Substring(0, 66));
 

@@ -42,6 +42,8 @@ public class RawContractCallerTests
         // throw when we make the call.
 
         // Arrange
+        var context = new JsonRpcContext();
+
         // Create a random UID that won't exist
         var randomBytes = new byte[32];
         new Random().NextBytes(randomBytes);
@@ -49,11 +51,13 @@ public class RawContractCallerTests
 
         // Act
         var encodedSchemaRecordHex = await caller.CallAsync(
+            context,
             schemaRegistryAddress,
             "getSchema(bytes32 uid)",
             ("uid", randomUID));
 
         var secondSchemaRecordHex = await caller.CallAsync(
+            context,
             schemaRegistryAddress,
             "getSchema(bytes32)",
             randomUID);

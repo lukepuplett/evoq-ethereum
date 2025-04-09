@@ -46,10 +46,11 @@ public class Chain
     /// <summary>
     /// Gets the current gas price.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <returns>The current gas price.</returns>
-    public async Task<BigInteger> GasPriceAsync()
+    public async Task<BigInteger> GasPriceAsync(IJsonRpcContext context)
     {
-        var hex = await this.chainClient.GasPriceAsync();
+        var hex = await this.chainClient.GasPriceAsync(context);
 
         return hex.ToBigInteger();
     }
@@ -66,11 +67,12 @@ public class Chain
     /// <summary>
     /// Gets the base fee per gas from the latest block.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <returns>The base fee per gas in wei.</returns>
     /// <exception cref="LegacyChainException">Thrown when the network doesn't support EIP-1559 (pre-London fork).</exception>
-    public async Task<BigInteger> GetBaseFeeAsync()
+    public async Task<BigInteger> GetBaseFeeAsync(IJsonRpcContext context)
     {
-        var block = await this.chainClient.TryGetBlockByNumberWithTxObjectsAsync(BlockParameter.Latest.ToString());
+        var block = await this.chainClient.TryGetBlockByNumberWithTxObjectsAsync(context, BlockParameter.Latest.ToString());
 
         if (block == null)
         {
@@ -92,9 +94,9 @@ public class Chain
     /// Gets the current chain ID.
     /// </summary>
     /// <returns>The chain ID as a BigInteger.</returns>
-    public async Task<BigInteger> GetChainIdAsync()
+    public async Task<BigInteger> GetChainIdAsync(IJsonRpcContext context)
     {
-        var hex = await this.chainClient.ChainIdAsync();
+        var hex = await this.chainClient.ChainIdAsync(context);
 
         return hex.ToBigInteger();
     }
@@ -103,9 +105,9 @@ public class Chain
     /// Gets the current block number.
     /// </summary>
     /// <returns>The current block number as a BigInteger.</returns>
-    public async Task<BigInteger> GetBlockNumberAsync()
+    public async Task<BigInteger> GetBlockNumberAsync(IJsonRpcContext context)
     {
-        var hex = await this.chainClient.GetBlockNumberAsync();
+        var hex = await this.chainClient.GetBlockNumberAsync(context);
 
         return hex.ToBigInteger();
     }
@@ -125,14 +127,15 @@ public class Chain
     /// <summary>
     /// Suggests appropriate fee values for EIP-1559 (Type 2) transactions.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <returns>A tuple containing the suggested maxFeePerGas and maxPriorityFeePerGas in wei.</returns>
     /// <exception cref="InvalidOperationException">Thrown when the network doesn't support EIP-1559 (pre-London fork).</exception>
-    public async Task<(BigInteger MaxFeePerGasInWei, BigInteger MaxPriorityFeePerGasInWei)> SuggestEip1559FeesAsync()
+    public async Task<(BigInteger MaxFeePerGasInWei, BigInteger MaxPriorityFeePerGasInWei)> SuggestEip1559FeesAsync(IJsonRpcContext context)
     {
         // Fetch the current base fee from the network (in wei).
         // This is the minimum fee per gas set by the Ethereum protocol for the latest block.
         // Throws InvalidOperationException if the network doesn't support EIP-1559 (pre-London fork).
-        var baseFee = await this.GetBaseFeeAsync();
+        var baseFee = await this.GetBaseFeeAsync(context);
 
         // Set a default priority fee (tip) of 2 Gwei (2,000,000,000 wei).
         // This is the amount paid to miners/validators to prioritize the transaction.
@@ -142,7 +145,7 @@ public class Chain
         // Fetch fee history for the last 10 blocks to refine the tip.
         // Parameters: 10 blocks, latest block, 50th percentile reward (median tip).
         // This helps estimate what others are paying as tips in recent blocks.
-        var tipHistory = await this.GetFeeHistoryAsync(10, BlockParameter.Latest, new[] { 50.0 });
+        var tipHistory = await this.GetFeeHistoryAsync(context, 10, BlockParameter.Latest, new[] { 50.0 });
 
         // Check if fee history data is valid and contains reward data.
         // tipHistory.Reward is an array of arrays: each inner array has percentile tips for a block.
@@ -170,16 +173,19 @@ public class Chain
     /// <summary>
     /// Gets fee history data for recent blocks.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="blockCount">Number of blocks to analyze.</param>
     /// <param name="newestBlock">The newest block to consider ("latest" or block number).</param>
     /// <param name="rewardPercentiles">Percentiles to sample for priority fees.</param>
     /// <returns>Fee history data including base fees and priority fee percentiles.</returns>
     public async Task<FeeHistory> GetFeeHistoryAsync(
+        IJsonRpcContext context,
         ulong blockCount,
         BlockParameter newestBlock,
         double[] rewardPercentiles)
     {
         return await this.chainClient.GetFeeHistoryAsync(
+            context,
             blockCount,
             newestBlock.ToString(),
             rewardPercentiles);
@@ -188,35 +194,38 @@ public class Chain
     /// <summary>
     /// Gets the transaction count (nonce) for an address.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The address to get the transaction count for.</param>
     /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
     /// <returns>The transaction count as a BigInteger.</returns>
-    public async Task<BigInteger> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest")
+    public async Task<BigInteger> GetTransactionCountAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        var hex = await this.chainClient.GetTransactionCountAsync(address, blockParameter);
+        var hex = await this.chainClient.GetTransactionCountAsync(context, address, blockParameter);
         return hex.ToBigInteger();
     }
 
     /// <summary>
     /// Gets the balance of an Ethereum address at a specific block.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The address to get the balance for.</param>
     /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
     /// <returns>The balance as an EtherAmount in Wei.</returns>
-    public async Task<EtherAmount> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest")
+    public async Task<EtherAmount> GetBalanceAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        return await this.chainClient.GetBalanceAsync(address, blockParameter);
+        return await this.chainClient.GetBalanceAsync(context, address, blockParameter);
     }
 
     /// <summary>
     /// Gets the code of a contract at a specific Ethereum address.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The Ethereum address.</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <returns>The code of the contract.</returns>
-    public async Task<Hex> GetCodeAsync(EthereumAddress address, string blockParameter = "latest")
+    public async Task<Hex> GetCodeAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        return await this.chainClient.GetCodeAsync(address, blockParameter);
+        return await this.chainClient.GetCodeAsync(context, address, blockParameter);
     }
 
     //
@@ -268,25 +277,25 @@ public class Chain
     /// <summary>
     /// Waits for a transaction to be mined and returns its receipt.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="transactionHash">The transaction hash to wait for.</param>
     /// <param name="timeout">The maximum time to wait. Defaults to 5 minutes if not specified.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The transaction receipt.</returns>
     /// <exception cref="ReceiptNotFoundException">Thrown when the transaction is not found within the timeout period.</exception>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     public async Task<(TransactionReceipt? Receipt, bool DeadlineReached)> TryWaitForTransactionAsync(
+        IJsonRpcContext context,
         Hex transactionHash,
-        TimeSpan? timeout = null,
-        CancellationToken cancellationToken = default)
+        TimeSpan? timeout = null)
     {
         timeout ??= TimeSpan.FromMinutes(5);
         var deadline = DateTime.UtcNow + timeout.Value;
 
         var (receipt, deadlineReached) = await this.chainClient.TryWaitForTransactionReceiptAsync(
+            context,
             transactionHash,
             this.pollingInterval,
-            deadline,
-            cancellationToken);
+            deadline);
 
         if (receipt == null)
         {

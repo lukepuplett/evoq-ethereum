@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
 using Evoq.Ethereum.ABI;
 using Evoq.Ethereum.ABI.Conversion;
 using Evoq.Ethereum.Chains;
+using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
@@ -107,58 +107,71 @@ public class Contract
     /// <summary>
     /// Calls a method on a contract, off-chain, without creating a transaction.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into an object.</returns>
     public async Task<T> CallAsync<T>(
+        IJsonRpcContext context,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     where T : new()
     {
         return await this.contractClient.CallAsync<T>(
-            this, methodName, senderAddress, arguments, cancellationToken);
+            context,
+            this,
+            methodName,
+            senderAddress,
+            arguments);
     }
 
     /// <summary>
     /// Calls a method on a contract, off-chain, without creating a transaction.
-    /// </summary>
+    /// </summary>  
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="methodName">The name of the method to call.</param>
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result of the method call decoded into a dictionary.</returns>
     public async Task<Dictionary<string, object?>> CallAsync(
+        IJsonRpcContext context,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         return await this.contractClient.CallAsync(
-            this, methodName, senderAddress, arguments, cancellationToken);
+            context,
+            this,
+            methodName,
+            senderAddress,
+            arguments);
     }
 
     /// <summary>
     /// Estimates the gas required to invoke a method on a contract.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="senderAddress">The address of the sender.</param>
     /// <param name="value">The value to send with the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The estimated gas required to invoke the method.</returns>
     public async Task<BigInteger> EstimateGasAsync(
+        IJsonRpcContext context,
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         var hex = await this.contractClient.EstimateGasAsync(
-            this, methodName, senderAddress, value, arguments, cancellationToken);
+            context,
+            this,
+            methodName,
+            senderAddress,
+            value,
+            arguments);
 
         return hex.ToBigInteger();
     }
@@ -166,31 +179,35 @@ public class Contract
     /// <summary>
     /// Estimates the transaction fee for calling a contract method.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="methodName">The name of the contract method to call.</param>
     /// <param name="senderAddress">The address that will send the transaction.</param>
     /// <param name="value">The amount of Ether to send with the transaction (in wei).</param>
     /// <param name="arguments">The arguments to pass to the method.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A detailed estimate of the transaction fees.</returns>
     public async Task<ITransactionFeeEstimate> EstimateTransactionFeeAsync(
+        IJsonRpcContext context,
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         // Step 1: Estimate the gas limit - the maximum amount of computational work
         // the transaction is allowed to use
         var gasLimit = await this.EstimateGasAsync(
-            methodName, senderAddress, value, arguments, cancellationToken);
+            context,
+            methodName,
+            senderAddress,
+            value,
+            arguments);
 
         // Step 2: Get the current fee market conditions for EIP-1559 transactions
         // This includes suggested values for maxFeePerGas and maxPriorityFeePerGas
-        var suggestion = await this.Chain.SuggestEip1559FeesAsync();
+        var suggestion = await this.Chain.SuggestEip1559FeesAsync(context);
 
         // Step 3: Get the current base fee from the network
         // This will throw if the network doesn't support EIP-1559 (pre-London fork)
-        var baseFeeInWei = await this.Chain.GetBaseFeeAsync();
+        var baseFeeInWei = await this.Chain.GetBaseFeeAsync(context);
 
         // Step 4: Calculate the estimated total transaction fee
         // Formula: (baseFee + priorityFee) * gasLimit
@@ -241,21 +258,26 @@ public class Contract
     /// <summary>
     /// Invokes a method on a contract, creating a transaction.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="methodName">The name of the method to invoke.</param>
     /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="arguments">The parameters to pass to the method; tuples can be passed as .NET tuples.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction hash.</returns>
     public async Task<Hex> InvokeMethodAsync(
+        IJsonRpcContext context,
         string methodName,
         ulong nonce,
         ContractInvocationOptions options,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         return await this.contractClient.InvokeMethodAsync(
-            this, methodName, nonce, options, arguments, cancellationToken);
+            context,
+            this,
+            methodName,
+            nonce,
+            options,
+            arguments);
     }
 
     /// <summary>

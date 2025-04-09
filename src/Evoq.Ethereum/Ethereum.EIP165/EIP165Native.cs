@@ -104,7 +104,8 @@ public class EIP165Native : IEIP165
         {
             this.logger.LogDebug("Checking if contract supports {InterfaceId}", interfaceId);
 
-            var hex = await this.caller.CallAsync(this.ContractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, interfaceId);
+            var hex = await this.caller.CallAsync(
+                new JsonRpcContext(), this.ContractAddress, SUPPORTS_INTERFACE_ABI_SIGNATURE, interfaceId);
 
             return !hex.IsZeroValue();
         }

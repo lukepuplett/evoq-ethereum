@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
+using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Transactions;
@@ -88,17 +89,17 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     /// <summary>
     /// Runs a transaction with retries managed by the nonce store.
     /// </summary>
+    /// <param name="context">The context to use for the transaction.</param>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     /// <exception cref="FailedToSubmitTransactionException">Thrown if the transaction fails to submit.</exception>
     /// <exception cref="OutOfGasException">Thrown if the transaction is out of gas.</exception>
     /// <exception cref="RevertedTransactionException">Thrown if the transaction is reverted.</exception>
     public async Task<TReceipt> RunTransactionAsync(
-        TContract contract, string functionName, TOptions options, TArgs args, CancellationToken cancellationToken)
+        IJsonRpcContext context, TContract contract, string functionName, TOptions options, TArgs args)
     {
         var deadline = DateTimeOffset.UtcNow.AddMinutes(1);
         var nonce = await this.nonceStore.BeforeSubmissionAsync();
@@ -113,10 +114,10 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
 
             try
             {
-                this.semaphore.Wait(cancellationToken); // thread blocking wait; not expecting high contention
+                this.semaphore.Wait(context.CancellationToken); // thread blocking wait; not expecting high contention
 
                 TReceipt receipt = await this.SubmitTransactionAsync(
-                    contract, functionName, nonce, options, args, cancellationToken);
+                    context, contract, functionName, nonce, options, args);
 
                 await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
 
@@ -324,15 +325,15 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     /// <summary>
     /// Implementors should use the args passed in to assemble the transaction and submit it; exceptions will be run through <see cref="GetExpectedFailure"/> to determine if it is a known failure that should be retried.
     /// </summary>
+    /// <param name="context">The context to use for the transaction.</param>
     /// <param name="contract">The contract or blockchain gateway to submit the transaction to.</param>
     /// <param name="functionName">The name of the function to call on the contract.</param>
     /// <param name="nonce">The nonce to use for the transaction.</param>
     /// <param name="options">The options for the transaction.</param>
     /// <param name="args">The arguments to use for the transaction.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transaction receipt.</returns>
     protected abstract Task<TReceipt> SubmitTransactionAsync(
-        TContract contract, string functionName, ulong nonce, TOptions options, TArgs args, CancellationToken cancellationToken);
+        IJsonRpcContext context, TContract contract, string functionName, ulong nonce, TOptions options, TArgs args);
 
     /// <summary>
     /// Implementors should return the expected failure of a transaction.

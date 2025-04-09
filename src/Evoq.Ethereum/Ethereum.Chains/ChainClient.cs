@@ -33,37 +33,38 @@ internal class ChainClient
     /// Gets the current gas price.
     /// </summary>
     /// <returns>The current gas price.</returns>
-    internal async Task<Hex> GasPriceAsync()
+    internal async Task<Hex> GasPriceAsync(IJsonRpcContext context)
     {
-        return await this.jsonRpc.GasPriceAsync(this.GetRandomId());
+        return await this.jsonRpc.GasPriceAsync(context);
     }
 
     /// <summary>
     /// Gets the chain ID.
     /// </summary>
     /// <returns>The chain ID as a hexadecimal string.</returns>
-    internal async Task<Hex> ChainIdAsync()
+    internal async Task<Hex> ChainIdAsync(IJsonRpcContext context)
     {
-        return await this.jsonRpc.ChainIdAsync(this.GetRandomId());
+        return await this.jsonRpc.ChainIdAsync(context);
     }
 
     /// <summary>
     /// Gets the current block number.
     /// </summary>
     /// <returns>The current block number as a hexadecimal string.</returns>
-    internal async Task<Hex> GetBlockNumberAsync()
+    internal async Task<Hex> GetBlockNumberAsync(IJsonRpcContext context)
     {
-        return await this.jsonRpc.BlockNumberAsync(this.GetRandomId());
+        return await this.jsonRpc.BlockNumberAsync(context);
     }
 
     /// <summary>
     /// Gets a block by number with transaction hashes.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <returns>The block data with transaction hashes.</returns>
-    internal async Task<BlockData<string>?> TryGetBlockByNumberWithTxHashesAsync(string blockNumberOrTag)
+    internal async Task<BlockData<string>?> TryGetBlockByNumberWithTxHashesAsync(IJsonRpcContext context, string blockNumberOrTag)
     {
-        var dto = await this.jsonRpc.GetBlockByNumberWithTxHashesAsync(blockNumberOrTag, this.GetRandomId());
+        var dto = await this.jsonRpc.GetBlockByNumberWithTxHashesAsync(context, blockNumberOrTag);
 
         if (dto == null)
         {
@@ -76,11 +77,12 @@ internal class ChainClient
     /// <summary>
     /// Gets a block by number with transaction objects.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="blockNumberOrTag">The block number or tag.</param>
     /// <returns>The block data with transaction objects.</returns>
-    internal async Task<BlockData<TransactionData>?> TryGetBlockByNumberWithTxObjectsAsync(string blockNumberOrTag)
+    internal async Task<BlockData<TransactionData>?> TryGetBlockByNumberWithTxObjectsAsync(IJsonRpcContext context, string blockNumberOrTag)
     {
-        var dto = await this.jsonRpc.GetBlockByNumberWithTxObjectsAsync(blockNumberOrTag, this.GetRandomId());
+        var dto = await this.jsonRpc.GetBlockByNumberWithTxObjectsAsync(context, blockNumberOrTag);
 
         if (dto == null)
         {
@@ -93,17 +95,18 @@ internal class ChainClient
     /// <summary>
     /// Gets fee history data for recent blocks.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="blockCount">Number of blocks to analyze.</param>
     /// <param name="newestBlock">The newest block to consider ("latest" or block number).</param>
     /// <param name="rewardPercentiles">Percentiles to sample for priority fees.</param>
     /// <returns>Fee history data including base fees and priority fee percentiles.</returns>
-    internal async Task<FeeHistory> GetFeeHistoryAsync(ulong blockCount, string newestBlock, double[] rewardPercentiles)
+    internal async Task<FeeHistory> GetFeeHistoryAsync(IJsonRpcContext context, ulong blockCount, string newestBlock, double[] rewardPercentiles)
     {
         var dto = await this.jsonRpc.FeeHistoryAsync(
+            context,
             blockCount.NumberToHexStruct(),
             newestBlock,
-            rewardPercentiles,
-            this.GetRandomId());
+            rewardPercentiles);
 
         return new FeeHistory();
     }
@@ -111,22 +114,24 @@ internal class ChainClient
     /// <summary>
     /// Gets the transaction count (nonce) for an address.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The address to get the transaction count for.</param>
     /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
     /// <returns>The transaction count as a hexadecimal value.</returns>
-    internal async Task<Hex> GetTransactionCountAsync(EthereumAddress address, string blockParameter = "latest")
+    internal async Task<Hex> GetTransactionCountAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        return await this.jsonRpc.GetTransactionCountAsync(address, blockParameter, this.GetRandomId());
+        return await this.jsonRpc.GetTransactionCountAsync(context, address, blockParameter);
     }
 
     /// <summary>
     /// Gets the transaction receipt for a given transaction hash.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="transactionHash">The hash of the transaction.</param>
     /// <returns>The transaction receipt, or null if the transaction is not found or pending.</returns>
-    internal async Task<TransactionReceipt?> TryGetTransactionReceiptAsync(Hex transactionHash)
+    internal async Task<TransactionReceipt?> TryGetTransactionReceiptAsync(IJsonRpcContext context, Hex transactionHash)
     {
-        var dto = await this.jsonRpc.GetTransactionReceiptAsync(transactionHash, this.GetRandomId());
+        var dto = await this.jsonRpc.GetTransactionReceiptAsync(context, transactionHash);
 
         return TransactionReceipt.FromDto(dto);
     }
@@ -134,6 +139,7 @@ internal class ChainClient
     /// <summary>
     /// Waits for a transaction receipt until a deadline is reached.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="transactionHash">The transaction hash to wait for.</param>
     /// <param name="pollingInterval">The polling interval.</param>
     /// <param name="deadline">The absolute deadline after which polling will stop.</param>
@@ -141,6 +147,7 @@ internal class ChainClient
     /// <returns>The transaction receipt, or null if not found before the deadline.</returns>
     /// <exception cref="OperationCanceledException">Thrown when the operation is canceled.</exception>
     internal async Task<(TransactionReceipt? Receipt, bool DeadlineReached)> TryWaitForTransactionReceiptAsync(
+        IJsonRpcContext context,
         Hex transactionHash,
         ChainPollingStrategy.PollingInterval pollingInterval,
         DateTime deadline,
@@ -152,7 +159,7 @@ internal class ChainClient
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var receipt = await TryGetTransactionReceiptAsync(transactionHash);
+            var receipt = await TryGetTransactionReceiptAsync(context, transactionHash);
             if (receipt != null)
             {
                 return (receipt, false);
@@ -179,23 +186,25 @@ internal class ChainClient
     /// <summary>
     /// Gets the balance of an Ethereum address at a specific block.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The address to get the balance for.</param>
     /// <param name="blockParameter">The block parameter (defaults to "latest").</param>
     /// <returns>The balance as an EtherAmount in Wei.</returns>
-    internal async Task<EtherAmount> GetBalanceAsync(EthereumAddress address, string blockParameter = "latest")
+    internal async Task<EtherAmount> GetBalanceAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        return await this.jsonRpc.GetBalanceAsync(address, blockParameter, this.GetRandomId());
+        return await this.jsonRpc.GetBalanceAsync(context, address, blockParameter);
     }
 
     /// <summary>
     /// Gets the code of a contract at a specific Ethereum address.
     /// </summary>
+    /// <param name="context">The JSON-RPC context.</param>
     /// <param name="address">The Ethereum address.</param>
     /// <param name="blockParameter">The block parameter, defaults to "latest".</param>
     /// <returns>The code of the contract.</returns>
-    internal async Task<Hex> GetCodeAsync(EthereumAddress address, string blockParameter = "latest")
+    internal async Task<Hex> GetCodeAsync(IJsonRpcContext context, EthereumAddress address, string blockParameter = "latest")
     {
-        return await this.jsonRpc.GetCodeAsync(address, blockParameter, this.GetRandomId());
+        return await this.jsonRpc.GetCodeAsync(context, address, blockParameter);
     }
 
     //
@@ -211,12 +220,5 @@ internal class ChainClient
         var jsonRpc = new JsonRpcClient(uri, loggerFactory);
 
         return new ChainClient(jsonRpc);
-    }
-
-    //
-
-    private int GetRandomId()
-    {
-        return this.rng.Next();
     }
 }

@@ -61,8 +61,13 @@ public class ExampleEAS
         Console.WriteLine("schemaUID: " + schemaUID.ToHexStruct());
 
         var caller = new RawContractCaller(endpoint);
+        var context = new JsonRpcContext();
 
-        var schemaUidReturnedHex = await caller.CallAsync(schemaRegistry.Address, "getSchema(bytes32 uid)", ("uid", schemaUID));
+        var schemaUidReturnedHex = await caller.CallAsync(
+            context,
+            schemaRegistry.Address,
+            "getSchema(bytes32 uid)",
+            ("uid", schemaUID));
 
         Assert.IsTrue(schemaUidReturnedHex.Length > 0);
 
@@ -93,6 +98,7 @@ public class ExampleEAS
             // schema does not exist
 
             var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
+                context,
                 "register",
                 senderAddress,
                 null,
@@ -107,11 +113,11 @@ public class ExampleEAS
             var runner = new TransactionRunnerNative(sender, loggerFactory);
 
             var registerReceipt = await runner.RunTransactionAsync(
+                context,
                 schemaRegistry,
                 "register",
                 registerOptions,
-                simpleRevocableBool,
-                CancellationToken.None);
+                simpleRevocableBool);
 
             Assert.IsNotNull(registerReceipt);
             Assert.IsTrue(registerReceipt.Success);
@@ -192,7 +198,10 @@ public class ExampleEAS
             ("resolver", EthereumAddress.Zero),
             ("revocable", true));
 
+        var context = new JsonRpcContext();
+
         var registerEstimate = await schemaRegistry.EstimateTransactionFeeAsync(
+            context,
             "register",
             senderAddress,
             null,
@@ -207,11 +216,11 @@ public class ExampleEAS
         var runner = new TransactionRunnerNative(sender, loggerFactory);
 
         var registerReceipt = await runner.RunTransactionAsync(
+            context,
             schemaRegistry,
             "register",
             registerOptions,
-            registerArgs,
-            CancellationToken.None);
+            registerArgs);
 
         Console.WriteLine(registerReceipt);
 
@@ -292,7 +301,10 @@ public class ExampleEAS
             ("data", attestationRequestData)       // tuple
         );
 
+        var context = new JsonRpcContext();
+
         var attestationEstimate = await eas.EstimateTransactionFeeAsync(
+            context,
             "attest",
             senderAddress,
             null,
@@ -306,11 +318,11 @@ public class ExampleEAS
         var runner = new TransactionRunnerNative(sender, loggerFactory);
 
         var receipt = await runner.RunTransactionAsync(
+            context,
             eas,
             "attest",
             attestationOptions,
-            AbiKeyValues.Create("request", attestationRequest),
-            CancellationToken.None);
+            AbiKeyValues.Create("request", attestationRequest));
 
         Console.WriteLine(receipt);
 
@@ -330,6 +342,7 @@ public class ExampleEAS
         if (useManualConversion)
         {
             var rootDic = await eas.CallAsync(
+                context,
                 "getAttestation",
                 senderAddress,
                 AbiKeyValues.Create("uid", uidHex));
@@ -347,6 +360,7 @@ public class ExampleEAS
         else
         {
             dto = await eas.CallAsync<AttestationDTO>(
+                context,
                 "getAttestation",
                 senderAddress,
                 AbiKeyValues.Create("uid", uidHex));
@@ -375,8 +389,9 @@ public class ExampleEAS
         SetupAccount(configuration, out senderAddress, out senderAccount);
 
         var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
+        var context = new JsonRpcContext();
 
-        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(context, senderAddress);
 
         var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
         var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);
@@ -390,6 +405,7 @@ public class ExampleEAS
         // guess gas price
 
         var registerEstimate = await contract.EstimateTransactionFeeAsync(
+            context,
             "register",
             senderAddress,
             null,
@@ -416,7 +432,12 @@ public class ExampleEAS
 
         try
         {
-            Hex registerResult = await contract.InvokeMethodAsync("register", n, registerOptions, registerArgs);
+            Hex registerResult = await contract.InvokeMethodAsync(
+                context,
+                "register",
+                n,
+                registerOptions,
+                registerArgs);
         }
         catch (Exception ex)
         {
@@ -430,7 +451,11 @@ public class ExampleEAS
         var easSchemaUidSchemaValues = AbiKeyValues.Create("schema", "bool", "resolver", EthereumAddress.Zero, "revocable", true);
         var easSchemaUid = KeccakHash.ComputeHash(abiPacker.EncodeParameters(easSchemaUidSchema, easSchemaUidSchemaValues).ToByteArray());
 
-        var getSchemaResult = await contract.CallAsync("getSchema", senderAddress, AbiKeyValues.Create("uid", easSchemaUid));
+        var getSchemaResult = await contract.CallAsync(
+            context,
+            "getSchema",
+            senderAddress,
+            AbiKeyValues.Create("uid", easSchemaUid));
 
         Assert.IsNotNull(getSchemaResult, "The call to getSchema returned a null result");
 
@@ -473,7 +498,7 @@ public class ExampleEAS
     private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain, bool useInMemoryNonces = false)
     {
         INonceStore nonceStore;
-        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(new JsonRpcContext(), senderAddress);
 
         if (useInMemoryNonces)
         {

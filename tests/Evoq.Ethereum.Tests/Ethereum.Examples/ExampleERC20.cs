@@ -47,8 +47,11 @@ public class ExampleERC20
         var abiStream = AbiFileHelper.GetAbiStream("ERC20.abi.json");
         var tokenContract = chain.GetContract(tokenAddress, endpoint, sender, abiStream);
 
+        var context = new JsonRpcContext();
+
         // Estimate gas for the transfer
         var estimate = await tokenContract.EstimateTransactionFeeAsync(
+            context,
             "transfer",
             senderAddress,
             null,
@@ -61,13 +64,13 @@ public class ExampleERC20
 
         // Execute the transfer
         var receipt = await runner.RunTransactionAsync(
+            context,
             tokenContract,
             "transfer",
             options,
             AbiKeyValues.Create(
                 ("to", recipientAddress),
-                ("amount", amount)),
-            CancellationToken.None);
+                ("amount", amount)));
 
         // Verify the transaction
         Assert.IsNotNull(receipt);
@@ -92,6 +95,7 @@ public class ExampleERC20
 
         // Read the new balance
         var balance = await tokenContract.CallAsync<BigInteger>(
+            context,
             "balanceOf",
             senderAddress,
             AbiKeyValues.Create(("account", senderAddress)));
@@ -139,8 +143,11 @@ public class ExampleERC20
         var abiStream = AbiFileHelper.GetAbiStream("ERC20.abi.json");
         var tokenContract = chain.GetContract(tokenAddress, endpoint, sender, abiStream);
 
+        var context = new JsonRpcContext();
+
         // Step 1: Approve spender
         var approveEstimate = await tokenContract.EstimateTransactionFeeAsync(
+            context,
             "approve",
             senderAddress,
             null,
@@ -151,13 +158,13 @@ public class ExampleERC20
         var approveOptions = new ContractInvocationOptions(approveEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
 
         var approveReceipt = await senderRunner.RunTransactionAsync(
+            context,
             tokenContract,
             "approve",
             approveOptions,
             AbiKeyValues.Create(
                 ("spender", spenderAddress),
-                ("amount", amount)),
-            CancellationToken.None);
+                ("amount", amount)));
 
         Assert.IsNotNull(approveReceipt);
         Assert.IsTrue(approveReceipt.Success);
@@ -180,6 +187,7 @@ public class ExampleERC20
 
         // Step 2: TransferFrom
         var transferFromEstimate = await tokenContract.EstimateTransactionFeeAsync(
+            context,
             "transferFrom",
             spenderAddress,
             null,
@@ -191,14 +199,14 @@ public class ExampleERC20
         var transferFromOptions = new ContractInvocationOptions(transferFromEstimate.ToSuggestedGasOptions(), EtherAmount.Zero);
 
         var transferFromReceipt = await spenderRunner.RunTransactionAsync(
+            context,
             tokenContract,
             "transferFrom",
             transferFromOptions,
             AbiKeyValues.Create(
                 ("from", senderAddress),
                 ("to", spenderAddress),
-                ("amount", amount)),
-            CancellationToken.None);
+                ("amount", amount)));
 
         Assert.IsNotNull(transferFromReceipt);
         Assert.IsTrue(transferFromReceipt.Success);
@@ -221,11 +229,13 @@ public class ExampleERC20
 
         // Read the new balances
         var senderBalance = await tokenContract.CallAsync<BigInteger>(
+            context,
             "balanceOf",
             senderAddress,
             AbiKeyValues.Create(("account", senderAddress)));
 
         var spenderBalance = await tokenContract.CallAsync<BigInteger>(
+            context,
             "balanceOf",
             spenderAddress,
             AbiKeyValues.Create(("account", spenderAddress)));
@@ -236,7 +246,7 @@ public class ExampleERC20
 
     private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain)
     {
-        var getStartingNonce = async () => await chain.GetTransactionCountAsync(senderAddress);
+        var getStartingNonce = async () => await chain.GetTransactionCountAsync(new JsonRpcContext(), senderAddress);
 
         var noncePath = Path.Combine(Path.GetTempPath(), Path.Combine("hardhat-nonces", senderAddress.ToString()));
         var nonceStore = new FileSystemNonceStore(noncePath, loggerFactory, getStartingNonce);

@@ -71,15 +71,19 @@ internal class ContractClient
     //
 
     internal async Task<T> CallAsync<T>(
+        IJsonRpcContext context,
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     where T : new()
     {
         var (result, signature) = await this.ExecuteCallAsync(
-            contract, methodName, senderAddress, arguments, cancellationToken);
+            context,
+            contract,
+            methodName,
+            senderAddress,
+            arguments);
 
         var decoded = signature.AbiDecodeOutputs(this.abiDecoder, result.ToByteArray());
 
@@ -87,14 +91,18 @@ internal class ContractClient
     }
 
     internal async Task<Dictionary<string, object?>> CallAsync(
+        IJsonRpcContext context,
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         var (result, signature) = await this.ExecuteCallAsync(
-            contract, methodName, senderAddress, arguments, cancellationToken);
+            context,
+            contract,
+            methodName,
+            senderAddress,
+            arguments);
 
         var decoded = signature.AbiDecodeOutputs(this.abiDecoder, result.ToByteArray());
 
@@ -102,12 +110,12 @@ internal class ContractClient
     }
 
     internal async Task<Hex> InvokeMethodAsync(
+        IJsonRpcContext context,
         Contract contract,
         string methodName,
         ulong nonce,
         ContractInvocationOptions options,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         // note that access lists are not supported, and no type 1 transactions
 
@@ -161,8 +169,7 @@ internal class ContractClient
 
         this.logger.LogInformation("Sending transaction: RLP: {Rlp}, ID: {Id}", rlpHex.ToString()[..18], id);
 
-        var transactionHash = await this.jsonRpc.SendRawTransactionAsync(
-            rlpHex, id: id, cancellationToken: cancellationToken);
+        var transactionHash = await this.jsonRpc.SendRawTransactionAsync(context, rlpHex);
 
         this.logger.LogInformation("Transaction sent: ID: {Id}, Hash: {Hash}", id, transactionHash);
 
@@ -181,12 +188,12 @@ internal class ContractClient
     }
 
     internal async Task<Hex> EstimateGasAsync(
+        IJsonRpcContext context,
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
         BigInteger? value,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         if (value.HasValue && value.Value < 0)
         {
@@ -204,18 +211,17 @@ internal class ContractClient
             Value = value.ToHexStringForJsonRpc()
         };
 
-        return await this.jsonRpc.EstimateGasAsync(
-            transactionParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        return await this.jsonRpc.EstimateGasAsync(context, transactionParams);
     }
 
     //
 
     private async Task<(Hex Results, AbiSignature Function)> ExecuteCallAsync(
+        IJsonRpcContext context,
         Contract contract,
         string methodName,
         EthereumAddress senderAddress,
-        IDictionary<string, object?> arguments,
-        CancellationToken cancellationToken = default)
+        IDictionary<string, object?> arguments)
     {
         var signature = contract.GetFunctionSignature(methodName);
         var encodedBytes = signature.AbiEncodeCallValues(this.abiEncoder, arguments);
@@ -227,8 +233,7 @@ internal class ContractClient
             Input = new Hex(encodedBytes).ToString(),
         };
 
-        var result = await this.jsonRpc.CallAsync(
-            ethCallParams, id: this.GetRandomId(), cancellationToken: cancellationToken);
+        var result = await this.jsonRpc.CallAsync(context, ethCallParams);
 
         return (result, signature);
     }

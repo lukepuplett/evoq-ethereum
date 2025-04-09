@@ -35,6 +35,16 @@ public class InteractionContext : JsonRpcContext<ITransactionFeeEstimate>
     //
 
     /// <summary>
+    /// The endpoint to use for the interaction.
+    /// </summary>
+    public Endpoint Endpoint { get; init; }
+
+    /// <summary>
+    /// The sender to use for the interaction.
+    /// </summary>
+    public Sender Sender { get; init; }
+
+    /// <summary>
     /// Gets or sets the maximum time to wait for a transaction receipt.
     /// </summary>
     public TimeSpan WaitForReceiptTimeout { get; set; } = TimeSpan.FromMinutes(2);
@@ -47,6 +57,17 @@ public class InteractionContext : JsonRpcContext<ITransactionFeeEstimate>
     {
         get => this.WaitForReceiptTimeout > TimeSpan.Zero;
         set => this.WaitForReceiptTimeout = value ? TimeSpan.FromMinutes(2) : TimeSpan.Zero;
+    }
+
+    //
+
+    /// <summary>
+    /// Returns a string representation of the interaction context.
+    /// </summary>
+    /// <returns>A string representation of the interaction context.</returns>
+    public override string ToString()
+    {
+        return $"Endpoint: {this.Endpoint}, Sender: {this.Sender}";
     }
 
 }

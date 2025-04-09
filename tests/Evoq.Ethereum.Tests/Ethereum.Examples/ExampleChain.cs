@@ -1,5 +1,6 @@
 using Evoq.Blockchain;
 using Evoq.Ethereum.Chains;
+using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -27,13 +28,15 @@ public class ExampleChain
     [TestMethod]
     public async Task Should_GetBasicChainInfo()
     {
+        var context = new JsonRpcContext();
+
         // Get chain ID
-        var chainIdBigInt = await _chain.GetChainIdAsync();
+        var chainIdBigInt = await _chain.GetChainIdAsync(context);
         Assert.AreEqual(ulong.Parse(ChainNames.GetChainId(ChainNames.Hardhat)), chainIdBigInt, "Chain ID should match the configured chain ID");
         Console.WriteLine($"Chain ID: {chainIdBigInt}");
 
         // Get current block number
-        var blockNumber = await _chain.GetBlockNumberAsync();
+        var blockNumber = await _chain.GetBlockNumberAsync(context);
         Assert.IsTrue(blockNumber > 0, "Block number should be positive");
         Console.WriteLine($"Current block number: {blockNumber}");
     }
@@ -41,8 +44,10 @@ public class ExampleChain
     [TestMethod]
     public async Task Should_GetGasAndFeeInfo()
     {
+        var context = new JsonRpcContext();
+
         // Get gas price
-        var gasPrice = await _chain.GasPriceAsync();
+        var gasPrice = await _chain.GasPriceAsync(context);
         Assert.IsTrue(gasPrice > 0, "Gas price should be positive");
         Console.WriteLine($"Current gas price: {gasPrice} Wei");
 
@@ -50,7 +55,7 @@ public class ExampleChain
         bool supportsEip1559 = false;
         try
         {
-            var baseFee = await _chain.GetBaseFeeAsync();
+            var baseFee = await _chain.GetBaseFeeAsync(context);
             // Only consider it EIP-1559 if we get a non-zero base fee
             if (baseFee > 0)
             {
@@ -73,7 +78,7 @@ public class ExampleChain
         // Get suggested EIP-1559 fees
         try
         {
-            var (maxFee, priorityFee) = await _chain.SuggestEip1559FeesAsync();
+            var (maxFee, priorityFee) = await _chain.SuggestEip1559FeesAsync(context);
             Assert.IsTrue(maxFee > 0, "Max fee should be positive");
             Assert.IsTrue(priorityFee > 0, "Priority fee should be positive");
             Assert.IsTrue(maxFee >= priorityFee, "Max fee should be greater than or equal to priority fee");
@@ -88,6 +93,7 @@ public class ExampleChain
 
         // Get fee history
         var feeHistory = await _chain.GetFeeHistoryAsync(
+            context,
             blockCount: 10,
             newestBlock: BlockParameter.Latest,
             rewardPercentiles: new[] { 50.0 });
@@ -116,15 +122,16 @@ public class ExampleChain
     [TestMethod]
     public async Task Should_GetAccountInfo()
     {
+        var context = new JsonRpcContext();
         var senderAddress = new EthereumAddress("0x1111111111111111111111111111111111111111");
 
         // Get transaction count (nonce)
-        var nonce = await _chain.GetTransactionCountAsync(senderAddress);
+        var nonce = await _chain.GetTransactionCountAsync(context, senderAddress);
         Assert.IsTrue(nonce >= 0, "Nonce should be non-negative");
         Console.WriteLine($"Transaction count for {senderAddress}: {nonce}");
 
         // Get balance
-        var balance = await _chain.GetBalanceAsync(senderAddress);
+        var balance = await _chain.GetBalanceAsync(context, senderAddress);
         Assert.IsNotNull(balance, "Balance should not be null");
         Assert.IsTrue(balance.WeiValue >= 0, "Balance should be non-negative");
         Console.WriteLine($"Balance for {senderAddress}: {balance}");
@@ -134,8 +141,10 @@ public class ExampleChain
     [Ignore("Requires a real transaction hash")]
     public async Task Should_WaitForTransaction()
     {
+        var context = new JsonRpcContext();
         var txHash = Hex.Parse("0x..."); // Replace with actual transaction hash
         var (receipt, deadlineReached) = await _chain.TryWaitForTransactionAsync(
+            context,
             txHash,
             timeout: TimeSpan.FromMinutes(5));
 
