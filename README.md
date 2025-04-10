@@ -12,13 +12,15 @@ The library is designed to be simple and focused, with two main approaches for c
 1. **Chain and Contract Classes**: For type-safe contract interaction when you have an ABI file
    ```csharp
    var contract = chain.GetContract(contractAddress, endpoint, sender, abiStream);
-   await contract.InvokeMethodAsync("transfer", nonce, options, args);
+   var context = new JsonRpcContext();
+   await contract.InvokeMethodAsync(context, "transfer", nonce, options, args);
    ```
 
 2. **RawContractCaller**: For direct contract calls when you want to specify ABI signatures manually
    ```csharp
    var caller = new RawContractCaller(endpoint);
-   await caller.CallAsync(contractAddress, "transfer(address,uint256)", args);
+   var context = new JsonRpcContext();
+   await caller.CallAsync(context, contractAddress, "transfer(address,uint256)", args);
    ```
 
 > **⚠️ Warning: This library is not audited or extensively tested in production environments.**
@@ -42,6 +44,7 @@ Here's a minimal example to get you started with the library:
 ```csharp
 using Evoq.Blockchain;
 using Evoq.Ethereum;
+using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Logging;
 
 // Set up logging
@@ -64,12 +67,16 @@ var sender = new Sender(senderAccount, new FileNonceStore());
 // Create a transaction runner
 var runner = new TransactionRunnerNative(sender, loggerFactory);
 
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Example: Send 0.1 ETH to another address
 var recipient = new EthereumAddress("0x1111111111111111111111111111111111111111");
 var amount = EtherAmount.FromEther(0.1m);
 
 // Estimate gas for the transaction
 var estimate = await chain.EstimateTransactionFeeAsync(
+    context,
     senderAccount.Address,
     recipient,
     amount,
@@ -77,6 +84,7 @@ var estimate = await chain.EstimateTransactionFeeAsync(
 
 // Create and send the transaction
 var result = await runner.RunTransactionAsync(
+    context,
     chain,
     recipient,
     estimate.ToSuggestedGasOptions(),
@@ -140,11 +148,14 @@ string display = amountInEther.ToString(4); // "1.5000 ETH"
 Represents a specific blockchain network and provides methods for interacting with it.
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Get current gas price
-var gasPrice = await chain.GasPriceAsync();
+var gasPrice = await chain.GasPriceAsync(context);
 
 // Get base fee (EIP-1559)
-var baseFee = await chain.GetBaseFeeAsync();
+var baseFee = await chain.GetBaseFeeAsync(context);
 
 // Estimate gas for ETH transfer
 var transferGas = await chain.GetEthTransferGasAsync();
@@ -170,8 +181,11 @@ var chain = contract.Chain;
 Contains details about a completed Ethereum transaction.
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Access transaction details
-var receipt = await chain.GetTransactionReceiptAsync(txHash);
+var receipt = await chain.GetTransactionReceiptAsync(context, txHash);
 
 // Check transaction success
 bool success = receipt.Success;
@@ -224,8 +238,11 @@ Handles communication with Ethereum nodes using JSON-RPC.
 // Create a JSON-RPC client
 var client = new JsonRpcClient(httpClient, logger);
 
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Send requests
-var response = await client.SendRequestAsync(method, parameters);
+var response = await client.SendRequestAsync(context, method, parameters);
 ```
 
 ## Implementation Notes
@@ -404,7 +421,7 @@ pnpm add --dev @nomicfoundation/hardhat-ignition
 mkdir -p ignition/modules
 ```
 
-Create a file at `ignition/modules/eas.ts`:
+Create a file at `ignition/modules/eas.ts` with the following content:
 ```typescript
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
@@ -442,9 +459,13 @@ After deployment, you'll see output with the deployed contract addresses. The Sc
 The `ExampleERC20.cs` demonstrates common ERC-20 token operations:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Simple token transfer
 var transferAmount = EtherAmount.FromWei(1_000_000_000_000_000_000); // 1 DAI
 var estimate = await contract.EstimateTransactionFeeAsync(
+    context,
     "transfer",
     senderAddress,
     null,
@@ -455,6 +476,7 @@ var options = new ContractInvocationOptions(estimate.ToSuggestedGasOptions(), Et
 
 // Send the transfer transaction
 var result = await runner.RunTransactionAsync(
+    context,
     contract,
     "transfer",
     options,
@@ -462,7 +484,7 @@ var result = await runner.RunTransactionAsync(
     CancellationToken.None);
 
 // Get the transaction receipt
-var receipt = await chain.GetTransactionReceiptAsync(result.TransactionHash);
+var receipt = await chain.GetTransactionReceiptAsync(context, result.TransactionHash);
 
 // Try to read the event from the receipt
 if (receipt.TryReadEventLogs(contract, "Transfer", out var indexed, out var data))
@@ -478,6 +500,7 @@ if (receipt.TryReadEventLogs(contract, "Transfer", out var indexed, out var data
 // Approve and transferFrom pattern
 var approveAmount = EtherAmount.FromWei(1_000_000_000_000_000_000); // 1 DAI
 await contract.InvokeMethodAsync(
+    context,
     "approve",
     nonce,
     options,
@@ -496,6 +519,9 @@ Key features demonstrated:
 The `ExampleEAS.cs` shows how to interact with the Ethereum Attestation Service:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Register a schema
 var registerArgs = AbiKeyValues.Create(
     ("schema", "bool"),
@@ -503,6 +529,7 @@ var registerArgs = AbiKeyValues.Create(
     ("revocable", true));
 
 var registerReceipt = await runner.RunTransactionAsync(
+    context,
     schemaRegistry,
     "register",
     registerOptions,
@@ -538,6 +565,9 @@ var chain = Chain.CreateDefault(chainId, new Uri("http://localhost:8545"), logge
 
 // Create an endpoint for contract interactions
 var endpoint = new Endpoint("hardhat", "hardhat", "http://localhost:8545", loggerFactory);
+
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
 ```
 
 ### Contract Interaction
@@ -556,8 +586,12 @@ var contractAddress = new EthereumAddress("0x22222222222222222222222222222222222
 // Create a contract instance
 var contract = chain.GetContract(contractAddress, endpoint, sender, abiStream);
 
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Estimate gas for a transaction
 var estimate = await contract.EstimateTransactionFeeAsync(
+    context,
     "yourMethod",
     senderAddress,
     null,
@@ -568,6 +602,7 @@ var options = new ContractInvocationOptions(estimate.ToSuggestedGasOptions(), Et
 
 // Call the contract method
 var result = await runner.RunTransactionAsync(
+    context,
     contract,
     "yourMethod",
     options,
@@ -594,8 +629,12 @@ For simpler cases or when you don't have the ABI, use the RawContractCaller. It 
 // Create a raw contract caller
 var caller = new RawContractCaller(endpoint);
 
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Example with named parameters in the signature
 var resultNamed = await caller.CallAsync(
+    context,
     contractAddress,
     "transfer(address to,uint256 amount)",  // Named parameters in signature
     ("to", recipientAddress),
@@ -603,6 +642,7 @@ var resultNamed = await caller.CallAsync(
 
 // Example with positional parameters (no names in signature)
 var resultPositional = await caller.CallAsync(
+    context,
     contractAddress,
     "transfer(address,uint256)",  // No parameter names in signature
     ("0", recipientAddress),      // Use "0" for first parameter
@@ -619,9 +659,13 @@ When using RawContractCaller:
 When working with contract methods that return complex types like tuples (Solidity structs), special care is needed in decoding the results, especially when using `RawContractCaller`. Here's an example using EAS's `getSchema` function:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // 1. Make the call to get the raw bytes
 var caller = new RawContractCaller(endpoint);
 var returnedHex = await caller.CallAsync(
+    context,
     schemaRegistry.Address, 
     "getSchema(bytes32 uid)", 
     ("uid", schemaUid)
@@ -669,8 +713,11 @@ This pattern is particularly useful when:
 When working with contract events, you can decode them from transaction receipts using the `Contract` class. Here's how to decode events:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Get a transaction receipt
-var receipt = await chain.GetTransactionReceiptAsync(txHash);
+var receipt = await chain.GetTransactionReceiptAsync(context, txHash);
 
 // Try to read the event from the receipt
 if (receipt.TryReadEventLogs(contract, "Transfer", out var indexed, out var data))
@@ -713,11 +760,15 @@ When using RawContractCaller:
 The library includes support for EIP-165 interface detection:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 // Create an EIP-165 checker
 var eip165 = new EIP165Native(endpoint);
 
 // Check if a contract supports an interface
 var supportsInterface = await eip165.SupportsInterface(
+    context,
     contractAddress,
     Hex.Parse("0x...") // Interface ID
 );
@@ -733,6 +784,9 @@ var sender = new Sender(senderAccount, nonceStore);
 
 // Create a transaction runner
 var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
 
 // Run a transaction
 var result = await runner.RunTransactionAsync(
@@ -814,7 +868,11 @@ For production environments, consider implementing a more robust solution that:
 The library provides detailed gas estimation with EIP-1559 support:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 var estimate = await contract.EstimateTransactionFeeAsync(
+    context,
     "methodName",
     senderAddress,
     null,
@@ -832,9 +890,12 @@ Console.WriteLine($"Base Fee: {estimate.CurrentBaseFeePerGas}");
 The library provides comprehensive error handling:
 
 ```csharp
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
 try
 {
-    var result = await contract.InvokeMethodAsync("methodName", nonce, options, arguments);
+    var result = await contract.InvokeMethodAsync(context, "methodName", nonce, options, arguments);
 }
 catch (Exception ex)
 {
@@ -1073,7 +1134,6 @@ mkdir -p ignition/modules
 ```
 
 Create a file at `ignition/modules/eas.ts` with the following content:
-
 ```typescript
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
