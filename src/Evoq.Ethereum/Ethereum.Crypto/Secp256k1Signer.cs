@@ -144,7 +144,6 @@ internal class Secp256k1Signer : IECSignPayload
     }
 }
 
-
 /// <summary>
 /// Recovers a public key from a signature.
 /// </summary>

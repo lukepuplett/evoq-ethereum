@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
+using Evoq.Ethereum.MessageSigning;
 // using Nethereum.Signer;
 
 namespace Evoq.Ethereum;
@@ -161,12 +162,34 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <summary>
     /// Verifies if this address signed the given message.
     /// </summary>
-    /// <param name="message">The message that was signed</param>
-    /// <param name="signature">The signature to verify</param>
+    /// <param name="message">The exact message that was signed</param>
+    /// <param name="signatureHex">The signature to verify</param>
     /// <returns>True if this address signed the message, false otherwise</returns>
-    public bool HasSigned(string message, string signature)
+    public bool HasSigned(string message, string signatureHex)
     {
-        return VerifySignature(message, signature, this.ToString());
+        return VerifySignature(message, signatureHex, this.ToString());
+    }
+
+    /// <summary>
+    /// Verifies if this address signed the given message.
+    /// </summary>
+    /// <param name="messageBytes">The exact message that was signed</param>
+    /// <param name="rsv">The signature to verify</param>
+    /// <returns>True if this address signed the message, false otherwise</returns>
+    public bool HasSigned(byte[] messageBytes, IRsvSignature rsv)
+    {
+        return VerifySignature(messageBytes, rsv, this);
+    }
+
+    /// <summary>
+    /// Verifies if this address signed the given message.
+    /// </summary>
+    /// <param name="payload">The payload that was signed</param>
+    /// <param name="rsv">The signature to verify</param>
+    /// <returns>True if this address signed the message, false otherwise</returns>
+    public bool HasSigned(SigningPayload payload, IRsvSignature rsv)
+    {
+        return VerifySignature(payload, rsv, this);
     }
 
     //
@@ -174,16 +197,16 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <summary>
     /// Verifies if the given address signed the given message.
     /// </summary>
-    /// <param name="message">The message that was signed</param>
-    /// <param name="signature">The signature to verify</param>
+    /// <param name="message">The exact message that was signed</param>
+    /// <param name="signatureHex">The signature to verify</param>
     /// <param name="expectedAddress">The expected signer address in 0x format</param>
     /// <returns>True if the address signed the message, false otherwise</returns>
-    public static bool VerifySignature(string message, string signature, string expectedAddress)
+    public static bool VerifySignature(string message, string signatureHex, string expectedAddress)
     {
         try
         {
             var messageBytes = Encoding.UTF8.GetBytes(message);
-            var signatureBytes = RsvSignature.FromHex(signature);
+            var signatureBytes = RsvSignature.FromHex(signatureHex);
             var expected = new EthereumAddress(expectedAddress);
 
             return VerifySignature(messageBytes, signatureBytes, expected);
@@ -216,13 +239,25 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <returns>True if the address signed the message, false otherwise</returns>
     public static bool VerifySignature(byte[] message, IRsvSignature signature, EthereumAddress expectedAddress)
     {
-        IECRecoverPublicKey recover = new Secp256k1Recovery();
+        var messageSigner = new MessageSigner();
+        var payload = new SigningPayload { Data = message };
 
-        var recoveryId = Signing.GetRecoveryId(signature.V);
-        var recoveredPublicKey = recover.RecoverPublicKey(recoveryId, signature, message, false);
-        var recoveredAddress = FromPublicKey(new Hex(recoveredPublicKey));
+        return VerifySignature(payload, signature, expectedAddress);
+    }
 
-        return recoveredAddress == expectedAddress;
+    /// <summary>
+    /// Verifies if the given address signed the given message.
+    /// </summary>
+    /// <param name="payload">The payload that was signed</param>
+    /// <param name="signature">The signature to verify</param>
+    /// <param name="expectedAddress">The expected signer address</param>
+    /// <returns>True if the address signed the message, false otherwise</returns>
+    public static bool VerifySignature(SigningPayload payload, IRsvSignature signature, EthereumAddress expectedAddress)
+    {
+        var messageSigner = new MessageSigner();
+        var isValid = messageSigner.VerifyMessage(payload, signature, expectedAddress);
+
+        return isValid;
     }
 
     /// <summary>

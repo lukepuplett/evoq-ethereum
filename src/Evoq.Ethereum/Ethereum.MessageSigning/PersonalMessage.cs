@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
 
 namespace Evoq.Ethereum.MessageSigning;
@@ -10,7 +9,6 @@ namespace Evoq.Ethereum.MessageSigning;
 /// </summary>
 public class PersonalSign
 {
-    private const string OneNine = "0x19";
     private const string ESM = "Ethereum Signed Message:\n";
     private readonly IECSignPayload signer;
 
@@ -53,36 +51,26 @@ public class PersonalSign
     /// <returns>The signature.</returns>
     public byte[] GetSignature()
     {
-        byte[] messageBuf = GetEIP191PrefixedBytes();
+        byte[] messageBuf = GetEIP191PrefixedBytes(this.MessageBytes);
 
         var hashedBytes = KeccakHash.ComputeHash(messageBuf);
 
         return this.signer.Sign(new SigningPayload { Data = hashedBytes }).ToByteArray();
     }
 
-    // public bool VerifyMessage(byte[] signature)
-    // {
-    //     var hashedBytes = KeccakHash.ComputeHash(this.GetPrefixedBytes());
-    //     var rsvSignature = RsvSignature.FromBytes(signature);
-
-    //     var recoveredAddress = rsvSignature.RecoverMessage(hashedBytes);
-
-    //     return recoveredAddress == this.signer.Address;
-    // }
-
     //
 
-    private byte[] GetEIP191PrefixedBytes()
+    internal static byte[] GetEIP191PrefixedBytes(byte[] messageBytes)
     {
         // e.g. "0x19Ethereum Signed Message:\n12" as per EIP-191
 
-        byte[] prefix19 = Hex.Parse(OneNine).ToByteArray();
-        byte[] prefixString = Encoding.UTF8.GetBytes(ESM + this.MessageBytes.Length);
+        byte[] prefix19 = new byte[] { 0x19 };
+        byte[] prefixString = Encoding.UTF8.GetBytes(ESM + messageBytes.Length);
 
-        var messageBuf = new byte[prefix19.Length + prefixString.Length + this.MessageBytes.Length];
+        var messageBuf = new byte[prefix19.Length + prefixString.Length + messageBytes.Length];
         Buffer.BlockCopy(prefix19, 0, messageBuf, 0, prefix19.Length);
         Buffer.BlockCopy(prefixString, 0, messageBuf, prefix19.Length, prefixString.Length);
-        Buffer.BlockCopy(this.MessageBytes, 0, messageBuf, prefix19.Length + prefixString.Length, this.MessageBytes.Length);
+        Buffer.BlockCopy(messageBytes, 0, messageBuf, prefix19.Length + prefixString.Length, messageBytes.Length);
 
         return messageBuf;
     }

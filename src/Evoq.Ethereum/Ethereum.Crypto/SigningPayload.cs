@@ -11,7 +11,7 @@ public class SigningPayload
     /// <summary>
     /// The data to sign, e.g. the RLP-encoded transaction.
     /// </summary>
-    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public byte[] Data { get; init; } = Array.Empty<byte>();
 }
 
 /// <summary>
