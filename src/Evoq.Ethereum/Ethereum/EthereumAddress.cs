@@ -203,31 +203,11 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <returns>True if the address signed the message, false otherwise</returns>
     public static bool VerifySignature(string message, string signatureHex, string expectedAddress)
     {
-        try
-        {
-            var messageBytes = Encoding.UTF8.GetBytes(message);
-            var signatureBytes = RsvSignature.FromHex(signatureHex);
-            var expected = new EthereumAddress(expectedAddress);
+        var messageBytes = Encoding.UTF8.GetBytes(message);
+        var signatureBytes = RsvSignature.FromHex(signatureHex);
+        var expected = new EthereumAddress(expectedAddress);
 
-            return VerifySignature(messageBytes, signatureBytes, expected);
-        }
-        catch
-        {
-            return false;
-        }
-
-        // try
-        // {
-        //     var signer = new EthereumMessageSigner();
-        //     var recoveredAddress = signer.EncodeUTF8AndEcRecover(message, signature);
-
-        //     return string.Equals(recoveredAddress, expectedAddress, StringComparison.OrdinalIgnoreCase);
-        // }
-        // catch (Exception)
-        // {
-        //     // If signature is invalid or malformed, return false
-        //     return false;
-        // }
+        return VerifySignature(messageBytes, signatureBytes, expected);
     }
 
     /// <summary>
