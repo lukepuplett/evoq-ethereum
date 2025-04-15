@@ -94,12 +94,12 @@ public class MessageSigner
 
             if (recoveredAddress == expectedAddress)
             {
-                message = "Signed by the expected address";
+                message = "Signed by expected address: " + expectedAddress;
                 return true;
             }
             else
             {
-                message = "Signed by a different address";
+                message = "Signed by different address: " + recoveredAddress;
                 return false;
             }
         }
