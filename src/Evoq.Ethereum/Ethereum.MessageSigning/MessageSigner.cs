@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using Evoq.Blockchain;
 using Evoq.Ethereum.Crypto;
@@ -71,12 +72,28 @@ public class MessageSigner
     public bool VerifyMessage(SigningPayload payload, IRsvSignature rsv, EthereumAddress expectedAddress)
     {
         var recovery = new Secp256k1Recovery();
+        try
+        {
+            var recoveryId = Signing.GetRecoveryId(rsv.V);
+            var publicKey = recovery.RecoverPublicKey(recoveryId, rsv, payload.Data, false);
 
-        var recoveryId = Signing.GetRecoveryId(rsv.V);
-        var publicKey = recovery.RecoverPublicKey(recoveryId, rsv, payload.Data, false);
+            var recoveredAddress = EthereumAddress.FromPublicKey(new Hex(publicKey));
 
-        var recoveredAddress = EthereumAddress.FromPublicKey(new Hex(publicKey));
+            return recoveredAddress == expectedAddress;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (NotImplementedException notImplemented) when (notImplemented.Message.Contains("Compressed public key support not yet implemented"))
+        {
+            return false;
+        }
 
-        return recoveredAddress == expectedAddress;
+        // allow other exceptions to bubble up
     }
 }

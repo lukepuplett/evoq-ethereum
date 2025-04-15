@@ -307,7 +307,7 @@ public class EthereumAddressTests
     {
         // Arrange
         var address = EthereumAddress.Parse(ValidAddress, EthereumAddressChecksum.DoNotCheck);
-        var invalidSignature = "0x1234567890123456789012345678901234567890123456789012345678901234";
+        var invalidSignature = "0x1234567890123456789012345678901234567890123456789012345678901234123456789012345678901234567890123456789012345678901234567890123400";
 
         // Act
         bool result = address.HasSigned(ValidMessage, invalidSignature);
