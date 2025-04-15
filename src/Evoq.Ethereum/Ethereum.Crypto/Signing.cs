@@ -10,6 +10,58 @@ namespace Evoq.Ethereum.Crypto;
 internal static class Signing
 {
     /// <summary>
+    /// Compares two BigInteger instances for equality using CompareTo.
+    /// </summary>
+    /// <param name="a">The first BigInteger.</param>
+    /// <param name="b">The second BigInteger.</param>
+    /// <returns>True if the values are equal, false otherwise.</returns>
+    /// <remarks>
+    /// **DO NOT REMOVE OR CHANGE THIS METHOD TO USE BigInteger.Equals(BigInteger) DIRECTLY!**
+    /// 
+    /// This method exists solely to work around a frustrating BouncyCastle versioning conflict
+    /// that can occur in consuming applications. Specifically:
+    /// 
+    /// 1.  **Dependency Hell:** This library (`Evoq.Ethereum`) depends on a newer BouncyCastle
+    ///     package (`BouncyCastle.NetCore`, e.g., 2.2.1) which provides the convenient
+    ///     `Org.BouncyCastle.Math.BigInteger.Equals(BigInteger)` overload.
+    /// 2.  **Transitive Nightmares:** A consuming application might *also* depend on another library
+    ///     (e.g., Yoti.Client) which, in turn, depends on an *older*, incompatible BouncyCastle library
+    ///     (`Portable.BouncyCastle` or the base `BouncyCastle.Crypto`, e.g., 1.8.5.0).
+    ///     This older version *lacks* the `BigInteger.Equals(BigInteger)` overload.
+    /// 3.  **.NET Runtime Woes:** Despite best efforts using standard .NET mechanisms like assembly
+    ///     binding redirects (`runtimeconfig.template.json`, `app.config`) or even custom
+    ///     `AssemblyResolve` event handlers, the .NET runtime can stubbornly fail to load the
+    ///     *newer* BouncyCastle version or correctly redirect the method call. It often insists
+    ///     on loading the older version pulled in by the transitive dependency, leading to a
+    ///     `System.MissingMethodException` at runtime when code in *this* library calls the
+    ///     non-existent `Equals(BigInteger)` method.
+    /// 4.  **The Workaround:** Since forcing the runtime to behave is unreliable across different
+    ///     environments, the only robust solution is to avoid the problematic method call entirely.
+    ///     `BigInteger.CompareTo(BigInteger)` *is* present in both old and new versions and returns 0
+    ///     for logically equal values. This method encapsulates that `CompareTo(b) == 0` check,
+    ///     ensuring compatibility regardless of which BouncyCastle version the runtime decides to load.
+    /// 
+    /// Yes, this is ugly. Yes, binding redirects *should* work. But welcome to reality.
+    /// Using this helper method prevents runtime crashes in environments afflicted by this
+    /// dependency mess.
+    /// </remarks>
+    internal static bool Equals(BigInteger a, BigInteger b)
+    {
+        // Handle null cases defensively, although BigInteger is a struct in some versions
+        // and a class in others (like BouncyCastle.Math).
+        if (ReferenceEquals(a, b)) // Same instance or both null
+        {
+            return true;
+        }
+        if (a is null || b is null)
+        {
+            return false;
+        }
+
+        return a.CompareTo(b) == 0;
+    }
+
+    /// <summary>
     /// Calculates the EIP-155 V value for a given chain ID and recovery ID.
     /// </summary>
     /// <param name="chainId">The chain ID of the network.</param>
@@ -118,13 +170,13 @@ internal static class Signing
         // V = 27 + recovery_id
         // If V is 27, recovery_id is 0
         // If V is 28, recovery_id is 1
-        if (v.Equals(Constants.LegacyVZero27))
+        if (Equals(v, Constants.LegacyVZero27))
         {
             // V = 27 means recovery_id = 0
             // In EIP-1559, this corresponds to y-parity = 0
             return Constants.EIP1559_Y_PARITY_EVEN_0;
         }
-        if (v.Equals(Constants.LegacyVOne28))
+        if (Equals(v, Constants.LegacyVOne28))
         {
             // V = 28 means recovery_id = 1
             // In EIP-1559, this corresponds to y-parity = 1
@@ -217,17 +269,17 @@ internal static class Signing
             // V=0 -> y-parity=0, V=1 -> y-parity=1
 
             // Check for direct y-parity values (0 or 1)
-            if (v.Equals(BigInteger.Zero) || v.Equals(BigInteger.One))
+            if (Equals(v, BigInteger.Zero) || Equals(v, BigInteger.One))
             {
                 return (byte)v.IntValue;
             }
 
             // Check for legacy V values (27 or 28)
-            if (v.Equals(Constants.LegacyVZero27))
+            if (Equals(v, Constants.LegacyVZero27))
             {
                 return Constants.EIP1559_Y_PARITY_EVEN_0;
             }
-            if (v.Equals(Constants.LegacyVOne28))
+            if (Equals(v, Constants.LegacyVOne28))
             {
                 return Constants.EIP1559_Y_PARITY_ODD_1;
             }
@@ -269,6 +321,6 @@ internal static class Signing
         var v1 = baseV.Add(BigInteger.One);  // recovery_id = 1
 
         // Check if V matches either of the expected values
-        return v.Equals(v0) || v.Equals(v1);
+        return Equals(v, v0) || Equals(v, v1);
     }
 }

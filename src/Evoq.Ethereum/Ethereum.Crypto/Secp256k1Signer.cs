@@ -199,7 +199,7 @@ internal class Secp256k1Recovery : IECRecoverPublicKey
         var y = ySquared.ModPow((p.Add(Big.One)).Divide(Big.Four), p);
 
         // Choose y based on recoveryId (0 for even, 1 for odd)
-        BigInteger yRecovered = (y.Mod(Big.Two).Equals(Big.Zero) == (recoveryId % 2 == 0)) ? y : p.Subtract(y);
+        BigInteger yRecovered = (Signing.Equals(y.Mod(Big.Two), Big.Zero) == (recoveryId % 2 == 0)) ? y : p.Subtract(y);
 
         // Create the point R
         var R = curve.CreatePoint(x, yRecovered);

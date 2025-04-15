@@ -1171,3 +1171,19 @@ npx hardhat ignition deploy ./ignition/modules/eas.ts --network localhost
 ```
 
 After successful deployment, you'll see output similar to:
+
+## Compatibility Note: BouncyCastle BigInteger.Equals
+
+This library uses a custom internal helper method (`Signing.Equals`) for comparing `Org.BouncyCastle.Math.BigInteger` instances instead of the built-in `BigInteger.Equals(BigInteger)` method. This is a deliberate workaround to address potential runtime issues caused by conflicting BouncyCastle versions.
+
+**The Problem:**
+
+- This library depends on a newer BouncyCastle package (e.g., `BouncyCastle.NetCore` 2.2.1) that includes the `BigInteger.Equals(BigInteger)` overload.
+- Consuming applications might transitively depend on older BouncyCastle versions (e.g., 1.8.5.0 via `Portable.BouncyCastle` or `BouncyCastle.Crypto`) which *lack* this specific overload.
+- Standard .NET assembly binding redirects often fail to force the runtime to load the newer version or correctly redirect the call in these scenarios, leading to `System.MissingMethodException` at runtime.
+
+**The Solution:**
+
+To ensure broader compatibility across different application environments, the library avoids the problematic `Equals(BigInteger)` call and instead uses `CompareTo(other) == 0`, which is available in both old and new BouncyCastle versions. The `Signing.Equals` method encapsulates this logic.
+
+This workaround prevents runtime crashes in environments affected by this dependency conflict.
