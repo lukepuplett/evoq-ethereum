@@ -167,11 +167,15 @@ internal class ContractClient
         var rlpHex = new Hex(rlpEncoded);
         var id = this.GetRandomId();
 
-        this.logger.LogInformation("Sending transaction: RLP: {Rlp}, ID: {Id}", rlpHex.ToString()[..18], id);
+        this.logger.LogInformation("Sending transaction: RLP: {Rlp}..., ID: {Id}", rlpHex.ToString()[..18], id);
 
         var transactionHash = await this.jsonRpc.SendRawTransactionAsync(context, rlpHex);
 
-        this.logger.LogInformation("Transaction sent: ID: {Id}, Hash: {Hash}", id, transactionHash);
+        this.logger.LogInformation(
+            "Transaction sent to {BaseAddress}: ID: {Id}, TransactionHash: {Hash}",
+            this.jsonRpc.BaseAddress.GetLeftPart(UriPartial.Authority), // mitigates logging of the API key
+            id,
+            transactionHash);
 
         return transactionHash;
     }

@@ -179,7 +179,9 @@ public class JsonRpcProviderCaller<TResponseResult>
 
                     this.logger?.LogTrace("JSON-RPC response: {ResponseJson}", responseBodyStr);
                     this.logger?.LogInformation(
-                        "Response: Status={StatusCode} {StatusReason}, Type={ContentType}, Length={Length} bytes",
+                        "MethodName: {MethodName} (ID: {Id}) Response: Status={StatusCode} {StatusReason}, Type={ContentType}, Length={Length} bytes",
+                        methodInfo.MethodName,
+                        methodInfo.Id,
                         (int)response.StatusCode,
                         response.ReasonPhrase,
                         response.Content.Headers.ContentType,

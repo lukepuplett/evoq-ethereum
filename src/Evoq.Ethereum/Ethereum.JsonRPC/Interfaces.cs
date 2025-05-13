@@ -239,4 +239,10 @@ public interface IEthereumJsonRpc :
 {
     // This interface combines all the individual method interfaces
     // for convenience when you need access to all methods
+
+    /// <summary>
+    /// Gets the base address of the JSON-RPC client.
+    /// </summary>
+    /// <returns>The base address of the JSON-RPC client.</returns>
+    Uri BaseAddress { get; }
 }
