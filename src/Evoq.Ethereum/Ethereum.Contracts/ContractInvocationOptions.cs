@@ -4,6 +4,45 @@ using System.Numerics;
 namespace Evoq.Ethereum.Contracts;
 
 /// <summary>
+/// Options for invoking a transfer of value.
+/// </summary>
+public class TransferInvocationOptions
+{
+    /// <summary>
+    /// Initializes a new instance of the TransferInvocationOptions class.
+    /// </summary>
+    /// <param name="gas">Gas pricing and limit configuration for the transaction</param>
+    /// <param name="value">Amount of ETH (in wei) to send with the transaction</param>
+    /// <param name="recipient">The address of the recipient.</param>
+    public TransferInvocationOptions(GasOptions gas, EtherAmount value, EthereumAddress recipient)
+    {
+        this.Gas = gas;
+        this.Value = value;
+        this.Recipient = recipient;
+    }
+
+    /// <summary>
+    /// Gas pricing and limit configuration for the transaction
+    /// </summary>
+    public GasOptions Gas { get; }
+
+    /// <summary>
+    /// Amount of ETH (in wei) to send with the transaction
+    /// </summary>
+    public EtherAmount Value { get; }
+
+    /// <summary>
+    /// The address of the recipient.
+    /// </summary>
+    public EthereumAddress Recipient { get; }
+
+    /// <summary>
+    /// The amount of time to wait for the transaction to be mined.
+    /// </summary>
+    public TimeSpan WaitForReceiptTimeout { get; set; } = TimeSpan.FromMinutes(5);
+}
+
+/// <summary>
 /// Options for invoking a contract method.
 /// </summary>
 public class ContractInvocationOptions

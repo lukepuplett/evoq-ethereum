@@ -246,32 +246,16 @@ public class Chain
             this.ChainId, this.chainClient, contractClient, abiDocument, address, endpoint.LoggerFactory);
     }
 
-    //
-
     /// <summary>
-    /// Creates a default chain instance from an endpoint.
+    /// Initiates a transfer of ETH from the sender to the recipient.
     /// </summary>
-    /// <param name="endpoint">The endpoint.</param>
-    /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(Endpoint endpoint)
+    /// <param name="context">The JSON-RPC context.</param>
+    /// <param name="nonce">The nonce to use for the transaction.</param>
+    /// <param name="options">The options for the transfer.</param>
+    /// <returns>The transaction hash.</returns>
+    public async Task<Hex> TransferAsync(IJsonRpcContext context, ulong nonce, TransferInvocationOptions options)
     {
-        var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
-
-        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory);
-    }
-
-    /// <summary>
-    /// Creates a default chain instance.
-    /// </summary>
-    /// <param name="chainId">The chain ID.</param>
-    /// <param name="uri">The URI of the chain.</param>
-    /// <param name="loggerFactory">The logger factory.</param>
-    /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
-    {
-        var chainClient = ChainClient.CreateDefault(uri, loggerFactory);
-
-        return new Chain(chainId, chainClient);
+        return await this.chainClient.TransferAsync(context, nonce, options);
     }
 
     /// <summary>
@@ -303,5 +287,61 @@ public class Chain
         }
 
         return (receipt, deadlineReached);
+    }
+
+    //
+
+    /// <summary>
+    /// Creates a default chain instance from an endpoint.
+    /// </summary>
+    /// <param name="endpoint">The endpoint.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(Endpoint endpoint)
+    {
+        var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
+
+        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory);
+    }
+
+    /// <summary>
+    /// Creates a default chain instance from an endpoint.
+    /// </summary>
+    /// <param name="endpoint">The endpoint.</param>
+    /// <param name="sender">The sender to enable sending transactions.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(Endpoint endpoint, Sender sender)
+    {
+        var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
+
+        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory, sender);
+    }
+
+    /// <summary>
+    /// Creates a default chain instance.
+    /// </summary>
+    /// <param name="chainId">The chain ID.</param>
+    /// <param name="uri">The URI of the chain.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
+    {
+        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory);
+
+        return new Chain(chainId, chainClient);
+    }
+
+    /// <summary>
+    /// Creates a default chain instance enabled for sending transactions.
+    /// </summary>
+    /// <param name="chainId">The chain ID.</param>
+    /// <param name="uri">The URI of the chain.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="sender">The sender.</param>
+    /// <returns>A default chain instance.</returns>
+    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender)
+    {
+        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory, sender);
+
+        return new Chain(chainId, chainClient);
     }
 }

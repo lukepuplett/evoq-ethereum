@@ -2,7 +2,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
+using Evoq.Ethereum.Contracts;
+using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
+using Evoq.Ethereum.RLP;
 using Evoq.Ethereum.Transactions;
 using Microsoft.Extensions.Logging;
 
@@ -14,17 +17,33 @@ namespace Evoq.Ethereum.Chains;
 internal class ChainClient
 {
     private readonly Random rng = new Random();
+    private readonly ulong chainId;
     private readonly IEthereumJsonRpc jsonRpc;
-
+    private readonly IRlpTransactionEncoder? rlpEncoder;
+    private readonly ITransactionSigner? transactionSigner;
+    private readonly ILogger logger;
     //
 
     /// <summary>
     /// Initializes a new instance of the ChainClient class.
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="jsonRpc">The JSON-RPC client.</param>
-    internal ChainClient(IEthereumJsonRpc jsonRpc)
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="rlpEncoder">The RLP encoder.</param>
+    /// <param name="transactionSigner">The transaction signer.</param>
+    internal ChainClient(
+        ulong chainId,
+        IEthereumJsonRpc jsonRpc,
+        ILoggerFactory loggerFactory,
+        IRlpTransactionEncoder? rlpEncoder,
+        ITransactionSigner? transactionSigner)
     {
+        this.chainId = chainId;
         this.jsonRpc = jsonRpc;
+        this.logger = loggerFactory.CreateLogger<ChainClient>();
+        this.rlpEncoder = rlpEncoder;
+        this.transactionSigner = transactionSigner;
     }
 
     //
@@ -207,18 +226,106 @@ internal class ChainClient
         return await this.jsonRpc.GetCodeAsync(context, address, blockParameter);
     }
 
+    internal async Task<Hex> TransferAsync(
+        IJsonRpcContext context,
+        ulong nonce,
+        TransferInvocationOptions options)
+    {
+        if (this.rlpEncoder == null || this.transactionSigner == null)
+        {
+            throw new InvalidOperationException(
+                "Transaction sending is disabled. This client was not configured with an RLP encoder or" +
+                " transaction signer. Create a new client with a sender to enable transaction sending.");
+        }
+
+        byte[] rlpEncoded;
+
+        if (options.Gas is LegacyGasOptions legacyGasOptions)
+        {
+            // construct a legacy transaction
+            var transaction = new TransactionType0(
+                nonce: nonce,
+                gasPrice: legacyGasOptions.Price.ToBigBouncy(),
+                gasLimit: options.Gas.GasLimit,
+                to: options.Recipient.ToByteArray(),
+                value: options.Value.ToBigBouncy(),
+                data: new byte[0],
+                signature: null);
+
+            transaction = (TransactionType0)this.transactionSigner!.GetSignedTransaction(transaction);
+            rlpEncoded = this.rlpEncoder.Encode(transaction);
+        }
+        else if (options.Gas is EIP1559GasOptions eip1559GasOptions)
+        {
+            // construct an EIP-1559 transaction
+            var transaction = new TransactionType2(
+                chainId: this.chainId,
+                nonce: nonce,
+                maxPriorityFeePerGas: eip1559GasOptions.MaxPriorityFeePerGas.ToBigBouncy(),
+                maxFeePerGas: eip1559GasOptions.MaxFeePerGas.ToBigBouncy(),
+                gasLimit: options.Gas.GasLimit,
+                to: options.Recipient.ToByteArray(),
+                value: options.Value.ToBigBouncy(),
+                data: new byte[0],
+                accessList: null,
+                signature: null);
+
+            transaction = this.transactionSigner!.GetSignedTransaction(transaction);
+            rlpEncoded = this.rlpEncoder.Encode(transaction);
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Cannot invoke method. The gas options specified are of an unsupported type.",
+                nameof(options));
+        }
+
+        var rlpHex = new Hex(rlpEncoded);
+        var id = this.rng.Next();
+
+        this.logger.LogInformation("Sending transaction: RLP: {Rlp}..., ID: {Id}", rlpHex.ToString()[..18], id);
+
+        var transactionHash = await this.jsonRpc.SendRawTransactionAsync(context, rlpHex);
+
+        this.logger.LogInformation(
+            "Transaction sent to {BaseAddress}: ID: {Id}, TransactionHash: {Hash}",
+            this.jsonRpc.BaseAddress.GetLeftPart(UriPartial.Authority), // mitigates logging of the API key
+            id,
+            transactionHash);
+
+        return transactionHash;
+    }
+
     //
 
     /// <summary>
     /// Creates a default chain client.
     /// </summary>
+    /// <param name="chainId">The chain ID.</param>
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <returns>The chain client.</returns>
-    internal static ChainClient CreateDefault(Uri uri, ILoggerFactory loggerFactory)
+    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
     {
         var jsonRpc = new JsonRpcClient(uri, loggerFactory);
 
-        return new ChainClient(jsonRpc);
+        return new ChainClient(chainId, jsonRpc, loggerFactory, null, null);
+    }
+
+    /// <summary>
+    /// Creates a default chain client.
+    /// </summary>
+    /// <param name="chainId">The chain ID.</param>
+    /// <param name="uri">The URI of the chain.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="sender">The sender.</param>
+    /// <returns>The chain client.</returns>
+    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender)
+    {
+        var jsonRpc = new JsonRpcClient(uri, loggerFactory);
+        var rlpEncoder = new RlpEncoder();
+        var transactionSigner = TransactionSigner.CreateDefault(sender.SenderAccount.PrivateKey.ToByteArray());
+
+        return new ChainClient(chainId, jsonRpc, loggerFactory, rlpEncoder, transactionSigner);
     }
 }

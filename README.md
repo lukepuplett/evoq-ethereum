@@ -570,6 +570,81 @@ var endpoint = new Endpoint("hardhat", "hardhat", "http://localhost:8545", logge
 var context = new JsonRpcContext();
 ```
 
+### Sending ETH
+
+The library provides two main ways to send ETH:
+
+1. Using `TransferRunnerNative` (Recommended):
+```csharp
+// Create a sender account
+var sender = new Sender(senderAccount, nonceStore);
+
+// Create a transfer runner
+var runner = TransferRunnerNative.CreateDefault(endpoint, sender);
+
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
+// Configure gas options (EIP-1559)
+var gasOptions = new EIP1559GasOptions(
+    maxPriorityFeePerGas: WeiAmounts.LowPriorityFee,
+    maxFeePerGas: WeiAmounts.UrgentPriorityFee,
+    gasLimit: WeiAmounts.EthTransferGas
+);
+
+// Send ETH
+var amount = EtherAmount.FromEther(0.1m); // 0.1 ETH
+var receipt = await runner.RunTransferAsync(
+    context,
+    new TransferInvocationOptions(gasOptions, amount, recipientAddress),
+    null);
+
+// Verify transaction success
+Assert.IsNotNull(receipt);
+Assert.IsTrue(receipt.Success);
+```
+
+2. Using `TransactionRunnerNative` directly:
+```csharp
+// Create a sender account
+var sender = new Sender(senderAccount, nonceStore);
+
+// Create a transaction runner
+var runner = new TransactionRunnerNative(sender, loggerFactory);
+
+// Create a JSON-RPC context
+var context = new JsonRpcContext();
+
+// Estimate gas for the transaction
+var estimate = await chain.EstimateTransactionFeeAsync(
+    context,
+    senderAccount.Address,
+    recipientAddress,
+    amount,
+    null);
+
+// Send ETH
+var result = await runner.RunTransactionAsync(
+    context,
+    chain,
+    recipientAddress,
+    estimate.ToSuggestedGasOptions(),
+    amount,
+    CancellationToken.None);
+
+// Get transaction receipt
+var receipt = await chain.GetTransactionReceiptAsync(context, result.TransactionHash);
+```
+
+Key points about ETH transfers:
+- The library supports both legacy and EIP-1559 transactions
+- Gas estimation is handled automatically with `TransferRunnerNative`
+- Nonce management is handled by the `INonceStore` implementation
+- Transaction receipts provide confirmation of successful transfers
+- The library handles retries for common failure scenarios (nonce issues, out of gas, etc.)
+
+For more examples, see the test files in the `tests/Evoq.Ethereum.Tests/Ethereum.Examples` directory.
+
 ### Contract Interaction
 
 There are two main ways to interact with contracts:

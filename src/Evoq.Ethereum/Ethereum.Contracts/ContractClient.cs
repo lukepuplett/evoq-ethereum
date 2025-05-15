@@ -165,7 +165,7 @@ internal class ContractClient
         }
 
         var rlpHex = new Hex(rlpEncoded);
-        var id = this.GetRandomId();
+        var id = this.rng.Next();
 
         this.logger.LogInformation("Sending transaction: RLP: {Rlp}..., ID: {Id}", rlpHex.ToString()[..18], id);
 
@@ -240,13 +240,6 @@ internal class ContractClient
         var result = await this.jsonRpc.CallAsync(context, ethCallParams);
 
         return (result, signature);
-    }
-
-    //
-
-    private int GetRandomId()
-    {
-        return this.rng.Next();
     }
 
     //

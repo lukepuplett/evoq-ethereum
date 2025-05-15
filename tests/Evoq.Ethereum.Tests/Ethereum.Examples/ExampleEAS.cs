@@ -24,13 +24,13 @@ public class ExampleEAS
         ulong chainId;
         ILoggerFactory loggerFactory;
 
-        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+        SetupLocalHardhatBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
 
         //
 
         EthereumAddress senderAddress;
         SenderAccount senderAccount;
-        SetupAccount(configuration, out senderAddress, out senderAccount);
+        SetupLocalHardhatAccount(configuration, out senderAddress, out senderAccount);
 
         //
 
@@ -169,13 +169,13 @@ public class ExampleEAS
         ulong chainId;
         ILoggerFactory loggerFactory;
 
-        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+        SetupLocalHardhatBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
 
         //
 
         EthereumAddress senderAddress;
         SenderAccount senderAccount;
-        SetupAccount(configuration, out senderAddress, out senderAccount);
+        SetupLocalHardhatAccount(configuration, out senderAddress, out senderAccount);
 
         //
 
@@ -261,13 +261,13 @@ public class ExampleEAS
         ulong chainId;
         ILoggerFactory loggerFactory;
 
-        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+        SetupLocalHardhatBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
 
         //
 
         EthereumAddress senderAddress;
         SenderAccount senderAccount;
-        SetupAccount(configuration, out senderAddress, out senderAccount);
+        SetupLocalHardhatAccount(configuration, out senderAddress, out senderAccount);
 
         //
 
@@ -381,12 +381,12 @@ public class ExampleEAS
         ulong chainId;
         ILoggerFactory loggerFactory;
 
-        SetupBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
+        SetupLocalHardhatBasics(out baseUrl, out configuration, out chainName, out chainId, out loggerFactory);
 
         EthereumAddress senderAddress;
         SenderAccount senderAccount;
 
-        SetupAccount(configuration, out senderAddress, out senderAccount);
+        SetupLocalHardhatAccount(configuration, out senderAddress, out senderAccount);
 
         var chain = Chain.CreateDefault(chainId, new Uri(baseUrl), loggerFactory!);
         var context = new JsonRpcContext();
@@ -495,7 +495,7 @@ public class ExampleEAS
         return chain.GetContract(easAddress, endpoint, sender, abiStream);
     }
 
-    private static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain, bool useInMemoryNonces = false)
+    internal static Sender SetupSender(ILoggerFactory loggerFactory, EthereumAddress senderAddress, SenderAccount senderAccount, Chain chain, bool useInMemoryNonces = false)
     {
         INonceStore nonceStore;
         var getStartingNonce = async () => await chain.GetTransactionCountAsync(new JsonRpcContext(), senderAddress);
@@ -513,7 +513,7 @@ public class ExampleEAS
         return new Sender(senderAccount, nonceStore);
     }
 
-    private static void SetupAccount(IConfigurationRoot configuration, out EthereumAddress senderAddress, out SenderAccount senderAccount)
+    internal static void SetupLocalHardhatAccount(IConfigurationRoot configuration, out EthereumAddress senderAddress, out SenderAccount senderAccount)
     {
         var privateKeyStr = configuration.GetValue<string>("Blockchain:Ethereum:Addresses:Hardhat1PrivateKey")!;
         var privateKeyHex = Hex.Parse(privateKeyStr);
@@ -523,7 +523,7 @@ public class ExampleEAS
         senderAccount = new SenderAccount(privateKeyHex, senderAddress);
     }
 
-    private static void SetupBasics(out string baseUrl, out IConfigurationRoot configuration, out string chainName, out ulong chainId, out ILoggerFactory loggerFactory)
+    internal static void SetupLocalHardhatBasics(out string baseUrl, out IConfigurationRoot configuration, out string chainName, out ulong chainId, out ILoggerFactory loggerFactory)
     {
         // baseUrl = "https://mainnet.infura.io/v3/";
         baseUrl = "http://localhost:8545";

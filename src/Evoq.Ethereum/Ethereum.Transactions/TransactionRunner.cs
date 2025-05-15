@@ -1,7 +1,5 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Evoq.Blockchain;
 using Evoq.Ethereum.JsonRPC;
 using Microsoft.Extensions.Logging;
 
@@ -59,10 +57,8 @@ public enum CommonTransactionFailure
 /// <typeparam name="TReceipt">The type of the transaction receipt.</typeparam>
 public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
 {
-    // obviously useless between processes and container instances but
-    // at least helps a little to mitigate nonce issues
-    private readonly SemaphoreSlim semaphore = new(1, 1);
     private readonly INonceStore nonceStore;
+    private readonly ILoggerFactory loggerFactory;
 
     /// <summary>
     /// The logger to use for the transaction.
@@ -80,7 +76,8 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
         INonceStore nonceStore,
         ILoggerFactory loggerFactory)
     {
-        this.nonceStore = nonceStore;
+        this.nonceStore = nonceStore ?? throw new ArgumentNullException(nameof(nonceStore));
+        this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         this.logger = loggerFactory.CreateLogger<TransactionRunner<TContract, TOptions, TArgs, TReceipt>>();
     }
 
@@ -101,223 +98,13 @@ public abstract class TransactionRunner<TContract, TOptions, TArgs, TReceipt>
     public async Task<TReceipt> RunTransactionAsync(
         IJsonRpcContext context, TContract contract, string functionName, TOptions options, TArgs args)
     {
-        var deadline = DateTimeOffset.UtcNow.AddMinutes(1);
-        var nonce = await this.nonceStore.BeforeSubmissionAsync();
+        var operation = new OnceOperation(this.nonceStore, this.loggerFactory);
 
-        while (true)
-        {
-            if (DateTimeOffset.UtcNow > deadline)
-            {
-                throw new FailedToSubmitTransactionException(
-                    "Transaction failed to submit within the deadline. The nonce store may be malfunctioning.");
-            }
-
-            try
-            {
-                this.semaphore.Wait(context.CancellationToken); // thread blocking wait; not expecting high contention
-
-                TReceipt receipt = await this.SubmitTransactionAsync(
-                    context, contract, functionName, nonce, options, args);
-
-                await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
-
-                return receipt;
-            }
-            catch (Exception nonceTooLow)
-                when (this.GetExpectedFailure(nonceTooLow) == CommonTransactionFailure.NonceTooLow)
-            {
-                // nonce too low, we need to increment the nonce and retry
-
-                this.logger.LogWarning($"{functionName}: nonce too low. Incrementing and retrying");
-
-                nonce = await this.nonceStore.AfterNonceTooLowAsync(nonce);
-            }
-            catch (Exception outOfGas)
-                when (this.GetExpectedFailure(outOfGas) == CommonTransactionFailure.OutOfGas)
-            {
-                // transaction out of gas
-
-                this.logger.LogWarning($"{functionName}: transaction out of gas.");
-
-                var r = await this.nonceStore.AfterTransactionOutOfGas(nonce);
-
-                this.logger.LogInformation($"{functionName}: store response: {r}");
-
-                switch (r)
-                {
-                    case NonceRollbackResponse.NotRemovedGasSpent:
-                        // this is the expected response
-                        throw new OutOfGasException(
-                            $"Transaction out of gas: {r}. The nonce was retained.");
-                    case NonceRollbackResponse.NotRemovedShouldRetry:
-                        // this is unexpected, ignoring retry
-                        throw new OutOfGasException(
-                            $"Transaction out of gas: {r}. The nonce was retained.");
-                    case NonceRollbackResponse.RemovedOkay:
-                        // nonce was removed and no gap was created
-                        throw new OutOfGasException(
-                            $"Transaction out of gas: {r}. The nonce was removed but should not have been. No gap was detected.");
-                    case NonceRollbackResponse.RemovedGapDetected:
-                        // consider filling the gap
-                        throw new OutOfGasException(
-                            $"Transaction out of gas: {r}. The nonce was removed but should not have been. A gap was detected.")
-                        {
-                            WasNonceGapCreated = true
-                        };
-                    default:
-                        // other response
-                        throw new OutOfGasException(
-                            $"Transaction out of gas: {r}. The nonce may not have been removed.");
-                }
-            }
-            catch (Exception reverted)
-                when (this.GetExpectedFailure(reverted) == CommonTransactionFailure.Reverted)
-            {
-                // transaction reverted
-
-                this.logger.LogWarning($"{functionName}: transaction reverted.");
-
-                var r = await this.nonceStore.AfterTransactionRevertedAsync(nonce);
-
-                this.logger.LogInformation($"{functionName}: store response: {r}");
-
-                switch (r)
-                {
-                    case NonceRollbackResponse.NotRemovedGasSpent:
-                        // this is the expected response
-                        throw new RevertedTransactionException(
-                            $"Transaction reverted: {r}. The nonce was retained.");
-                    case NonceRollbackResponse.NotRemovedShouldRetry:
-                        // this is unexpected, ignoring retry
-                        throw new RevertedTransactionException(
-                            $"Transaction reverted: {r}. The nonce was retained.");
-                    case NonceRollbackResponse.RemovedOkay:
-                        // nonce was removed and no gap was created
-                        throw new RevertedTransactionException(
-                            $"Transaction reverted: {r}. The nonce was removed but should not have been. No gap was detected.");
-                    case NonceRollbackResponse.RemovedGapDetected:
-                        // consider filling the gap
-                        throw new RevertedTransactionException(
-                            $"Transaction reverted: {r}. The nonce was removed but should not have been. A gap was detected.")
-                        {
-                            WasNonceGapCreated = true
-                        };
-                    default:
-                        // other response
-                        throw new RevertedTransactionException(
-                            $"Transaction reverted: {r}. The nonce may not have been removed.");
-                }
-            }
-            catch (Exception receiptNotFound)
-                when (this.GetExpectedFailure(receiptNotFound) == CommonTransactionFailure.ReceiptNotFound)
-            {
-                // receipt not found, this burns the nonce and we cannot retry since we already have
-                // a deadline to honor
-
-                Hex transactionHash = Hex.Empty;
-
-                if (receiptNotFound is ReceiptNotFoundException receiptNotFoundException)
-                {
-                    transactionHash = receiptNotFoundException.TransactionHash;
-
-                    this.logger.LogWarning(
-                        $"{functionName}: receipt not found. Nonce {nonce} consumed on successfully submitted transaction {transactionHash}");
-
-                    await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
-
-                    throw;
-                }
-                else
-                {
-                    this.logger.LogWarning(
-                        $"{functionName}: receipt not found. Nonce {nonce} consumed on successfully submitted transaction");
-
-                    await this.nonceStore.AfterSubmissionSuccessAsync(nonce);
-
-                    throw new ReceiptNotFoundException(Hex.Empty, receiptNotFound);
-                }
-            }
-            catch (Exception insufficientFunds)
-                when (this.GetExpectedFailure(insufficientFunds) == CommonTransactionFailure.InsufficientFunds)
-            {
-                // Transaction rejected due to insufficient funds
-                this.logger.LogWarning($"{functionName}: insufficient funds to cover transaction.");
-
-                // Notify the nonce store about the submission failure
-                var r = await this.nonceStore.AfterSubmissionFailureAsync(nonce);
-
-                this.logger.LogInformation($"{functionName}: store response: {r}");
-
-                // Different handling based on nonce store response
-                switch (r)
-                {
-                    case NonceRollbackResponse.NotRemovedShouldRetry:
-                        // We could implement retry logic here, but insufficient funds 
-                        // likely requires user intervention
-                        throw new InsufficientFundsException(
-                            "Transaction rejected: Insufficient funds to cover gas costs plus value.",
-                            insufficientFunds);
-                    case NonceRollbackResponse.RemovedOkay:
-                        throw new InsufficientFundsException(
-                            $"Transaction rejected due to insufficient funds: {r}. The nonce was removed.",
-                            insufficientFunds);
-                    case NonceRollbackResponse.RemovedGapDetected:
-                        throw new InsufficientFundsException(
-                            $"Transaction rejected due to insufficient funds: {r}. The nonce was removed and a gap was created.",
-                            insufficientFunds)
-                        {
-                            WasNonceGapCreated = true
-                        };
-                    default:
-                        throw new InsufficientFundsException(
-                            $"Transaction rejected due to insufficient funds: {r}.",
-                            insufficientFunds);
-                }
-            }
-            catch (Exception other)
-            {
-                // the transaction failed to submit, could be a network issue between us and the RPC node
-                // or it could be a bug in the .NET SDK or the RPC node - usually we need to just try again
-                // but that depends on the nonce store response
-
-                // "nonce too high" is a special case that we can retry because other nodes may be processing
-                // other transactions and we just need to wait for our node to catch up, otherwise it indicates
-                // a bug in the nonce store or the node is misbehaving
-
-                this.logger.LogError(other, $"{functionName}: transaction failed with unexpected error: '{other.Message}'");
-
-                var r = await this.nonceStore.AfterSubmissionFailureAsync(nonce);
-
-                this.logger.LogInformation($"{functionName}: store response: {r}");
-
-                switch (r)
-                {
-                    case NonceRollbackResponse.NotRemovedShouldRetry:
-                        // log and allow while loop to continue
-                        await Task.Delay(3000);
-                        break;
-                    case NonceRollbackResponse.RemovedOkay:
-                        // nonce was removed and no gap was created
-                        throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. The nonce was removed and no gap was created.", other);
-                    case NonceRollbackResponse.RemovedGapDetected:
-                        // consider filling the gap
-                        throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. The nonce was removed and a gap was created.", other)
-                        {
-                            WasNonceGapCreated = true
-                        };
-                    default:
-                        // other response
-                        throw new FailedToSubmitTransactionException(
-                            $"Transaction failed: {r}. This response was unexpected. The nonce store may be malfunctioning.", other);
-                }
-            }
-            finally
-            {
-                this.semaphore.Release();
-            }
-        }
+        return await operation.RunOperationAsync(
+            functionName,
+            (nonce) => this.SubmitTransactionAsync(context, contract, functionName, nonce, options, args), // <-- call the abstract method
+            this.GetExpectedFailure,
+            context.CancellationToken);
     }
 
     //

@@ -89,6 +89,27 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Converts a <see cref="Hex"/> to a hex string for JSON RPC.
+    /// </summary>
+    /// <param name="hex">The hex to convert.</param>
+    /// <returns>The hex string.</returns>
+    public static string ToHexStringForJsonRpc(this Hex hex) => hex.ToString(trimLeadingZeroDigits: true);
+
+    /// <summary>
+    /// Converts an <see cref="EtherAmount"/> to a hex string for JSON RPC.
+    /// </summary>
+    /// <param name="amount">The amount to convert.</param>
+    /// <returns>The hex string.</returns>
+    public static string ToHexStringForJsonRpc(this EtherAmount amount) => amount.ToHexStruct().ToString(trimLeadingZeroDigits: true);
+
+    /// <summary>
+    /// Converts a <see cref="ulong"/> to a hex string for JSON RPC.
+    /// </summary>
+    /// <param name="value">The value to convert.</param>
+    /// <returns>The hex string.</returns>
+    public static string ToHexStringForJsonRpc(this ulong value) => value.NumberToHexStruct().ToString(trimLeadingZeroDigits: true);
+
+    /// <summary>
     /// Converts a <see cref="DateTime"/> to a Unix timestamp.
     /// </summary>
     /// <param name="dateTime">The date time to convert.</param>

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.JsonRPC;
@@ -102,12 +101,19 @@ public class TransactionRunnerNative
     /// <returns>The expected failure.</returns>
     protected override CommonTransactionFailure GetExpectedFailure(Exception ex)
     {
+        return MapException(ex);
+    }
+
+    //
+
+    internal static CommonTransactionFailure MapException(Exception ex)
+    {
         if (ex is OutOfGasException)
         {
             return CommonTransactionFailure.OutOfGas;
         }
 
-        if (ex is InvalidNonceException invalidNonce) //&& invalidNonce.Message.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
+        if (ex is InvalidNonceException) //&& invalidNonce.Message.Contains("nonce too low", StringComparison.OrdinalIgnoreCase))
         {
             return CommonTransactionFailure.NonceTooLow;
         }
