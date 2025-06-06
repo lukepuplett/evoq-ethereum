@@ -6,7 +6,7 @@ using Evoq.Ethereum.Crypto;
 namespace Evoq.Ethereum.MessageSigning;
 
 /// <summary>
-/// A payload to sign.
+/// A payload to sign which is prefixed with the EIP-191 personal sign prefix.
 /// </summary>
 public class PersonalSignSigningPayload : SigningPayload
 {
@@ -48,7 +48,7 @@ public class MessageSigner
     {
         var payload = new PersonalSignSigningPayload(message);
 
-        return GetSignature(signer, payload);
+        return this.GetSignature(signer, payload);
     }
 
     /// <summary>

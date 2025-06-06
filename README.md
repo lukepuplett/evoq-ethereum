@@ -210,6 +210,82 @@ var personalSign = new PersonalSign("Hello Ethereum!", signer);
 byte[] signature = personalSign.GetSignature();
 ```
 
+#### Message Signing and Verification
+
+The library provides two main ways to sign messages:
+
+1. **Personal Sign (EIP-191)**: For signing messages that need to be compatible with Ethereum's personal sign standard.
+
+```csharp
+// Create a signer with your private key
+var privateKey = Hex.Parse("0x..."); // Your private key
+var signer = new Secp256k1Signer(privateKey.ToByteArray());
+
+// Sign a message using PersonalSign (EIP-191)
+var message = "Hello Ethereum!";
+var personalSign = new PersonalSign(message, signer);
+byte[] signature = personalSign.GetSignature();
+
+// The signature will be 65 bytes:
+// - First 32 bytes: R component
+// - Next 32 bytes: S component
+// - Last byte: V component (recovery ID)
+```
+
+2. **Raw Signing**: For signing arbitrary bytes without any prefixing.
+
+```csharp
+// Create a signer with your private key
+var privateKey = Hex.Parse("0x..."); // Your private key
+var signer = new Secp256k1Signer(privateKey.ToByteArray());
+
+// Sign raw bytes
+var payload = new SigningPayload { Data = yourBytes };
+byte[] signature = signer.Sign(payload).ToByteArray();
+```
+
+#### Signature Verification
+
+You can verify signatures using the `HasSigned` method on `EthereumAddress`:
+
+```csharp
+// Create an EthereumAddress from the expected signer
+var expectedAddress = new EthereumAddress("0x...");
+
+// For PersonalSign (EIP-191) messages
+var message = "Hello Ethereum!";
+var payload = new PersonalSignSigningPayload(message);
+bool isValid = expectedAddress.HasSigned(payload, RsvSignature.FromBytes(signature));
+
+// For raw signed messages
+var rawPayload = new SigningPayload { Data = yourBytes };
+bool isValid = expectedAddress.HasSigned(rawPayload, RsvSignature.FromBytes(signature));
+
+// Get verification result with message
+string message;
+if (expectedAddress.HasSigned(payload, RsvSignature.FromBytes(signature), out message))
+{
+    Console.WriteLine(message); // "Signed by expected address: 0x..."
+}
+else
+{
+    Console.WriteLine(message); // "Signed by different address: 0x..." or error message
+}
+```
+
+The `HasSigned` method will:
+1. Recover the public key from the signature
+2. Convert the public key to an Ethereum address
+3. Compare the recovered address with the expected address
+4. Return true if they match, false otherwise
+
+Note that for PersonalSign messages, the library automatically handles the EIP-191 prefix:
+```
+"\x19Ethereum Signed Message:\n" + length(message) + message
+```
+
+This prefix ensures that signatures cannot be replayed as transactions and provides a standard way to sign messages in Ethereum.
+
 ### Constants and Utilities
 
 #### `WeiAmounts`
