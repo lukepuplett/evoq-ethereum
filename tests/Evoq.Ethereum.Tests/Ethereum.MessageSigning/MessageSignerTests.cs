@@ -30,15 +30,15 @@ public class MessageSignerTests
     {
         // Arrange
         var message = "Hello, Ethereum!";
-        var messageSigner = new MessageSigner();
         var signer = new Secp256k1Signer(this.privateKey.ToByteArray());
+        var messageSigner = new MessageSigner(signer);
         var signerAddress = new EthereumAddress(this.address);
 
         // Act
-        var signatureBytes = messageSigner.GetPersonalSignSignature(signer, message);
+        var signatureBytes = messageSigner.GetPersonalSignSignature(message);
         var rsv = RsvSignature.FromBytes(signatureBytes);
         var payload = new PersonalSignSigningPayload(message);
-        var isValid = messageSigner.VerifyMessage(payload, rsv, signerAddress);
+        var isValid = MessageSigner.VerifyMessage(payload, rsv, signerAddress);
 
         // Assert
         Assert.IsTrue(isValid);
@@ -57,7 +57,7 @@ public class MessageSignerTests
         var signature = signer.Sign(payload);
 
         // Assert
-        var isValid = new MessageSigner().VerifyMessage(payload, signature, signerAddress);
+        var isValid = MessageSigner.VerifyMessage(payload, signature, signerAddress);
 
         Assert.IsTrue(isValid);
     }

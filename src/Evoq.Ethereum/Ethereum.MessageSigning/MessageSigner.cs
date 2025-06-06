@@ -38,17 +38,65 @@ public class PersonalSignSigningPayload : SigningPayload
 /// </summary>
 public class MessageSigner
 {
+    private readonly IECSignPayload signer;
+
+    //
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MessageSigner"/> class.
+    /// </summary>
+    public MessageSigner(IECSignPayload signer)
+    {
+        this.signer = signer;
+    }
+
+    //
+
+    /// <summary>
+    /// Signs a message.
+    /// </summary>
+    /// <param name="message">The message to sign.</param>
+    /// <returns>The signature.</returns>
+    public byte[] GetPersonalSignSignature(string message)
+    {
+        var payload = new PersonalSignSigningPayload(message);
+
+        return GetSignature(this.signer, payload);
+    }
+
+    /// <summary>
+    /// Signs a message.
+    /// </summary>
+    /// <param name="payload">The payload to sign.</param>
+    /// <returns>The signature.</returns>
+    public byte[] GetSignature(SigningPayload payload)
+    {
+        return this.signer.Sign(payload).ToByteArray();
+    }
+
+    //
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="MessageSigner"/> class.
+    /// </summary>
+    /// <param name="privateKey">The private key to use.</param>
+    /// <returns>The new instance.</returns>
+    public static MessageSigner CreateDefault(byte[] privateKey)
+    {
+        return new MessageSigner(new Secp256k1Signer(privateKey));
+    }
+
     /// <summary>
     /// Signs a message.
     /// </summary>
     /// <param name="signer">The signer to use.</param>
     /// <param name="message">The message to sign.</param>
     /// <returns>The signature.</returns>
-    public byte[] GetPersonalSignSignature(IECSignPayload signer, string message)
+    public static byte[] GetPersonalSignSignature(IECSignPayload signer, string message)
     {
         var payload = new PersonalSignSigningPayload(message);
 
-        return this.GetSignature(signer, payload);
+        return GetSignature(signer, payload);
     }
 
     /// <summary>
@@ -57,7 +105,7 @@ public class MessageSigner
     /// <param name="signer">The signer to use.</param>
     /// <param name="payload">The payload to sign.</param>
     /// <returns>The signature.</returns>
-    public byte[] GetSignature(IECSignPayload signer, SigningPayload payload)
+    public static byte[] GetSignature(IECSignPayload signer, SigningPayload payload)
     {
         return signer.Sign(payload).ToByteArray();
     }
@@ -69,7 +117,7 @@ public class MessageSigner
     /// <param name="rsv">The signature to verify.</param>
     /// <param name="expectedAddress">The expected address.</param>
     /// <returns>True if the signature is valid, false otherwise.</returns>
-    public bool VerifyMessage(SigningPayload payload, IRsvSignature rsv, EthereumAddress expectedAddress)
+    public static bool VerifyMessage(SigningPayload payload, IRsvSignature rsv, EthereumAddress expectedAddress)
     {
         return VerifyMessage(payload, rsv, expectedAddress, out _);
     }
@@ -82,7 +130,7 @@ public class MessageSigner
     /// <param name="expectedAddress">The expected address.</param>
     /// <param name="message">The message that was signed.</param>
     /// <returns>True if the signature is valid, false otherwise.</returns>
-    public bool VerifyMessage(SigningPayload payload, IRsvSignature rsv, EthereumAddress expectedAddress, out string message)
+    public static bool VerifyMessage(SigningPayload payload, IRsvSignature rsv, EthereumAddress expectedAddress, out string message)
     {
         var recovery = new Secp256k1Recovery();
         try

@@ -199,32 +199,21 @@ var effectiveGasPrice = receipt.EffectiveGasPrice;
 
 ### Message Signing
 
-#### `PersonalSign`
-Handles signing and verification of personal messages.
+The library provides a clean API for signing and verifying Ethereum messages through the `MessageSigner` class.
 
-```csharp
-// Create a personal sign instance
-var personalSign = new PersonalSign("Hello Ethereum!", signer);
+#### Signing Messages
 
-// Get signature
-byte[] signature = personalSign.GetSignature();
-```
+There are two main ways to sign messages:
 
-#### Message Signing and Verification
-
-The library provides two main ways to sign messages:
-
-1. **Personal Sign (EIP-191)**: For signing messages that need to be compatible with Ethereum's personal sign standard.
+1. **Using Instance Methods (Recommended)**:
 
 ```csharp
 // Create a signer with your private key
 var privateKey = Hex.Parse("0x..."); // Your private key
-var signer = new Secp256k1Signer(privateKey.ToByteArray());
+var messageSigner = MessageSigner.CreateDefault(privateKey.ToByteArray());
 
-// Sign a message using PersonalSign (EIP-191)
-var message = "Hello Ethereum!";
-var personalSign = new PersonalSign(message, signer);
-byte[] signature = personalSign.GetSignature();
+// Sign a message
+var signature = messageSigner.GetPersonalSignSignature("Hello, Ethereum!");
 
 // The signature will be 65 bytes:
 // - First 32 bytes: R component
@@ -232,21 +221,49 @@ byte[] signature = personalSign.GetSignature();
 // - Last byte: V component (recovery ID)
 ```
 
-2. **Raw Signing**: For signing arbitrary bytes without any prefixing.
+2. **Using Static Methods**:
 
 ```csharp
 // Create a signer with your private key
 var privateKey = Hex.Parse("0x..."); // Your private key
 var signer = new Secp256k1Signer(privateKey.ToByteArray());
 
-// Sign raw bytes
+// Sign a message using static method
+var signature = MessageSigner.GetPersonalSignSignature(signer, "Hello, Ethereum!");
+
+// Or sign raw bytes
 var payload = new SigningPayload { Data = yourBytes };
-byte[] signature = signer.Sign(payload).ToByteArray();
+var signature = MessageSigner.GetSignature(signer, payload);
 ```
 
 #### Signature Verification
 
-You can verify signatures using the `HasSigned` method on `EthereumAddress`:
+You can verify signatures in two ways:
+
+1. **Using MessageSigner (Recommended)**:
+
+```csharp
+// Create an EthereumAddress from the expected signer
+var expectedAddress = new EthereumAddress("0x...");
+
+// For PersonalSign (EIP-191) messages
+var message = "Hello Ethereum!";
+var payload = new PersonalSignSigningPayload(message);
+bool isValid = MessageSigner.VerifyMessage(payload, RsvSignature.FromBytes(signature), expectedAddress);
+
+// Get verification result with message
+string message;
+if (MessageSigner.VerifyMessage(payload, RsvSignature.FromBytes(signature), expectedAddress, out message))
+{
+    Console.WriteLine(message); // "Signed by expected address: 0x..."
+}
+else
+{
+    Console.WriteLine(message); // "Signed by different address: 0x..." or error message
+}
+```
+
+2. **Using EthereumAddress.HasSigned**:
 
 ```csharp
 // Create an EthereumAddress from the expected signer
@@ -273,7 +290,7 @@ else
 }
 ```
 
-The `HasSigned` method will:
+The verification methods will:
 1. Recover the public key from the signature
 2. Convert the public key to an Ethereum address
 3. Compare the recovered address with the expected address

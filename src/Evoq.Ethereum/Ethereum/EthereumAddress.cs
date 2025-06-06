@@ -219,7 +219,6 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <returns>True if the address signed the message, false otherwise</returns>
     public static bool VerifySignature(byte[] message, IRsvSignature signature, EthereumAddress expectedAddress)
     {
-        var messageSigner = new MessageSigner();
         var payload = new SigningPayload { Data = message };
 
         return VerifySignature(payload, signature, expectedAddress);
@@ -234,8 +233,7 @@ public readonly struct EthereumAddress : IEquatable<EthereumAddress>, IByteArray
     /// <returns>True if the address signed the message, false otherwise</returns>
     public static bool VerifySignature(SigningPayload payload, IRsvSignature signature, EthereumAddress expectedAddress)
     {
-        var messageSigner = new MessageSigner();
-        var isValid = messageSigner.VerifyMessage(payload, signature, expectedAddress);
+        var isValid = MessageSigner.VerifyMessage(payload, signature, expectedAddress);
 
         return isValid;
     }
