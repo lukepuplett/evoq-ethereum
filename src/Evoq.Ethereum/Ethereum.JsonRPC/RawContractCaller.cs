@@ -146,7 +146,8 @@ public class RawContractCaller
 
         var result = await jsonRpcClient.CallAsync(context, dto);
 
-        this.logger.LogDebug("Result: {Result}...", result.ToString().Substring(0, 66));
+        var resultStr = result.ToString();
+        this.logger.LogDebug("Result: {Result}...", resultStr.Substring(0, Math.Min(resultStr.Length, 66)));
 
         return result;
     }

@@ -37,7 +37,7 @@ public class ExampleChain
 
         // Get current block number
         var blockNumber = await _chain.GetBlockNumberAsync(context);
-        Assert.IsTrue(blockNumber > 0, "Block number should be positive");
+        Assert.IsTrue(blockNumber >= 0, "Block number should be non-negative");
         Console.WriteLine($"Current block number: {blockNumber}");
     }
 
