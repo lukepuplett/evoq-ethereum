@@ -13,7 +13,7 @@ namespace Evoq.Ethereum.Transactions;
 public class InMemoryNonceStore : INonceStore
 {
     private readonly HashSet<uint> nonceStore = new();
-    private readonly Dictionary<uint, DateTimeOffset> nonceFailedTimes = new();
+    private readonly Dictionary<uint, DateTimeOffset> nonceFailedTimes = new(); // BUG / needs lock
     private readonly ILogger<InMemoryNonceStore> logger;
     private readonly Func<Task<BigInteger>>? getTransactionCount;
 
