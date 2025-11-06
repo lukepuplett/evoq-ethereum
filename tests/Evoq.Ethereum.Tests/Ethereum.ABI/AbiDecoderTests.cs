@@ -104,6 +104,45 @@ public class AbiDecoderTests
         Assert.AreEqual("bool isHuman", schemaObj, "schema string does not match expected value");
     }
 
+    [TestMethod]
+    public void Decode_ArrayOfTuples_ToDictionary_DoesNotThrowDuplicateKeyException()
+    {
+        // Arrange: Use test case 21 data which tests arrays of tuples
+        // This verifies that ToDictionary() works correctly on decoded arrays of tuples
+        var testCase = AbiEncoderDecoderTestCases.Cases[21];
+        var signature = AbiSignature.Parse(AbiItemType.Function, testCase.Signature);
+
+        var expectedHexList = testCase.ExpectedLines
+            .Select(line => Hex.Parse(FormatHexLine(line)))
+            .ToList();
+
+        var encodedBytes = expectedHexList.SelectMany(h => h.ToByteArray()).ToArray();
+        
+        // Act: Decode the parameters
+        var result = decoder.DecodeParameters(signature.Inputs, encodedBytes);
+        
+        Assert.IsNotNull(result, "Decoding result should not be null");
+        
+        // The bug manifests when calling ToDictionary - it should not throw duplicate key exception
+        Dictionary<string, object?> dict = null!;
+        try
+        {
+            dict = result.Parameters.ToDictionary(forStringification: false);
+        }
+        catch (ArgumentException ex) when (ex.Message.Contains("An item with the same key has already been added"))
+        {
+            Assert.Fail($"ToDictionary() threw duplicate key exception: {ex.Message}. This is the bug being tested.");
+        }
+
+        Assert.IsNotNull(dict, "ToDictionary() should succeed without throwing");
+        Assert.AreEqual(2, dict.Count, "Should have 2 top-level parameters (orderNumber and coffeeOrders)");
+        
+        // Verify the array was decoded correctly
+        var coffeeOrders = dict["coffeeOrders"] as Array;
+        Assert.IsNotNull(coffeeOrders, "coffeeOrders should be an array");
+        Assert.AreEqual(2, coffeeOrders.Length, "Array should have 2 elements");
+    }
+
     //
 
     private static IEnumerable<object[]> GetTestCases()

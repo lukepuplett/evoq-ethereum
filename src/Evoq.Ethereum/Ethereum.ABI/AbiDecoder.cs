@@ -331,12 +331,20 @@ public class AbiDecoder : IAbiDecoder
                 for (int i = 0; i < outerArrayLength; i++)
                 {
                     // decode into a clone of the components, one clone per element of the array
+                    var clonedComponents = CloneComponents(components!);
 
                     var slot = subSlots.Skip(skip).First(); // skip used here
-                    int c = DecodeComponents(components!, slot, allSlots);
+                    int c = DecodeComponents(clonedComponents, slot, allSlots);
                     consumedSlots += c; // advance
 
-                    array.SetValueEx(components, i);
+                    // Convert components to dictionary for storage
+                    var dic = new Dictionary<string, object?>();
+                    foreach (var p in clonedComponents)
+                    {
+                        dic.Add(p.SafeName, p.Value);
+                    }
+
+                    array.SetValueEx(dic, i);
                 }
 
                 return (array, skip + consumedSlots);
@@ -542,11 +550,12 @@ public class AbiDecoder : IAbiDecoder
                     if (parameter.TryParseComponents(out var components))
                     {
                         // decode into a clone of the components, one clone per element of the array
+                        var clonedComponents = CloneComponents(components!);
 
-                        DecodeComponents(components!, slot, allSlots);
+                        DecodeComponents(clonedComponents, slot, allSlots);
                         consumedSlots += 1; // advance +1 past the pointer
 
-                        checkTypeAndSet(array, parameter.AbiType, baseClrType, components, i);
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, clonedComponents, i);
                     }
                     else
                     {
@@ -563,11 +572,12 @@ public class AbiDecoder : IAbiDecoder
                     if (parameter.TryParseComponents(out var components))
                     {
                         // decode into a clone of the components, one clone per element of the array
+                        var clonedComponents = CloneComponents(components!);
 
-                        DecodeComponents(components!, slot, allSlots);
+                        DecodeComponents(clonedComponents, slot, allSlots);
                         consumedSlots += 1;
 
-                        checkTypeAndSet(array, parameter.AbiType, baseClrType, components, i);
+                        checkTypeAndSet(array, parameter.AbiType, baseClrType, clonedComponents, i);
                     }
                     else
                     {
@@ -796,6 +806,28 @@ public class AbiDecoder : IAbiDecoder
         }
 
         return bytes;
+    }
+
+    /// <summary>
+    /// Clones a collection of AbiParam components, creating new instances with the same type information
+    /// but without values. This is needed when decoding arrays of tuples to avoid reusing the same
+    /// component objects for multiple array elements.
+    /// </summary>
+    private static AbiParameters CloneComponents(AbiParameters components)
+    {
+        var cloned = new List<AbiParam>();
+        foreach (var component in components)
+        {
+            cloned.Add(new AbiParam(
+                component.Position,
+                component.Name,
+                component.Descriptor,
+                component.ArrayLengths)
+            {
+                IsIndexed = component.IsIndexed
+            });
+        }
+        return new AbiParameters(cloned);
     }
 
 }
