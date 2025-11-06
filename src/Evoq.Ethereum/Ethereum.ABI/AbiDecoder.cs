@@ -602,7 +602,25 @@ public class AbiDecoder : IAbiDecoder
             {
                 if (typeof(IDictionary<string, object?>).IsAssignableFrom(supportedClrType))
                 {
-                    value = new Dictionary<string, object?>(components.Select(p => new KeyValuePair<string, object?>(p.Name, p.Value)));
+                    // Create dictionary from components, ensuring SafeName is never empty and keys are unique
+                    var dict = new Dictionary<string, object?>();
+                    foreach (var p in components)
+                    {
+                        // Ensure SafeName is never empty - fall back to position if it is
+                        var key = string.IsNullOrWhiteSpace(p.SafeName) ? p.Position.ToString() : p.SafeName;
+                        
+                        // Ensure key is unique - append position if duplicate
+                        var originalKey = key;
+                        int suffix = 0;
+                        while (dict.ContainsKey(key))
+                        {
+                            suffix++;
+                            key = $"{originalKey}_{suffix}";
+                        }
+                        
+                        dict.Add(key, p.Value);
+                    }
+                    value = dict;
                 }
                 else
                 {
