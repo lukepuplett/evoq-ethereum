@@ -1245,6 +1245,39 @@ The repository includes Go-based test rigs that generate reference encodings fro
 
 For detailed information about the grlp test rig, including usage instructions and test cases, see the [Go RLP Encoder Test Rig README](path/to/grlp/README.md).
 
+## Shipping a Release
+
+**IMPORTANT**: Follow the comprehensive [Shipping Guide](./docs/SHIPPING.md) for detailed release procedures.
+
+The release process includes:
+- Version management and validation
+- GitHub releases with proper documentation
+- NuGet publishing
+- Verification and testing
+
+Quick reference:
+```bash
+# Check current versions
+grep '<Version>' src/Evoq.Ethereum/Evoq.Ethereum.csproj
+git tag --list --sort=-version:refname | head -1
+curl -s "https://api.nuget.org/v3/registration5-semver1/evoq.ethereum/index.json" | grep -o '"version":"[^"]*"' | tail -1
+
+# Build and test
+./build.sh
+
+# Create tag and release
+git tag -a vX.Y.Z -m "vX.Y.Z: Description"
+git push origin vX.Y.Z
+
+# Create GitHub release
+gh release create vX.Y.Z --title "vX.Y.Z: Description" --notes-file CHANGELOG.md
+
+# Publish to NuGet (manual upload)
+# Upload artifacts/Evoq.Ethereum.X.Y.Z.nupkg to https://www.nuget.org/packages/manage/upload
+```
+
+**See [docs/SHIPPING.md](./docs/SHIPPING.md) for the complete process.**
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
