@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Evoq.Blockchain;
@@ -7,6 +8,7 @@ using Evoq.Ethereum.Crypto;
 using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.RLP;
 using Evoq.Ethereum.Transactions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
@@ -304,10 +306,14 @@ internal class ChainClient
     /// <param name="chainId">The chain ID.</param>
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>The chain client.</returns>
-    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
+    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, IHttpClientFactory? httpClientFactory = null)
     {
-        var jsonRpc = new JsonRpcClient(uri, loggerFactory);
+        var jsonRpc = new JsonRpcClient(uri, loggerFactory)
+        {
+            HttpClientFactory = httpClientFactory
+        };
 
         return new ChainClient(chainId, jsonRpc, loggerFactory, null, null);
     }
@@ -319,10 +325,14 @@ internal class ChainClient
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="sender">The sender.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>The chain client.</returns>
-    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender)
+    internal static ChainClient CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender, IHttpClientFactory? httpClientFactory = null)
     {
-        var jsonRpc = new JsonRpcClient(uri, loggerFactory);
+        var jsonRpc = new JsonRpcClient(uri, loggerFactory)
+        {
+            HttpClientFactory = httpClientFactory
+        };
         var rlpEncoder = new RlpEncoder();
         var transactionSigner = TransactionSigner.CreateDefault(sender.SenderAccount.PrivateKey.ToByteArray());
 

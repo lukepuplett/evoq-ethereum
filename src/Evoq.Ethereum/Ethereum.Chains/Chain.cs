@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using Evoq.Blockchain;
 using Evoq.Ethereum.Contracts;
 using Evoq.Ethereum.JsonRPC;
 using Evoq.Ethereum.Transactions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Evoq.Ethereum.Chains;
@@ -295,12 +297,13 @@ public class Chain
     /// Creates a default chain instance from an endpoint.
     /// </summary>
     /// <param name="endpoint">The endpoint.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(Endpoint endpoint)
+    public static Chain CreateDefault(Endpoint endpoint, IHttpClientFactory? httpClientFactory = null)
     {
         var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
 
-        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory);
+        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory, httpClientFactory);
     }
 
     /// <summary>
@@ -308,12 +311,13 @@ public class Chain
     /// </summary>
     /// <param name="endpoint">The endpoint.</param>
     /// <param name="sender">The sender to enable sending transactions.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(Endpoint endpoint, Sender sender)
+    public static Chain CreateDefault(Endpoint endpoint, Sender sender, IHttpClientFactory? httpClientFactory = null)
     {
         var chainId = ulong.Parse(ChainNames.GetChainId(endpoint.NetworkName));
 
-        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory, sender);
+        return CreateDefault(chainId, new Uri(endpoint.URL), endpoint.LoggerFactory, sender, httpClientFactory);
     }
 
     /// <summary>
@@ -322,10 +326,11 @@ public class Chain
     /// <param name="chainId">The chain ID.</param>
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory)
+    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, IHttpClientFactory? httpClientFactory = null)
     {
-        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory);
+        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory, httpClientFactory);
 
         return new Chain(chainId, chainClient);
     }
@@ -337,10 +342,11 @@ public class Chain
     /// <param name="uri">The URI of the chain.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="sender">The sender.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <returns>A default chain instance.</returns>
-    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender)
+    public static Chain CreateDefault(ulong chainId, Uri uri, ILoggerFactory loggerFactory, Sender sender, IHttpClientFactory? httpClientFactory = null)
     {
-        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory, sender);
+        var chainClient = ChainClient.CreateDefault(chainId, uri, loggerFactory, sender, httpClientFactory);
 
         return new Chain(chainId, chainClient);
     }

@@ -606,10 +606,10 @@ public class AbiDecoder : IAbiDecoder
                     var dict = new Dictionary<string, object?>();
                     foreach (var p in components)
                     {
-                        // Ensure SafeName is never empty - fall back to position if it is
+                        // Ensure SafeName is never empty - fall back to position if it is (defensive check)
                         var key = string.IsNullOrWhiteSpace(p.SafeName) ? p.Position.ToString() : p.SafeName;
                         
-                        // Ensure key is unique - append position if duplicate
+                        // Ensure key is unique - append suffix if duplicate
                         var originalKey = key;
                         int suffix = 0;
                         while (dict.ContainsKey(key))
