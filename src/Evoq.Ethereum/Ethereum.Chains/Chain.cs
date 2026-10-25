@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Numerics;
 using System.Threading;
@@ -149,13 +150,14 @@ public class Chain
         // This helps estimate what others are paying as tips in recent blocks.
         var tipHistory = await this.GetFeeHistoryAsync(context, 10, BlockParameter.Latest, new[] { 50.0 });
 
-        // Check if fee history data is valid and contains reward data.
-        // tipHistory.Reward is an array of arrays: each inner array has percentile tips for a block.
-        if (tipHistory != null && tipHistory.Reward.Length > 0 && tipHistory.Reward[0].Length > 0)
+        // Rewards are ordered oldest to newest, so the most recent block is the last entry.
+        var latestReward = tipHistory?.Reward.LastOrDefault();
+
+        if (latestReward != null && latestReward.Length > 0)
         {
             // Use the median tip (50th percentile) from the most recent block in the history.
             // This overrides the default 2 Gwei with a data-driven value based on network conditions.
-            tip = tipHistory.Reward[0][0];
+            tip = latestReward[0];
         }
 
         // Calculate the maxFeePerGas, which is the maximum you're willing to pay per gas unit.

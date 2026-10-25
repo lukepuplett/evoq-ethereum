@@ -129,7 +129,7 @@ internal class ChainClient
             newestBlock,
             rewardPercentiles);
 
-        return new FeeHistory();
+        return dto == null ? new FeeHistory() : FeeHistory.FromDto(dto);
     }
 
     /// <summary>

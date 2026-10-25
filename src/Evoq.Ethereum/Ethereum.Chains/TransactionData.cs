@@ -117,54 +117,51 @@ internal class TransactionData
         var result = new TransactionData
         {
             BlockHash = TryParseHex(dto.BlockHash),
-            BlockNumber = string.IsNullOrEmpty(dto.BlockNumber) ? BigInteger.Zero : Hex.Parse(dto.BlockNumber).ToBigInteger(),
+            BlockNumber = string.IsNullOrEmpty(dto.BlockNumber) ? BigInteger.Zero : Hex.Parse(dto.BlockNumber, HexParseOptions.AllowOddLength).ToBigInteger(),
             From = string.IsNullOrEmpty(dto.From) ? null : new EthereumAddress(dto.From),
-            Gas = string.IsNullOrEmpty(dto.Gas) ? BigInteger.Zero : Hex.Parse(dto.Gas).ToBigInteger(),
-            GasPrice = string.IsNullOrEmpty(dto.GasPrice) ? BigInteger.Zero : Hex.Parse(dto.GasPrice).ToBigInteger(),
+            Gas = string.IsNullOrEmpty(dto.Gas) ? BigInteger.Zero : Hex.Parse(dto.Gas, HexParseOptions.AllowOddLength).ToBigInteger(),
+            GasPrice = string.IsNullOrEmpty(dto.GasPrice) ? BigInteger.Zero : Hex.Parse(dto.GasPrice, HexParseOptions.AllowOddLength).ToBigInteger(),
             Hash = TryParseHex(dto.Hash),
             Input = TryParseHex(dto.Input),
-            Nonce = string.IsNullOrEmpty(dto.Nonce) ? BigInteger.Zero : Hex.Parse(dto.Nonce).ToBigInteger(),
+            Nonce = string.IsNullOrEmpty(dto.Nonce) ? BigInteger.Zero : Hex.Parse(dto.Nonce, HexParseOptions.AllowOddLength).ToBigInteger(),
             To = string.IsNullOrEmpty(dto.To) ? null : new EthereumAddress(dto.To),
-            TransactionIndex = string.IsNullOrEmpty(dto.TransactionIndex) ? BigInteger.Zero : Hex.Parse(dto.TransactionIndex).ToBigInteger(),
-            Value = string.IsNullOrEmpty(dto.Value) ? BigInteger.Zero : Hex.Parse(dto.Value).ToBigInteger(),
+            TransactionIndex = string.IsNullOrEmpty(dto.TransactionIndex) ? BigInteger.Zero : Hex.Parse(dto.TransactionIndex, HexParseOptions.AllowOddLength).ToBigInteger(),
+            Value = string.IsNullOrEmpty(dto.Value) ? BigInteger.Zero : Hex.Parse(dto.Value, HexParseOptions.AllowOddLength).ToBigInteger(),
             V = TryParseHex(dto.V),
             R = TryParseHex(dto.R),
             S = TryParseHex(dto.S),
-            Type = string.IsNullOrEmpty(dto.Type) ? BigInteger.Zero : Hex.Parse(dto.Type).ToBigInteger(),
-            MaxFeePerGas = string.IsNullOrEmpty(dto.MaxFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxFeePerGas).ToBigInteger(),
-            MaxPriorityFeePerGas = string.IsNullOrEmpty(dto.MaxPriorityFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxPriorityFeePerGas).ToBigInteger(),
-            ChainId = string.IsNullOrEmpty(dto.ChainId) ? BigInteger.Zero : Hex.Parse(dto.ChainId).ToBigInteger()
+            Type = string.IsNullOrEmpty(dto.Type) ? BigInteger.Zero : Hex.Parse(dto.Type, HexParseOptions.AllowOddLength).ToBigInteger(),
+            MaxFeePerGas = string.IsNullOrEmpty(dto.MaxFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxFeePerGas, HexParseOptions.AllowOddLength).ToBigInteger(),
+            MaxPriorityFeePerGas = string.IsNullOrEmpty(dto.MaxPriorityFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.MaxPriorityFeePerGas, HexParseOptions.AllowOddLength).ToBigInteger(),
+            ChainId = string.IsNullOrEmpty(dto.ChainId) ? BigInteger.Zero : Hex.Parse(dto.ChainId, HexParseOptions.AllowOddLength).ToBigInteger()
         };
 
-        // Convert access list if present
+        // Convert access list if present. Nodes return it as a plain array of entries.
         if (dto.AccessList != null)
         {
             result.AccessList = new AccessList
             {
-                Entries = new AccessListEntry[dto.AccessList.AccessList?.Length ?? 0]
+                Entries = new AccessListEntry[dto.AccessList.Length]
             };
 
-            if (dto.AccessList.AccessList != null)
+            for (int i = 0; i < dto.AccessList.Length; i++)
             {
-                for (int i = 0; i < dto.AccessList.AccessList.Length; i++)
+                var entry = dto.AccessList[i];
+                var storageKeys = new Hex[entry.StorageKeys?.Length ?? 0];
+
+                if (entry.StorageKeys != null)
                 {
-                    var entry = dto.AccessList.AccessList[i];
-                    var storageKeys = new Hex[entry.StorageKeys?.Length ?? 0];
-
-                    if (entry.StorageKeys != null)
+                    for (int j = 0; j < entry.StorageKeys.Length; j++)
                     {
-                        for (int j = 0; j < entry.StorageKeys.Length; j++)
-                        {
-                            storageKeys[j] = Hex.Parse(entry.StorageKeys[j]);
-                        }
+                        storageKeys[j] = Hex.Parse(entry.StorageKeys[j]);
                     }
-
-                    result.AccessList.Entries[i] = new AccessListEntry
-                    {
-                        Address = string.IsNullOrEmpty(entry.Address) ? null : new EthereumAddress(entry.Address),
-                        StorageKeys = storageKeys
-                    };
                 }
+
+                result.AccessList.Entries[i] = new AccessListEntry
+                {
+                    Address = string.IsNullOrEmpty(entry.Address) ? null : new EthereumAddress(entry.Address),
+                    StorageKeys = storageKeys
+                };
             }
         }
 
@@ -178,7 +175,7 @@ internal class TransactionData
         if (string.IsNullOrEmpty(value))
             return null;
 
-        return Hex.Parse(value);
+        return Hex.Parse(value, HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString);
     }
 }
 

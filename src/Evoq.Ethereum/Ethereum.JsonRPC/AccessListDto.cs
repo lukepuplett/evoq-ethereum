@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace Evoq.Ethereum.JsonRPC;
 
@@ -12,6 +13,7 @@ public class AccessListDto
     /// <summary>
     /// Array of access list entries, each specifying an address and its storage slots.
     /// </summary>
+    [JsonPropertyName("accessList")]
     public AccessListEntryDto[] AccessList { get; set; } = Array.Empty<AccessListEntryDto>();
 }
 
@@ -25,11 +27,13 @@ public class AccessListEntryDto
     /// The 20-byte address of the contract whose storage is being accessed.
     /// Hex-encoded with '0x' prefix.
     /// </summary>
+    [JsonPropertyName("address")]
     public string Address { get; set; } = string.Empty;
 
     /// <summary>
     /// Array of 32-byte storage slot keys that will be accessed in the contract.
     /// Each key is hex-encoded with '0x' prefix.
     /// </summary>
+    [JsonPropertyName("storageKeys")]
     public string[] StorageKeys { get; set; } = Array.Empty<string>();
 }

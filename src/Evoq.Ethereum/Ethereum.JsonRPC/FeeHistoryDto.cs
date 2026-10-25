@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace Evoq.Ethereum.JsonRPC;
 
@@ -13,6 +14,7 @@ public class FeeHistoryDto
     /// The oldest block number in the returned range.
     /// Hex-encoded block number.
     /// </summary>
+    [JsonPropertyName("oldestBlock")]
     public string OldestBlock { get; set; } = string.Empty;
 
     /// <summary>
@@ -20,6 +22,7 @@ public class FeeHistoryDto
     /// Array of hex-encoded values in wei.
     /// The last value is the next block's predicted base fee per gas.
     /// </summary>
+    [JsonPropertyName("baseFeePerGas")]
     public string[] BaseFeePerGas { get; set; } = Array.Empty<string>();
 
     /// <summary>
@@ -27,6 +30,7 @@ public class FeeHistoryDto
     /// Values are between 0 and 1, representing the percentage of gas used vs gas limit.
     /// Used to estimate network congestion.
     /// </summary>
+    [JsonPropertyName("gasUsedRatio")]
     public double[] GasUsedRatio { get; set; } = Array.Empty<double>();
 
     /// <summary>
@@ -43,5 +47,6 @@ public class FeeHistoryDto
     /// - Reward[0][2] = 75th percentile priority fee for first block
     /// And so on for each block in the range.
     /// </remarks>
+    [JsonPropertyName("reward")]
     public string[][] Reward { get; set; } = Array.Empty<string[]>();
 }

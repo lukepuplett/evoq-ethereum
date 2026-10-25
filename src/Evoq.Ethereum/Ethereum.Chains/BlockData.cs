@@ -139,7 +139,7 @@ internal class BlockData<T>
 
         var result = new BlockData<T>
         {
-            Number = string.IsNullOrEmpty(dto.Number) ? BigInteger.Zero : Hex.Parse(dto.Number).ToBigInteger(),
+            Number = string.IsNullOrEmpty(dto.Number) ? BigInteger.Zero : Hex.Parse(dto.Number, HexParseOptions.AllowOddLength).ToBigInteger(),
             Hash = TryParseHex(dto.Hash),
             ParentHash = TryParseHex(dto.ParentHash),
             Nonce = TryParseHex(dto.Nonce),
@@ -149,13 +149,13 @@ internal class BlockData<T>
             StateRoot = TryParseHex(dto.StateRoot),
             ReceiptsRoot = TryParseHex(dto.ReceiptsRoot),
             Miner = string.IsNullOrEmpty(dto.Miner) ? null : new EthereumAddress(dto.Miner),
-            Difficulty = string.IsNullOrEmpty(dto.Difficulty) ? BigInteger.Zero : Hex.Parse(dto.Difficulty).ToBigInteger(),
-            TotalDifficulty = string.IsNullOrEmpty(dto.TotalDifficulty) ? BigInteger.Zero : Hex.Parse(dto.TotalDifficulty).ToBigInteger(),
+            Difficulty = string.IsNullOrEmpty(dto.Difficulty) ? BigInteger.Zero : Hex.Parse(dto.Difficulty, HexParseOptions.AllowOddLength).ToBigInteger(),
+            TotalDifficulty = string.IsNullOrEmpty(dto.TotalDifficulty) ? BigInteger.Zero : Hex.Parse(dto.TotalDifficulty, HexParseOptions.AllowOddLength).ToBigInteger(),
             ExtraData = TryParseHex(dto.ExtraData),
-            Size = string.IsNullOrEmpty(dto.Size) ? BigInteger.Zero : Hex.Parse(dto.Size).ToBigInteger(),
-            GasLimit = string.IsNullOrEmpty(dto.GasLimit) ? BigInteger.Zero : Hex.Parse(dto.GasLimit).ToBigInteger(),
-            GasUsed = string.IsNullOrEmpty(dto.GasUsed) ? BigInteger.Zero : Hex.Parse(dto.GasUsed).ToBigInteger(),
-            BaseFeePerGas = string.IsNullOrEmpty(dto.BaseFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.BaseFeePerGas).ToBigInteger(),
+            Size = string.IsNullOrEmpty(dto.Size) ? BigInteger.Zero : Hex.Parse(dto.Size, HexParseOptions.AllowOddLength).ToBigInteger(),
+            GasLimit = string.IsNullOrEmpty(dto.GasLimit) ? BigInteger.Zero : Hex.Parse(dto.GasLimit, HexParseOptions.AllowOddLength).ToBigInteger(),
+            GasUsed = string.IsNullOrEmpty(dto.GasUsed) ? BigInteger.Zero : Hex.Parse(dto.GasUsed, HexParseOptions.AllowOddLength).ToBigInteger(),
+            BaseFeePerGas = string.IsNullOrEmpty(dto.BaseFeePerGas) ? BigInteger.Zero : Hex.Parse(dto.BaseFeePerGas, HexParseOptions.AllowOddLength).ToBigInteger(),
             WithdrawalsRoot = TryParseHex(dto.WithdrawalsRoot),
             ParentBeaconBlockRoot = TryParseHex(dto.ParentBeaconBlockRoot)
         };
@@ -163,7 +163,7 @@ internal class BlockData<T>
         // Convert timestamp from Unix seconds to DateTimeOffset
         if (!string.IsNullOrEmpty(dto.Timestamp))
         {
-            var unixTimestamp = Hex.Parse(dto.Timestamp).ToBigInteger();
+            var unixTimestamp = Hex.Parse(dto.Timestamp, HexParseOptions.AllowOddLength).ToBigInteger();
             result.Timestamp = DateTimeOffset.FromUnixTimeSeconds((long)unixTimestamp);
         }
 
@@ -196,10 +196,10 @@ internal class BlockData<T>
                 var w = dto.Withdrawals[i];
                 result.Withdrawals[i] = new Withdrawal
                 {
-                    Index = string.IsNullOrEmpty(w.Index) ? BigInteger.Zero : Hex.Parse(w.Index).ToBigInteger(),
-                    ValidatorIndex = string.IsNullOrEmpty(w.ValidatorIndex) ? BigInteger.Zero : Hex.Parse(w.ValidatorIndex).ToBigInteger(),
+                    Index = string.IsNullOrEmpty(w.Index) ? BigInteger.Zero : Hex.Parse(w.Index, HexParseOptions.AllowOddLength).ToBigInteger(),
+                    ValidatorIndex = string.IsNullOrEmpty(w.ValidatorIndex) ? BigInteger.Zero : Hex.Parse(w.ValidatorIndex, HexParseOptions.AllowOddLength).ToBigInteger(),
                     Address = string.IsNullOrEmpty(w.Address) ? null : new EthereumAddress(w.Address),
-                    Amount = string.IsNullOrEmpty(w.Amount) ? BigInteger.Zero : Hex.Parse(w.Amount).ToBigInteger()
+                    Amount = string.IsNullOrEmpty(w.Amount) ? BigInteger.Zero : Hex.Parse(w.Amount, HexParseOptions.AllowOddLength).ToBigInteger()
                 };
             }
         }
@@ -214,7 +214,7 @@ internal class BlockData<T>
         if (string.IsNullOrEmpty(value))
             return null;
 
-        return Hex.Parse(value);
+        return Hex.Parse(value, HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString);
     }
 }
 

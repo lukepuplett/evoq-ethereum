@@ -10,6 +10,8 @@ namespace Evoq.Ethereum.Chains;
 /// </summary>
 public class FeeHistory
 {
+    private static readonly HexParseOptions ParseOptions = HexParseOptions.AllowOddLength | HexParseOptions.AllowEmptyString;
+
     /// <summary>
     /// The oldest block number in the returned range.
     /// </summary>
@@ -44,7 +46,7 @@ public class FeeHistory
 
         var result = new FeeHistory
         {
-            OldestBlock = Hex.Parse(dto.OldestBlock).ToBigInteger(),
+            OldestBlock = Hex.Parse(dto.OldestBlock, ParseOptions).ToBigInteger(),
             GasUsedRatio = dto.GasUsedRatio ?? Array.Empty<double>()
         };
 
@@ -54,7 +56,7 @@ public class FeeHistory
             result.BaseFeePerGas = new BigInteger[dto.BaseFeePerGas.Length];
             for (int i = 0; i < dto.BaseFeePerGas.Length; i++)
             {
-                result.BaseFeePerGas[i] = Hex.Parse(dto.BaseFeePerGas[i]).ToBigInteger();
+                result.BaseFeePerGas[i] = Hex.Parse(dto.BaseFeePerGas[i], ParseOptions).ToBigInteger();
             }
         }
 
@@ -69,7 +71,7 @@ public class FeeHistory
                     result.Reward[i] = new BigInteger[dto.Reward[i].Length];
                     for (int j = 0; j < dto.Reward[i].Length; j++)
                     {
-                        result.Reward[i][j] = Hex.Parse(dto.Reward[i][j]).ToBigInteger();
+                        result.Reward[i][j] = Hex.Parse(dto.Reward[i][j], ParseOptions).ToBigInteger();
                     }
                 }
                 else
